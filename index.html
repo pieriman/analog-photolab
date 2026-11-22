@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Analog PhotoLab v0.8 — Fotocamera Meccanica, Carte & Camera Oscura</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- Pre-flash schermo usato SOLO su camera frontale priva di LED -->
+  <div id="frontScreenFlash"></div>
+
+  <!-- =========================================================
+       VIEW 1: HOME — RULLINI ANALOGICI, PRESET VINTAGE & MEMORIA
+       ========================================================= -->
+  <div id="view-load" class="view active">
+    <header>
+      <div class="brand">
+        <h1>Analog PhotoLab v0.8</h1>
+        <span>Rullini Meccanici & Preset Vintage Automatici</span>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="btn" id="openDiagBtn" title="Test Fotocamera, Risoluzione e Memoria">Test & Info</button>
+        <button class="btn btn-gold-outline" id="openLabFromLoadBtn">Lab Pellicole</button>
+      </div>
+    </header>
+
+    <div class="scroll-body">
+      <div class="home-mode-switch" id="homeModeSwitch">
+        <button type="button" class="home-mode-tab active" data-home-mode="rolls">
+          🎞️ Rullini Analogici
+          <small>Controllo completo & Camera Oscura</small>
+        </button>
+        <button type="button" class="home-mode-tab" data-home-mode="vintage">
+          ⚡ Preset Vintage
+          <small>Rullino automatico • Decadi • 0–70%</small>
+        </button>
+      </div>
+
+      <!-- PANNELLO A: RULLINI ANALOGICI -->
+      <div id="homePanelRolls" class="home-panel active">
+        <div class="card">
+          <div class="card-title">
+            <span>1. Scegli la Pellicola / Cartuccia</span>
+            <span id="selectedFilmIso" style="color:#fff;">ISO 400</span>
+          </div>
+          <div class="film-grid" id="loadFilmGrid"></div>
+
+          <div class="card-title" style="margin-top:2px;">
+            <span>2. Lunghezza Rullino</span>
+          </div>
+          <div class="exposures-row" id="expCountRow">
+            <div class="exp-pill" data-count="8">8 Pose<span>Polaroid 600</span></div>
+            <div class="exp-pill selected" data-count="12">12 Pose<span>Test rapido</span></div>
+            <div class="exp-pill" data-count="24">24 Pose<span>Standard</span></div>
+            <div class="exp-pill" data-count="36">36 Pose<span>Lungo</span></div>
+          </div>
+
+          <div class="card-title" style="margin-top:2px;">
+            <span>3. Qualità Acquisizione & Stampa</span>
+          </div>
+          <div class="quality-row" id="qualityRow">
+            <div class="exp-pill selected" data-quality="standard">
+              Standard (1800px)
+              <span>Rapida, leggera per iPhone/Android</span>
+            </div>
+            <div class="exp-pill" data-quality="max">
+              Massima Sensore (4K+)
+              <span>Risoluzione nativa completa</span>
+            </div>
+          </div>
+
+          <button class="btn btn-gold" id="loadRollBtn" style="padding:12px; font-size:13px; margin-top:2px;">
+            Carica Pellicola nella Fotocamera
+          </button>
+        </div>
+
+        <div class="card" id="archiveCard">
+          <div class="card-title">
+            <span>Archivio Rullini Sviluppati</span>
+            <span id="archiveCount">0 rullini</span>
+          </div>
+          <div id="archiveEmptyMsg" style="font-size:11px; color:var(--muted); text-align:center; padding:4px 0;">
+            Nessun rullino sviluppato in questo browser.
+          </div>
+          <div class="archive-list" id="archiveList"></div>
+        </div>
+      </div>
+
+      <!-- PANNELLO B: PRESET VINTAGE AUTOMATICI (12-36 POSE + 4s SVILUPPO) -->
+      <div id="homePanelVintage" class="home-panel">
+        <div class="card">
+          <div class="card-title">
+            <span>1. Scegli la Decade Iconica</span>
+            <span id="selectedVintageEraBadge" style="color:#fff;">'98 AUTO</span>
+          </div>
+          <div class="helper-tip">
+            Carica un rullino automatico punta-e-scatta: a fine rullino (4 secondi di sviluppo) vedrai tutte le pose con
+            effetti casuali indipendenti (da 0 a 4 attivi, max 70%) per scegliere e salvare le migliori!
+          </div>
+
+          <div class="vintage-decade-grid" id="vintageDecadeGrid"></div>
+
+          <div class="card-title" style="margin-top:2px;">
+            <span>2. Lunghezza Rullino Vintage</span>
+          </div>
+          <div class="exposures-row cols-3" id="vintageExpCountRow">
+            <div class="exp-pill selected" data-count="12">12 Pose<span>Test veloce</span></div>
+            <div class="exp-pill" data-count="24">24 Pose<span>Standard</span></div>
+            <div class="exp-pill" data-count="36">36 Pose<span>Viaggio</span></div>
+          </div>
+
+          <div class="card-title" style="margin-top:2px;">
+            <span>3. Qualità Acquisizione</span>
+          </div>
+          <div class="quality-row" id="vintageQualityRow">
+            <div class="exp-pill selected" data-quality="standard">
+              Standard (1800px)
+              <span>Rapida e leggera</span>
+            </div>
+            <div class="exp-pill" data-quality="max">
+              Massima Sensore (4K+)
+              <span>Risoluzione nativa completa</span>
+            </div>
+          </div>
+
+          <button class="btn btn-gold" id="startVintageCamBtn" style="padding:13px; font-size:13px; margin-top:2px;">
+            ⚡ Carica Rullino Vintage
+          </button>
+        </div>
+
+        <div class="card" id="vintageArchiveCard">
+          <div class="card-title">
+            <span>Rullini Vintage Sviluppati</span>
+            <span id="vintageArchiveCount">0 rullini</span>
+          </div>
+          <div id="vintageArchiveEmptyMsg"
+            style="font-size:11px; color:var(--muted); text-align:center; padding:4px 0;">
+            Nessun rullino vintage sviluppato in questo browser.
+          </div>
+          <div class="archive-list" id="vintageArchiveList"></div>
+        </div>
+      </div>
+
+      <!-- GESTIONE MEMORIA, BACKUP & PULIZIA FILE TEMPORANEI -->
+      <div class="card" id="storageCard">
+        <div class="card-title">
+          <span>Gestione Memoria & Backup</span>
+          <span id="storageUsageBadge" style="color:#fff;">0.0 MB</span>
+        </div>
+        <div id="storageBreakdown" style="font-size:11px; color:var(--muted); line-height:1.4;">
+          Calcolo spazio occupato nel browser...
+        </div>
+
+        <div class="backup-bar">
+          <button class="btn btn-gold-outline" id="exportBackupBtn">Esporta Backup (.json)</button>
+          <label class="btn" style="cursor:pointer;">
+            Ripristina Backup
+            <input type="file" id="importBackupInput" accept=".json,application/json" />
+          </label>
+        </div>
+
+        <div class="storage-actions">
+          <button type="button" class="btn" id="cleanDiscardsBtn">
+            ★ Tieni solo Scelte (★) e Salvate (✓)
+          </button>
+          <button type="button" class="btn" id="cleanSavedBtn">
+            ✓ Libera spazio delle foto già salvate in locale
+          </button>
+          <button type="button" class="btn btn-red" id="clearAllStorageBtn">
+            Svuota tutta la memoria temporanea
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2: FOTOCAMERA ANALOGICA (CON ESPOSIMETRO A LANCETTA)
+       ========================================================= -->
+  <div id="view-camera" class="view">
+    <div class="wa-top-plate">
+      <div class="wa-left-cluster">
+        <div class="wa-film-slot" title="Finestrella pellicola caricata">
+          <div class="wa-film-slot-glass">
+            <div class="wa-film-canister" id="camFilmCanister">
+              <span class="wa-can-brand" id="camFilmBrand">KODAK</span>
+              <span class="wa-can-name" id="camFilmBadge">PORTRA 400</span>
+            </div>
+          </div>
+        </div>
+        <div class="wa-quality-tag" id="camQualityBadge" title="Cambia risoluzione">STD</div>
+      </div>
+
+      <div class="wa-counter-window" title="Indicatore meccanico otturatore e contapose">
+        <div class="wa-counter-dot" id="waCockDot"></div>
+        <div class="frame-counter" id="camCounter">00 / 12</div>
+      </div>
+
+      <div class="wa-right-cluster">
+        <button class="wa-rewind-crank" id="rewindEarlyBtn">Riavvolgi</button>
+      </div>
+    </div>
+
+    <div class="viewfinder-stage">
+      <div class="viewfinder-frame" id="vfFrame">
+        <video id="camVideo" autoplay playsinline muted></video>
+        <div id="vfOpticalVignette"></div>
+
+        <div class="vf-thirds-grid" id="vfThirdsGrid">
+          <div class="thirds-v v1"></div>
+          <div class="thirds-v v2"></div>
+          <div class="thirds-h h1"></div>
+          <div class="thirds-h h2"></div>
+        </div>
+
+        <div class="vf-overlay">
+          <div class="vf-corner tl"></div>
+          <div class="vf-corner tr"></div>
+          <div class="vf-corner bl"></div>
+          <div class="vf-corner br"></div>
+        </div>
+        <div class="vf-reticle"></div>
+
+        <button type="button" class="vf-thirds-btn" id="vfThirdsToggleBtn" title="Attiva/Disattiva regola dei terzi">
+          ⊞ 3×3
+        </button>
+
+        <div class="vf-cock-badge" id="vfCockBadge">TIRA LEVA PER CARICARE</div>
+
+        <div class="vf-needle-meter" id="vfNeedleMeter">
+          <div class="needle-meter-face">
+            <svg viewBox="0 0 140 54" class="needle-svg">
+              <path d="M 18 46 A 54 54 0 0 1 122 46" fill="none" stroke="rgba(243,236,224,0.28)" stroke-width="2" />
+              <path d="M 61 8 A 54 54 0 0 1 79 8" fill="none" stroke="#6b8e78" stroke-width="4" />
+              <line x1="22" y1="42" x2="27" y2="37" stroke="#ff6b6b" stroke-width="1.5" />
+              <line x1="42" y1="19" x2="45" y2="24" stroke="#f3ece0" stroke-width="1.5" />
+              <line x1="70" y1="5" x2="70" y2="13" stroke="#7ce8a2" stroke-width="2" />
+              <line x1="98" y1="19" x2="95" y2="24" stroke="#f3ece0" stroke-width="1.5" />
+              <line x1="118" y1="42" x2="113" y2="37" stroke="#ff6b6b" stroke-width="1.5" />
+              <text x="15" y="36" fill="#ff8f8f" font-size="8" font-family="monospace" font-weight="bold">-2</text>
+              <text x="36" y="16" fill="#f3ece0" font-size="7.5" font-family="monospace">-1</text>
+              <text x="67.5" y="5" fill="#7ce8a2" font-size="7.5" font-family="monospace" font-weight="bold">0</text>
+              <text x="96" y="16" fill="#f3ece0" font-size="7.5" font-family="monospace">+1</text>
+              <text x="115" y="36" fill="#ff8f8f" font-size="8" font-family="monospace" font-weight="bold">+2</text>
+              <g id="meterNeedleArm" transform="rotate(0 70 52)">
+                <line x1="70" y1="52" x2="70" y2="10" stroke="#d94e3f" stroke-width="2.2" stroke-linecap="round" />
+                <circle cx="70" cy="52" r="4" fill="#d99b38" stroke="#1f1d1a" stroke-width="1.2" />
+              </g>
+            </svg>
+            <div class="needle-caption">
+              <span>ESPOSIMETRO M</span>
+              <strong id="needleEvDelta">0.0 EV</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="vf-meter-hud">
+          <div class="vf-led-strip">
+            <div class="meter-readout">
+              <span class="vf-seg" id="hudAperture">f/4.0</span>
+              <span class="vf-seg" id="hudShutter">1/125s</span>
+            </div>
+            <span id="hudStatus" class="meter-status meter-ok">● OK</span>
+          </div>
+        </div>
+
+        <div id="shutterCurtain"></div>
+
+        <div id="rollFinishedOverlay" class="vf-modal-overlay">
+          <div class="vf-modal-box">
+            <strong>Rullino Completo!</strong>
+            <span id="rollFinishedSub">Tutte le pose sono state esposte. Riavvolgi la pellicola prima di aprire il
+              dorso.</span>
+            <button type="button" class="btn btn-gold" id="finishRewindBtn">↺ Riavvolgi Rullino</button>
+          </div>
+        </div>
+
+        <div id="rewindAnimOverlay" class="vf-modal-overlay">
+          <div class="vf-modal-box">
+            <div class="rewind-reel-icon">↺</div>
+            <strong>Riavvolgimento in corso...</strong>
+            <span id="rewindAnimSub">Recupero pellicola nel caricatore</span>
+            <div class="progress-track" style="width:100%;">
+              <div class="progress-fill" id="rewindProgressFill" style="background:var(--gold);"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="camFallbackMsg">
+          <strong style="color:#fff;">Mirino Live non attivo (file://)</strong>
+          <span>I browser bloccano la camera se apri un file locale senza HTTPS. Usa <b>+ Galleria</b> in basso a
+            sinistra per caricare foto sul rullino!</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wa-deck">
+      <div class="wa-mode-bar" id="camModeSelector">
+        <div class="mode-pill active" data-mode="AUTO">AUTO (P)</div>
+        <div class="mode-pill" data-mode="AV">Av • DIAF.</div>
+        <div class="mode-pill" data-mode="TV">Tv • TEMPI</div>
+        <div class="mode-pill" data-mode="M">M • MANUALE</div>
+      </div>
+
+      <!-- Contenitore 2 colonne in M per risparmiare spazio verticale sul mirino -->
+      <div class="wa-dials-grid" id="waDialsGrid">
+        <div class="wa-dial-box" id="apertureDialBox" style="display:none;">
+          <div class="dial-header">
+            <span>Diaframma</span>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <strong id="apDialValue">f/4.0</strong>
+              <button type="button" class="dial-reset-btn" id="resetApertureBtn" title="Reset f/4.0">↺</button>
+            </div>
+          </div>
+          <div class="stepped-slider-wrap">
+            <input type="range" id="apertureSteppedSlider" class="stepped-range" min="0" max="7" step="1" value="3" />
+            <div class="stepped-ticks" id="apSteppedTicks"></div>
+          </div>
+        </div>
+
+        <div class="wa-dial-box" id="shutterDialBox" style="display:none;">
+          <div class="dial-header">
+            <span>Otturatore</span>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <strong id="shDialValue">1/125s</strong>
+              <button type="button" class="dial-reset-btn" id="resetShutterBtn" title="Reset 1/125s">↺</button>
+            </div>
+          </div>
+          <div class="stepped-slider-wrap">
+            <input type="range" id="shutterSteppedSlider" class="stepped-range" min="0" max="10" step="1" value="3" />
+            <div class="stepped-ticks" id="shSteppedTicks"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wa-aux-row">
+        <div class="wa-ev-box">
+          <span>EV</span>
+          <input type="range" id="camExpSlider" min="-2.0" max="2.0" step="0.5" value="0.0" />
+          <span id="camExpVal">0.0</span>
+          <button type="button" class="dial-reset-btn dark" id="resetCamEvBtn" title="Reset EV 0.0">↺</button>
+        </div>
+        <button class="wa-flash-btn" id="flashToggleBtn" type="button" title="Attiva flash allo scatto">
+          <span class="flash-led"></span>
+          <span id="flashBtnLabel">FLASH: OFF</span>
+        </button>
+      </div>
+
+      <div class="wa-mechanics-dock">
+        <div class="wa-side-actions">
+          <label class="wa-mini-btn">
+            + GALLERIA
+            <input type="file" id="camGalleryInput" accept="image/*" />
+          </label>
+          <button class="wa-mini-btn secondary" id="switchCamBtn" type="button">GIRA CAM</button>
+        </div>
+
+        <div class="shutter-assembly">
+          <div class="shutter-collar">
+            <button class="shutter-btn locked" id="shutterBtn" aria-label="Pulsante di Scatto"></button>
+          </div>
+          <span class="mech-label" id="shutterMechLabel">BLOCCATO</span>
+        </div>
+
+        <div class="advance-assembly">
+          <button class="advance-lever-btn needs-cock" id="advanceLeverBtn" type="button"
+            aria-label="Leva Caricamento Rullino">
+            <div class="lever-hub"></div>
+            <div class="lever-arm"></div>
+            <span class="lever-status-txt" id="leverStatusTxt">CARICA</span>
+          </button>
+          <span class="mech-label">LEVA RULLINO</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2B: FOTOCAMERA AUTOMATICA PRESET VINTAGE (12-36 POSE)
+       ========================================================= -->
+  <div id="view-vintage-camera" class="view">
+    <div class="vintage-top-bar">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button type="button" class="btn" id="vintageExitBtn" style="padding:5px 9px;">← Esci</button>
+        <div class="vintage-era-pill" id="vintageTopEraBadge">'98 AUTO</div>
+      </div>
+      <div class="wa-counter-window" style="padding:2px 9px;">
+        <div class="frame-counter" id="vintageCounter">00 / 12</div>
+      </div>
+      <button type="button" class="wa-rewind-crank" id="vintageRewindBtn">Riavvolgi</button>
+    </div>
+
+    <div class="viewfinder-stage">
+      <div class="viewfinder-frame vintage-vf-frame" id="vintageVfFrame">
+        <video id="vintageVideo" autoplay playsinline muted></video>
+        <div class="vf-thirds-grid" id="vintageThirdsGrid">
+          <div class="thirds-v v1"></div>
+          <div class="thirds-v v2"></div>
+          <div class="thirds-h h1"></div>
+          <div class="thirds-h h2"></div>
+        </div>
+        <button type="button" class="vf-thirds-btn" id="vintageThirdsToggleBtn">⊞ 3×3</button>
+
+        <div class="vintage-vf-badge" id="vintageVfEraLabel">ANNI '90 • AUTO</div>
+        <div class="vintage-date-preview" id="vintageDatePreview">'98 11 22</div>
+        <div id="vintageCurtain"></div>
+
+        <!-- Prompt fine rullino Vintage -->
+        <div id="vintageFinishedOverlay" class="vf-modal-overlay">
+          <div class="vf-modal-box">
+            <strong>Rullino Vintage Completo!</strong>
+            <span id="vintageFinishedSub">Tutte le pose sono pronte. Riavvolgi e sviluppa (4 secondi).</span>
+            <button type="button" class="btn btn-gold" id="vintageFinishRewindBtn">↺ Riavvolgi e Sviluppa</button>
+          </div>
+        </div>
+
+        <!-- Animazione 4 secondi riavvolgimento + sviluppo Vintage -->
+        <div id="vintageDevAnimOverlay" class="vf-modal-overlay">
+          <div class="vf-modal-box">
+            <div class="rewind-reel-icon">↺</div>
+            <strong>Sviluppo Rullino in corso...</strong>
+            <span id="vintageDevAnimSub">Riavvolgimento e trattamento chimico automatico</span>
+            <div class="progress-track" style="width:100%;">
+              <div class="progress-fill" id="vintageDevProgressFill" style="background:var(--gold);"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="vintageFallbackMsg"
+          style="display:none; position:absolute; inset:20px; text-align:center; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:11px;">
+          <strong style="color:#fff;">Mirino Live non attivo</strong>
+          <span>Usa <b>+ Galleria</b> qui sotto per caricare foto sul tuo rullino vintage!</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="vintage-deck">
+      <div class="vintage-toggles-row">
+        <button type="button" class="vintage-chip active" id="vintageRandomBtn">✨ Casuali: ON</button>
+        <button type="button" class="vintage-chip active" id="vintageDateBtn">📅 Data: Era</button>
+        <button type="button" class="vintage-chip" id="vintageFlashBtn">⚡ Flash: OFF</button>
+      </div>
+
+      <div class="vintage-decade-strip" id="vintageQuickDecadeStrip"></div>
+
+      <div class="vintage-shoot-dock">
+        <label class="wa-mini-btn" style="width:auto; padding:7px 10px;">
+          + GALLERIA
+          <input type="file" id="vintageGalleryInput" accept="image/*" />
+        </label>
+
+        <button type="button" class="vintage-shutter-btn" id="vintageShutterBtn"
+          aria-label="Scatta Preset Vintage"></button>
+
+        <button type="button" class="wa-mini-btn secondary" id="vintageSwitchCamBtn"
+          style="width:auto; padding:7px 10px;">
+          GIRA CAM
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2C: GALLERIA RULLINO VINTAGE SVILUPPATO (★ + SALVA TUTTE)
+       ========================================================= -->
+  <div id="view-vintage-lab" class="view">
+    <header>
+      <div class="brand">
+        <h1 id="vintageLabTitle">Rullino Vintage</h1>
+        <span id="vintageLabSubtitle">Metti ★ alle migliori e salva selezionate o tutte</span>
+      </div>
+      <button class="btn btn-gold" id="vintageLabHomeBtn">Home</button>
+    </header>
+
+    <div class="sheet-toolbar" id="vintageToolbar">
+      <button type="button" class="btn" id="vintageSelectAllBtn">★ Tutte</button>
+      <button type="button" class="btn btn-gold-outline" id="vintageSaveSelectedBtn">Salva Selezionate (0)</button>
+      <button type="button" class="btn btn-gold" id="vintageSaveAllBtn">Salva Tutte</button>
+    </div>
+
+    <div class="scroll-body">
+      <div id="vintageLabEmpty" style="font-size:12px; color:var(--muted); text-align:center; padding:30px 10px;">
+        Nessuno scatto nel rullino.
+      </div>
+      <div class="contact-grid" id="vintageLabGrid"></div>
+    </div>
+  </div>
+
+  <!-- Modal dettaglio scatto Vintage -->
+  <div id="vintageDetailModal" class="full-modal">
+    <header>
+      <div class="brand">
+        <h1 id="vintageDetailTitle">Scatto Vintage</h1>
+        <span id="vintageDetailMeta">1990s</span>
+      </div>
+      <div style="display:flex; gap:5px; align-items:center;">
+        <button class="btn" id="vintageDetailStarBtn" style="padding:7px 9px;">☆</button>
+        <button class="btn btn-gold" id="vintageDetailSaveBtn" style="padding:7px 10px;">Salva Foto</button>
+        <button class="btn" id="vintageDetailCloseBtn" style="padding:7px 9px;">✕</button>
+      </div>
+    </header>
+    <div class="print-stage" style="background:#050506;">
+      <img id="vintageDetailImg" alt="Vintage shot"
+        style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 12px 35px rgba(0,0,0,0.85);" />
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 3: CAMERA OSCURA
+       ========================================================= -->
+  <div id="view-darkroom" class="view">
+    <header>
+      <div class="brand">
+        <h1 style="color:#ff6b5b;">Camera Oscura</h1>
+        <span>Bagno Chimico, Sviluppo & Imperfezioni Casuali</span>
+      </div>
+    </header>
+
+    <div class="darkroom-center">
+      <div class="canister-card">
+        <span style="font-size:11px; text-transform:uppercase; color:var(--muted);">Rullino Riavvolto</span>
+        <h2 id="drFilmTitle">Kodak Portra 400</h2>
+        <p id="drFrameSummary" style="font-size:13px; color:#ccc;">12 fotogrammi latenti pronti per lo sviluppo</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>1. Processo di Sviluppo (Push / Pull)</span>
+        </div>
+        <div class="push-grid" id="pushGrid">
+          <div class="push-btn" data-push="-1"><strong>Pull -1 Stop</strong><small>Tempi ridotti, contrasto
+              morbido</small></div>
+          <div class="push-btn selected" data-push="0"><strong>Standard (0)</strong><small>Sviluppo nominale di
+              laboratorio</small></div>
+          <div class="push-btn" data-push="1"><strong>Push +1 Stop</strong><small>+Contrasto, grana più evidente</small>
+          </div>
+          <div class="push-btn" data-push="2"><strong>Push +2 Stop</strong><small>Contrasto spinto, ombre chiuse</small>
+          </div>
+        </div>
+
+        <div class="card-title" style="margin-top:2px;">
+          <span>2. Accidenti Alla Cieca sul Rullino (Casuali su Alcune Foto)</span>
+        </div>
+
+        <div class="helper-tip">
+          Gli effetti attivati qui vengono applicati <b>alla cieca</b> solo su alcuni fotogrammi casuali del rullino e
+          con intensità variabile. Potrai comunque dosarli o rimuoverli foto per foto in stampa.
+        </div>
+
+        <div class="toggle-row" id="drToggleLeaks">
+          <div class="toggle-info"><strong>Infiltrazioni di Luce (Light Leaks)</strong><small>Bruciature ambrate e rosse
+              casuali da guarnizioni usurate</small></div>
+          <div class="toggle-pill"></div>
+        </div>
+
+        <div class="toggle-row" id="drToggleChem">
+          <div class="toggle-info"><strong>Sviluppo Chimico Irregolare</strong><small>Aloni nella tank, colature e
+              macchie d'asciugatura sui negativi</small></div>
+          <div class="toggle-pill"></div>
+        </div>
+
+        <div class="toggle-row" id="drToggleAged">
+          <div class="toggle-info"><strong>Carta Invecchiata & Ossidazione</strong><small>Patina d'archivio, fioriture
+              (foxing) e sbiadimento su alcuni scatti</small></div>
+          <div class="toggle-pill"></div>
+        </div>
+
+        <div id="devProgressBox">
+          <span id="devStatusText" style="font-size:12px; color:#ff9b8f;">Agitazione chimica in corso...</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="devProgressFill"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-gold" id="startDevelopBtn" style="padding:13px; font-size:13px;">
+          Sviluppa Rullino Ora
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 4: PROVINO A CONTATTO (★ + SALVA SELEZIONATE / TUTTE)
+       ========================================================= -->
+  <div id="view-contact" class="view">
+    <header>
+      <div class="brand">
+        <h1 id="csTitle">Provino a Contatto</h1>
+        <span id="csSubtitle">Tocca una foto per ingrandire/stampare o metti ★</span>
+      </div>
+      <button class="btn btn-gold" id="newRollFromCsBtn">Home</button>
+    </header>
+
+    <div class="sheet-toolbar" id="csToolbar">
+      <button type="button" class="btn" id="csSelectAllBtn">★ Tutte</button>
+      <button type="button" class="btn btn-gold-outline" id="csSaveSelectedBtn">Salva Selezionate (0)</button>
+      <button type="button" class="btn btn-gold" id="csSaveAllBtn">Salva Tutte</button>
+    </div>
+
+    <div class="scroll-body">
+      <div class="contact-sheet-paper">
+        <div class="sheet-header">
+          <span id="csFilmEdge">KODAK PORTRA 400</span>
+          <span id="csDevEdge">DEV: STD</span>
+        </div>
+        <div class="contact-grid" id="contactGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL INGRANDITORE / STAMPA
+       ========================================================= -->
+  <div id="printModal">
+    <header>
+      <div class="brand" style="min-width:0;">
+        <h1 id="printFrameTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Foto #01</h1>
+        <span id="printExifMeta">f/4 • 1/125s</span>
+      </div>
+      <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
+        <button class="btn btn-gold-outline" id="headerRotate90Btn" title="Ruota 90°" style="padding:7px 8px;">↻
+          90°</button>
+        <button class="btn btn-gold" id="downloadPrintBtn" style="padding:7px 10px;">Salva Stampa</button>
+        <button class="btn" id="closePrintBtn" style="padding:7px 9px;">✕</button>
+      </div>
+    </header>
+
+    <div class="print-stage" id="printStage">
+      <div class="print-frame-wrapper" id="printWrapper">
+        <canvas id="printCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="print-panel">
+      <div class="print-tabs" id="printTabs">
+        <div class="print-tab active" data-tab="tab-paper">1. Carta & Preset</div>
+        <div class="print-tab" data-tab="tab-enlarger">2. Ingranditore</div>
+        <div class="print-tab" data-tab="tab-defects">3. Difetti Vintage</div>
+        <div class="print-tab" data-tab="tab-finish">4. Bordi & Qualità</div>
+      </div>
+
+      <div class="print-tab-body active" id="tab-paper">
+        <div class="card-title"><span>Preset Rapidi di Stampa</span></div>
+        <div class="preset-strip" id="printPresetStrip"></div>
+
+        <div class="card-title" style="margin-top:2px;"><span>Carta Fotosensibile (Resa Tonale & Superficie)</span>
+        </div>
+        <div class="paper-grid" id="paperGrid"></div>
+      </div>
+
+      <div class="print-tab-body" id="tab-enlarger">
+        <div class="card-title"><span>Inquadratura Ingranditore (Zoom & Rotazione)</span></div>
+        <div class="geom-actions-row">
+          <button class="btn btn-gold-outline" id="prRotate90Btn" type="button">↻ Ruota 90°</button>
+          <button class="btn" id="prResetGeomBtn" type="button">Reset Inquadratura</button>
+        </div>
+
+        <div class="slider-row">
+          <label>Zoom Testa</label>
+          <input type="range" id="prZoomSlider" min="1.0" max="3.0" step="0.05" value="1.0" />
+          <span id="prZoomVal">1.00x</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="zoom" title="Reset Zoom">↺</button>
+        </div>
+
+        <div class="slider-row">
+          <label>Rotazione 360°</label>
+          <input type="range" id="prRotSlider" min="0" max="360" step="1" value="0" />
+          <span id="prRotVal">0°</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="rotation" title="Reset Rotazione">↺</button>
+        </div>
+
+        <div class="card-title" style="margin-top:4px;"><span>Lampada, Contrasto & Testa Colori</span></div>
+        <div class="slider-row">
+          <label>Timer Lampada</label>
+          <input type="range" id="prTimeSlider" min="4" max="32" step="0.5" value="12" />
+          <span id="prTimeVal">12.0s</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="time" title="Reset Timer">↺</button>
+        </div>
+
+        <div class="slider-row">
+          <label>Filtro Grado</label>
+          <input type="range" id="prGradeSlider" min="0" max="5" step="0.5" value="2.5" />
+          <span id="prGradeVal">Gr. 2.5</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="grade" title="Reset Grado">↺</button>
+        </div>
+
+        <div class="slider-row" id="ra4MagentaRow">
+          <label>Testa Magenta</label>
+          <input type="range" id="prMagSlider" min="-30" max="30" step="1" value="0" />
+          <span id="prMagVal">0 M</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="mag" title="Reset Magenta">↺</button>
+        </div>
+
+        <div class="slider-row" id="ra4YellowRow">
+          <label>Testa Giallo</label>
+          <input type="range" id="prYelSlider" min="-30" max="30" step="1" value="0" />
+          <span id="prYelVal">0 Y</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="yel" title="Reset Giallo">↺</button>
+        </div>
+
+        <div class="slider-row">
+          <label>Bruciatura Bordi</label>
+          <input type="range" id="prBurnSlider" min="0" max="1" step="0.05" value="0.10" />
+          <span id="prBurnVal">10%</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="burn" title="Reset Bruciatura">↺</button>
+        </div>
+      </div>
+
+      <div class="print-tab-body" id="tab-defects">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+          <span style="font-size:10.5px; color:var(--gold); font-weight:700; text-transform:uppercase;">Errori Luce &
+            Carta (Partono da 0%)</span>
+          <div style="display:flex; gap:5px;">
+            <button class="btn" id="clearFrameDefectsBtn" style="padding:5px 8px; font-size:10.5px;">Rimuovi
+              Tutti</button>
+            <button class="btn btn-gold-outline" id="rerollDefectsBtn"
+              style="padding:5px 8px; font-size:10.5px;">Rimescola</button>
+          </div>
+        </div>
+
+        <div class="defect-box" id="boxPrLeaks">
+          <div class="toggle-row" id="prToggleLeaks">
+            <div class="toggle-info"><strong>Infiltrazioni di Luce (Light Leaks)</strong><small>Bruciatura rosso-ambrata
+                intensa da infiltrazione nel dorso</small></div>
+            <div class="toggle-pill"></div>
+          </div>
+          <div class="defect-intensity-row">
+            <label>Impatto</label>
+            <input type="range" id="prLeakInt" min="0" max="1.00" step="0.05" value="0" />
+            <span id="prLeakIntVal">0%</span>
+            <button type="button" class="slider-reset-btn" data-reset-defect="lightLeak" title="Reset 0%">↺</button>
+          </div>
+        </div>
+
+        <div class="defect-box" id="boxPrChem">
+          <div class="toggle-row" id="prToggleChem">
+            <div class="toggle-info"><strong>Macchie Chimiche & Errori di Sviluppo</strong><small>Aloni della tank,
+                colature chimiche, viraggi e anelli d'asciugatura</small></div>
+            <div class="toggle-pill"></div>
+          </div>
+          <div class="defect-intensity-row">
+            <label>Impatto</label>
+            <input type="range" id="prChemInt" min="0" max="1.00" step="0.05" value="0" />
+            <span id="prChemIntVal">0%</span>
+            <button type="button" class="slider-reset-btn" data-reset-defect="chemStain" title="Reset 0%">↺</button>
+          </div>
+        </div>
+
+        <div class="defect-box" id="boxPrAged">
+          <div class="toggle-row" id="prToggleAgedPaper">
+            <div class="toggle-info"><strong>Carta Invecchiata d'Archivio</strong><small>Patina ossidata irregolare,
+                fioriture foxing e neri sbiaditi</small></div>
+            <div class="toggle-pill"></div>
+          </div>
+          <div class="defect-intensity-row">
+            <label>Impatto</label>
+            <input type="range" id="prAgedInt" min="0" max="1.00" step="0.05" value="0" />
+            <span id="prAgedIntVal">0%</span>
+            <button type="button" class="slider-reset-btn" data-reset-defect="agedPaper" title="Reset 0%">↺</button>
+          </div>
+        </div>
+
+        <div class="defect-box" id="boxPrScratches">
+          <div class="toggle-row" id="prToggleScratches">
+            <div class="toggle-info"><strong>Polvere, Pieghe & Usura Carta</strong><small>Pulviscolo leggero, pieghe
+                agli angoli, peli e lieve usura</small></div>
+            <div class="toggle-pill"></div>
+          </div>
+          <div class="defect-intensity-row">
+            <label>Impatto</label>
+            <input type="range" id="prScratchInt" min="0" max="1.00" step="0.05" value="0" />
+            <span id="prScratchIntVal">0%</span>
+            <button type="button" class="slider-reset-btn" data-reset-defect="scratches" title="Reset 0%">↺</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="print-tab-body" id="tab-finish">
+        <div class="card-title"><span>Marginatore & Formato Stampa</span></div>
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;" id="borderSelector">
+          <button class="btn btn-gold-outline" data-border="none">Senza Bordo</button>
+          <button class="btn" data-border="white">Margini Carta</button>
+          <button class="btn" data-border="polaroid">Polaroid 600</button>
+          <button class="btn" data-border="rebate">Negativo 35mm</button>
+        </div>
+
+        <div class="slider-row" id="borderThicknessRow" style="display:none; margin-top:4px;">
+          <label>Spessore Cornice</label>
+          <input type="range" id="prBorderThickSlider" min="0.02" max="0.18" step="0.01" value="0.06" />
+          <span id="prBorderThickVal">6%</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="borderThickness"
+            title="Reset Spessore">↺</button>
+        </div>
+
+        <div class="helper-tip" id="polaroidFixedNote" style="display:none; margin-top:2px;">
+          La cornice <b>Polaroid 600</b> mantiene le proporzioni standard originali fisse (rapporto 1:1.02 con mento
+          inferiore classico).
+        </div>
+
+        <div class="slider-row" style="margin-top:4px;">
+          <label>Grana Carta</label>
+          <input type="range" id="prGrainSlider" min="0.5" max="1.6" step="0.05" value="1.0" />
+          <span id="prGrainVal">100%</span>
+          <button type="button" class="slider-reset-btn" data-reset-print="grainScale"
+            title="Reset Grana Carta">↺</button>
+        </div>
+
+        <div class="card-title" style="margin-top:2px;"><span>Risoluzione Esportazione</span></div>
+        <div class="quality-row" id="printQualityRow">
+          <div class="exp-pill selected" data-quality="standard">Standard (1800px)<span>Condivisione rapida</span></div>
+          <div class="exp-pill" data-quality="max">Massima Smartphone<span>Risoluzione nativa completa</span></div>
+        </div>
+      </div>
+
+      <div class="print-footer-hint">
+        <span>Tieni premuto sulla foto = originale • Trascina (con zoom) = sposta inquadratura</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL LAB PELLICOLE
+       ========================================================= -->
+  <div id="labModal" class="full-modal">
+    <header>
+      <div class="brand">
+        <h1>Laboratorio Emulsioni</h1>
+        <span>Crea o modifica pellicole con anteprima live</span>
+      </div>
+      <div style="display:flex; gap:5px;">
+        <button class="btn" id="cancelLabModalBtn" style="padding:7px 9px;">Annulla</button>
+        <button class="btn" id="labNewBtn" style="padding:7px 9px;">+ Nuova</button>
+        <button class="btn btn-gold" id="closeLabModalBtn" style="padding:7px 11px;">Salva</button>
+      </div>
+    </header>
+
+    <div class="scroll-body">
+      <div class="lab-section">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+          <h3 style="border:none; padding:0;">Anteprima Live Emulsione</h3>
+          <span style="font-size:10px; color:var(--muted);">Tieni premuto = originale</span>
+        </div>
+        <div class="lab-preview-wrap" id="labPreviewWrap">
+          <canvas id="labPreviewCanvas"></canvas>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <label class="btn btn-gold-outline" style="flex:1; cursor:pointer;">
+            + Carica Foto Test dallo Smartphone
+            <input type="file" id="labSampleUpload" accept="image/*" />
+          </label>
+          <button class="btn" id="labResetSampleBtn" type="button">Chart Default</button>
+        </div>
+      </div>
+
+      <div class="lab-section">
+        <h3>Pellicola, ISO & Colore Caricatore</h3>
+        <select id="labFilmSelect"
+          style="background:var(--bg); color:#fff; border:1px solid var(--border); padding:8px; border-radius:6px; font-size:13px;"></select>
+        <div class="input-group">
+          <input type="text" id="edName" placeholder="Nome (es. Agfa Vista 200)" />
+          <input type="number" id="edIso" placeholder="ISO" min="12" max="12800" />
+          <select id="edMode">
+            <option value="color">Colore Neg.</option>
+            <option value="instant">Istantanea (Polaroid)</option>
+            <option value="slide">Diapositiva</option>
+            <option value="bw">Bianco & Nero</option>
+          </select>
+        </div>
+
+        <div class="iso-presets-row" id="labIsoPresets">
+          <button type="button" class="iso-chip" data-iso="50">50</button>
+          <button type="button" class="iso-chip" data-iso="100">100</button>
+          <button type="button" class="iso-chip" data-iso="200">200</button>
+          <button type="button" class="iso-chip" data-iso="400">400</button>
+          <button type="button" class="iso-chip" data-iso="800">800</button>
+          <button type="button" class="iso-chip" data-iso="1600">1600</button>
+          <button type="button" class="iso-chip" data-iso="3200">3200</button>
+        </div>
+        <span style="font-size:10px; color:var(--muted);" id="labIsoHint">
+          Cambiare ISO ricalcola automaticamente grana, saturazione e contrasto reali dell'emulsione.
+        </span>
+
+        <div class="lab-brand-color-row">
+          <div class="lab-color-preview" id="labBrandColorChip"></div>
+          <div style="flex:1; min-width:0;">
+            <strong style="font-size:11px; display:block;" id="labBrandDetectedLabel">Marca rilevata: Kodak</strong>
+            <small style="font-size:9.5px; color:var(--muted);">Riconosce automaticamente 25+ marche reali dal nome o
+              usa un colore custom</small>
+          </div>
+          <input type="color" id="edCustomColor" title="Scegli colore custom per il rullino" />
+          <button type="button" class="btn" id="labResetColorBtn" style="padding:5px 8px; font-size:10px;">Auto</button>
+        </div>
+      </div>
+
+      <div class="lab-section">
+        <h3>Sensitometria & Colore</h3>
+        <div class="slider-row"><label>Toe (Neri)</label><input type="range" id="edToe" min="0.0" max="0.06"
+            step="0.002" /><span id="vToe"></span><button type="button" class="slider-reset-btn" data-reset-lab="toe"
+            title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Roll-off Luci</label><input type="range" id="edShoulder" min="0.05" max="0.90"
+            step="0.02" /><span id="vShoulder"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="shoulder" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Contrasto</label><input type="range" id="edContrast" min="0.05" max="0.85"
+            step="0.02" /><span id="vContrast"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="contrast" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Temp. (B↔Y)</label><input type="range" id="edTemp" min="-0.35" max="0.35"
+            step="0.01" /><span id="vTemp"></span><button type="button" class="slider-reset-btn" data-reset-lab="temp"
+            title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Tinta (G↔M)</label><input type="range" id="edTint" min="-0.25" max="0.25"
+            step="0.01" /><span id="vTint"></span><button type="button" class="slider-reset-btn" data-reset-lab="tint"
+            title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Saturazione</label><input type="range" id="edSat" min="0.50" max="1.45"
+            step="0.02" /><span id="vSat"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="saturation" title="Reset Preset">↺</button></div>
+      </div>
+
+      <div class="lab-section">
+        <h3>Ottica, Halation & Grana</h3>
+        <div class="slider-row"><label>Halation</label><input type="range" id="edHalation" min="0.0" max="2.0"
+            step="0.05" /><span id="vHalation"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="halation" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Bloom Ottico</label><input type="range" id="edBloom" min="0.0" max="0.80"
+            step="0.02" /><span id="vBloom"></span><button type="button" class="slider-reset-btn" data-reset-lab="bloom"
+            title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Grana</label><input type="range" id="edGrain" min="0.0" max="0.10"
+            step="0.002" /><span id="vGrain"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="grain" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Dim. Grana</label><input type="range" id="edGrainSize" min="0.8" max="2.4"
+            step="0.05" /><span id="vGrainSize"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="grainSize" title="Reset Preset">↺</button></div>
+      </div>
+
+      <div class="lab-section">
+        <h3>Ricetta JSON (Import / Export)</h3>
+        <textarea id="jsonArea"></textarea>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" id="copyJsonTemplateBtn">Copia JSON</button>
+          <button class="btn" id="importJsonBtn" style="flex:1;">Importa JSON</button>
+          <button class="btn btn-red" id="deleteFilmBtn">Elimina</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL DIAGNOSTICA & TEST FOTOCAMERA
+       ========================================================= -->
+  <div id="diagModal" class="full-modal">
+    <header>
+      <div class="brand">
+        <h1>Test Fotocamera & Prestazioni</h1>
+        <span>Verifica sensore, risoluzione, memoria e WebGL</span>
+      </div>
+      <button class="btn btn-gold" id="closeDiagBtn">Chiudi</button>
+    </header>
+
+    <div class="scroll-body">
+      <div class="lab-section">
+        <h3>Stato Dispositivo & Browser</h3>
+        <div class="diag-grid">
+          <div class="diag-stat"><small>Contesto Sicuro (HTTPS)</small><strong id="diagHttps">—</strong></div>
+          <div class="diag-stat"><small>Fotocamere Rilevate</small><strong id="diagCams">—</strong></div>
+          <div class="diag-stat"><small>Max Texture WebGL</small><strong id="diagWebgl">—</strong></div>
+          <div class="diag-stat"><small>Memoria Storage Usata</small><strong id="diagMem">—</strong></div>
+        </div>
+      </div>
+
+      <div class="lab-section">
+        <h3>Test Risoluzione Sensore & Benchmark Render</h3>
+        <p style="font-size:11px; color:var(--muted); line-height:1.4;">
+          Esegue un test reale aprendo temporaneamente il sensore fotografico per rilevare i megapixel effettivi
+          concessi da iOS/Android e misura la velocità di sviluppo WebGL a 1800px e 4K.
+        </p>
+        <div class="diag-grid">
+          <div class="diag-stat"><small>Risoluzione Sensore Live</small><strong id="diagSensorRes">Non testato</strong>
+          </div>
+          <div class="diag-stat"><small>Tempo Sviluppo GPU</small><strong id="diagGpuTime">Non testato</strong></div>
+        </div>
+        <button class="btn btn-gold" id="runDiagTestBtn" style="padding:11px;">Avvia Test Fotocamera & GPU</button>
+        <div id="diagLog"
+          style="font-family:monospace; font-size:10.5px; color:#8ee09a; background:var(--bg); padding:8px; border-radius:6px; border:1px solid var(--border); min-height:54px;">
+          Pronto per il test diagnostico.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHADERS WEBGL -->
+  <script id="vs" type="x-shader/x-vertex">
+    attribute vec2 a_position;
+    attribute vec2 a_texCoord;
+    varying vec2 v_texCoord;
+    void main() {
+      gl_Position = vec4(a_position, 0.0, 1.0);
+      v_texCoord = a_texCoord;
+    }
+  </script>
+
+  <script id="fs" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform sampler2D u_image;
+    uniform vec2 u_srcResolution;
+    uniform vec2 u_outResolution;
+    uniform float u_zoom;
+    uniform float u_rotationRad;
+    uniform vec2 u_pan;
+    uniform float u_coverScale;
+    uniform bool u_showOriginal;
+
+    uniform float u_exposure;
+    uniform float u_toe;
+    uniform float u_shoulder;
+    uniform float u_contrast;
+
+    uniform bool u_isBW;
+    uniform vec3 u_wbGain;
+    uniform mat3 u_colorMatrix;
+    uniform float u_saturation;
+    uniform vec3 u_shadowTint;
+    uniform vec3 u_highlightTint;
+    uniform vec3 u_bwWeights;
+
+    uniform float u_halation;
+    uniform float u_halThreshold;
+    uniform vec3 u_halationColor;
+    uniform float u_bloom;
+    uniform float u_lensVignette;
+    uniform float u_lensSoftness;
+
+    uniform float u_paperDmax;
+    uniform vec3 u_paperBaseTint;
+    uniform vec3 u_paperShadowTint;
+    uniform vec3 u_paperHighTint;
+    uniform float u_paperTexture;
+    uniform float u_edgeBurn;
+
+    uniform float u_defectSeed;
+    uniform float u_lightLeakAmount;
+    uniform float u_chemStainAmount;
+    uniform float u_agedPaperAmount;
+    uniform float u_scratchesAmount;
+
+    uniform float u_grain;
+    uniform float u_grainSize;
+
+    varying vec2 v_texCoord;
+
+    vec2 computeSourceUV(vec2 outUV) {
+      vec2 pOut = (outUV - 0.5) * u_outResolution;
+      float minOut = min(u_outResolution.x, u_outResolution.y);
+      vec2 pZoomed = (pOut / max(1.0, u_zoom * u_coverScale)) - (u_pan * minOut);
+      float c = cos(u_rotationRad);
+      float s = sin(u_rotationRad);
+      vec2 pRot = vec2(pZoomed.x * c - pZoomed.y * s, pZoomed.x * s + pZoomed.y * c);
+      return pRot / u_srcResolution + 0.5;
+    }
+
+    float hash12(vec2 p) {
+      vec3 p3  = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    float valueNoise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), f.x),
+                 mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x), f.y);
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float amp = 0.5;
+      for (int i = 0; i < 4; i++) {
+        v += amp * valueNoise(p);
+        p *= 2.03;
+        amp *= 0.5;
+      }
+      return v;
+    }
+
+    float organicGrain(vec2 uv, float seed) {
+      float fine = (hash12(uv + seed) + hash12(uv * 1.41 + seed + 13.7)) - 1.0;
+      float clump = (hash12(floor(uv * 0.55) + seed * 1.7) + hash12(floor(uv * 0.55) * 1.33 + seed)) - 1.0;
+      return mix(fine, clump, 0.45);
+    }
+
+    vec3 filmicCurve(vec3 x, float toeLift, float shoulderStrength, float contrast) {
+      x = max(x, vec3(0.0));
+      vec3 rolled = x / (1.0 + x * shoulderStrength);
+      rolled *= (1.0 + shoulderStrength);
+      vec3 sCurve = smoothstep(0.0, 1.0, mix(rolled, rolled * rolled * (3.0 - 2.0 * rolled), contrast));
+      return mix(vec3(toeLift), vec3(1.0), sCurve);
+    }
+
+    void computeOpticalEffects(vec2 uv, vec2 texelSize, float threshold, out vec3 halationOut, out vec3 bloomOut) {
+      vec3 halAccum = vec3(0.0);
+      vec3 bloomAccum = vec3(0.0);
+      float wHalTotal = 0.0;
+      float wBloomTotal = 0.0;
+
+      for (int i = 0; i < 16; i++) {
+        float angle = float(i) * 2.3999632;
+        float normDist = sqrt(float(i + 1) / 16.0);
+
+        vec2 offH = vec2(cos(angle), sin(angle)) * (normDist * 20.0) * texelSize;
+        vec3 sH = texture2D(u_image, clamp(uv + offH, 0.001, 0.999)).rgb;
+        float lumH = dot(sH, vec3(0.299, 0.587, 0.114));
+        float bright = max(0.0, lumH - threshold) / max(0.05, 1.0 - threshold);
+        float wH = 1.0 - normDist * 0.65;
+        halAccum += sH * (bright * bright) * wH;
+        wHalTotal += wH;
+
+        vec2 offB = vec2(cos(angle + 0.5), sin(angle + 0.5)) * (normDist * 30.0) * texelSize;
+        vec3 sB = texture2D(u_image, clamp(uv + offB, 0.001, 0.999)).rgb;
+        float wB = 1.0 - normDist * 0.5;
+        bloomAccum += pow(sB, vec3(1.8)) * wB;
+        wBloomTotal += wB;
+      }
+      halationOut = halAccum / wHalTotal;
+      bloomOut = bloomAccum / wBloomTotal;
+    }
+
+    void main() {
+      vec2 srcUV = computeSourceUV(v_texCoord);
+      if (srcUV.x < 0.0 || srcUV.x > 1.0 || srcUV.y < 0.0 || srcUV.y > 1.0) {
+        gl_FragColor = vec4(0.04, 0.04, 0.045, 1.0);
+        return;
+      }
+
+      vec4 texColor = texture2D(u_image, srcUV);
+      if (u_showOriginal) {
+        gl_FragColor = texColor;
+        return;
+      }
+
+      vec2 centeredSrc = srcUV - 0.5;
+      float distSqSrc = dot(centeredSrc, centeredSrc) * 2.0;
+
+      vec2 centeredOut = v_texCoord - 0.5;
+      float distSqOut = dot(centeredOut, centeredOut) * 2.0;
+
+      vec2 srcTexel = 1.0 / u_srcResolution;
+      vec3 baseRgb = texColor.rgb;
+      if (u_lensSoftness > 0.001) {
+        float blurRad = u_lensSoftness * distSqSrc * 4.5;
+        vec3 bSum = baseRgb;
+        bSum += texture2D(u_image, clamp(srcUV + vec2(blurRad, 0.0) * srcTexel, 0.001, 0.999)).rgb;
+        bSum += texture2D(u_image, clamp(srcUV - vec2(blurRad, 0.0) * srcTexel, 0.001, 0.999)).rgb;
+        bSum += texture2D(u_image, clamp(srcUV + vec2(0.0, blurRad) * srcTexel, 0.001, 0.999)).rgb;
+        bSum += texture2D(u_image, clamp(srcUV - vec2(0.0, blurRad) * srcTexel, 0.001, 0.999)).rgb;
+        baseRgb = bSum * 0.2;
+      }
+
+      vec3 col = pow(baseRgb, vec3(2.2));
+      col *= pow(2.0, u_exposure);
+      col *= u_wbGain;
+
+      float lensVig = 1.0 - clamp(distSqSrc * u_lensVignette, 0.0, 0.65);
+      float paperBurn = 1.0 - clamp(distSqOut * (u_edgeBurn * 0.55), 0.0, 0.65);
+      col *= lensVig * paperBurn;
+
+      vec3 halVec, bloomVec;
+      computeOpticalEffects(srcUV, srcTexel, u_halThreshold, halVec, bloomVec);
+
+      col += halVec * u_halationColor * u_halation;
+      col += bloomVec * u_bloom;
+
+      if (u_chemStainAmount > 0.001) {
+        float amt = clamp(u_chemStainAmount, 0.0, 1.0);
+        float surge1 = fbm(v_texCoord * vec2(2.8, 5.2) + vec2(u_defectSeed * 11.3, u_defectSeed * 7.1));
+        float surge2 = fbm(v_texCoord * vec2(6.5, 3.0) - vec2(u_defectSeed * 5.7, u_defectSeed * 13.9));
+        float blotchMask = smoothstep(0.32, 0.78, surge1 * 0.65 + surge2 * 0.35);
+
+        float streakCoord = v_texCoord.x * 14.0 + fbm(v_texCoord * 5.0 + u_defectSeed * 9.0) * 2.2;
+        float drip = smoothstep(0.74, 0.92, valueNoise(vec2(streakCoord, v_texCoord.y * 1.6 + u_defectSeed * 4.0)));
+
+        float spotField = fbm(v_texCoord * 8.5 + u_defectSeed * 23.0);
+        float spotCore = smoothstep(0.66, 0.84, spotField);
+        float spotRing = smoothstep(0.58, 0.66, spotField) * (1.0 - smoothstep(0.66, 0.74, spotField));
+
+        float densitySwing = mix(1.0, mix(0.42, 1.78, blotchMask), amt * 0.95);
+        col *= densitySwing;
+
+        vec3 chemTintShift = mix(vec3(1.18, 0.86, 0.72), vec3(0.76, 1.06, 1.22), surge2);
+        col = mix(col, col * chemTintShift, blotchMask * amt * 0.78);
+
+        col *= (1.0 - drip * amt * 0.45);
+        col += vec3(0.18, 0.11, 0.04) * drip * amt;
+        col = col * (1.0 - spotRing * amt * 0.55) + vec3(0.24, 0.17, 0.08) * spotCore * amt;
+      }
+
+      if (u_lightLeakAmount > 0.001) {
+        float amt = clamp(u_lightLeakAmount, 0.0, 1.0);
+        float sideChoice = fract(u_defectSeed * 17.31);
+        float leakPos = fract(u_defectSeed * 31.73);
+        float edgeCoord = sideChoice < 0.25 ? v_texCoord.x :
+                          (sideChoice < 0.50 ? (1.0 - v_texCoord.x) :
+                          (sideChoice < 0.75 ? v_texCoord.y : (1.0 - v_texCoord.y)));
+        float alongCoord = sideChoice < 0.50 ? v_texCoord.y : v_texCoord.x;
+
+        float nLeak = fbm(v_texCoord * 4.2 + u_defectSeed * 19.0);
+        float widthScale = mix(6.5, 3.1, amt);
+        float streak = exp(-pow((edgeCoord - 0.015) * (widthScale + nLeak * 2.6), 2.0));
+        float localized = exp(-pow((alongCoord - leakPos) * 1.95, 2.0));
+        float leakMask = clamp(streak * (0.50 + 0.95 * localized) * (0.72 + 0.65 * nLeak) * (amt * 1.55), 0.0, 2.1);
+
+        vec3 deepRed = vec3(1.55, 0.14, 0.01) * leakMask;
+        vec3 amberBurn = vec3(1.35, 0.52, 0.05) * pow(leakMask, 1.45);
+        vec3 hotCore = vec3(1.40, 1.15, 0.55) * pow(leakMask, 2.5);
+        col += deepRed + amberBurn + hotCore;
+      }
+
+      col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+      float effectiveToe = max(0.0, u_toe * (1.25 - u_paperDmax * 0.85));
+      if (u_agedPaperAmount > 0.001) {
+        effectiveToe += 0.095 * clamp(u_agedPaperAmount, 0.0, 1.0);
+      }
+      col = filmicCurve(col, effectiveToe, u_shoulder, u_contrast);
+
+      if (u_isBW) {
+        float bw = dot(col, u_bwWeights);
+        col = vec3(bw);
+        col = mix(col * u_shadowTint, col * u_highlightTint, bw);
+      } else {
+        col = u_colorMatrix * col;
+        float luma = dot(col, vec3(0.299, 0.587, 0.114));
+        col = mix(vec3(luma), col, u_saturation);
+        col = mix(col * u_shadowTint, col * u_highlightTint, clamp(luma, 0.0, 1.0));
+      }
+
+      float paperLuma = clamp(dot(col, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+      col *= u_paperBaseTint;
+      col = mix(col * u_paperShadowTint, col * u_paperHighTint, paperLuma);
+      if (u_paperTexture > 0.001) {
+        float fiber = (fbm(v_texCoord * vec2(110.0, 140.0)) - 0.5) * u_paperTexture;
+        col += vec3(fiber);
+      }
+
+      if (u_agedPaperAmount > 0.001) {
+        float amt = clamp(u_agedPaperAmount, 0.0, 1.0);
+        float oldLuma = dot(col, vec3(0.299, 0.587, 0.114));
+        col = mix(col, vec3(oldLuma), amt * 0.34);
+
+        float borderDist = min(min(v_texCoord.x, 1.0 - v_texCoord.x), min(v_texCoord.y, 1.0 - v_texCoord.y));
+        float organicEdgeNoise = fbm(v_texCoord * 3.8 + u_defectSeed * 17.0);
+        float cornerBias = smoothstep(0.15, 1.15, length(v_texCoord - vec2(fract(u_defectSeed * 3.1), fract(u_defectSeed * 7.7))));
+        float patinaReach = mix(0.18, 0.42, organicEdgeNoise);
+        float edgePatina = smoothstep(patinaReach, 0.0, borderDist) * (0.55 + 0.65 * organicEdgeNoise);
+        float overallWarmth = (0.28 + 0.42 * cornerBias + 0.30 * organicEdgeNoise) * amt;
+
+        vec3 parchmentTint = vec3(1.03, 0.86, 0.58);
+        vec3 deepOxideEdge = vec3(0.86, 0.66, 0.38);
+        col = mix(col, col * parchmentTint, clamp(overallWarmth * 0.85, 0.0, 0.88));
+        col = mix(col, col * deepOxideEdge, clamp(edgePatina * amt * 0.92, 0.0, 0.90));
+
+        float foxMacro = fbm(v_texCoord * 7.5 + u_defectSeed * 31.0);
+        float foxMicro = fbm(v_texCoord * 24.0 + u_defectSeed * 53.0);
+        float foxWeight = foxMacro * 0.55 + foxMicro * 0.45 + edgePatina * 0.25;
+        float foxSpots = smoothstep(0.62, 0.82, foxWeight);
+        vec3 rustColor = vec3(0.46, 0.28, 0.13);
+        col = mix(col, rustColor, clamp(foxSpots * amt * 0.72, 0.0, 0.78));
+
+        float edgeWear = smoothstep(0.035, 0.0, borderDist) * smoothstep(0.45, 0.75, foxMicro);
+        col = mix(col, vec3(0.89, 0.83, 0.70), clamp(edgeWear * amt * 0.85, 0.0, 0.85));
+      }
+
+      // 3C. POLVERE LEGGERA MORBIDA, PIEGHE AGLI ANGOLI, USURA CARTA & PELI RANDOM
+      if (u_scratchesAmount > 0.001) {
+        float amt = clamp(u_scratchesAmount, 0.0, 1.0);
+        float aspect = u_outResolution.x / max(1.0, u_outResolution.y);
+        vec2 uvA = vec2(v_texCoord.x * aspect, v_texCoord.y);
+
+        float wearNoise = fbm(v_texCoord * 5.5 + u_defectSeed * 14.0);
+        float borderDist = min(min(v_texCoord.x, 1.0 - v_texCoord.x), min(v_texCoord.y, 1.0 - v_texCoord.y));
+        float edgeWear = smoothstep(0.055, 0.0, borderDist) * smoothstep(0.38, 0.78, wearNoise);
+        col = mix(col, vec3(0.89, 0.85, 0.78), clamp(edgeWear * amt * 0.52, 0.0, 0.65));
+        col = mix(col, col * 0.94 + vec3(0.045, 0.042, 0.036), amt * 0.38);
+
+        float cPick = fract(u_defectSeed * 19.7);
+        vec2 corner1 = vec2(cPick < 0.5 ? 0.0 : 1.0, fract(u_defectSeed * 37.3) < 0.5 ? 0.0 : 1.0);
+        vec2 dc1 = abs(v_texCoord - corner1);
+        float creasePos1 = 0.11 + fract(u_defectSeed * 53.1) * 0.08;
+        float creaseJitter1 = (fbm(v_texCoord * 28.0 + u_defectSeed * 9.0) - 0.5) * 0.010;
+        float diagDist1 = dc1.x * 0.78 + dc1.y * 0.62 + creaseJitter1;
+        float creaseLine1 = exp(-pow((diagDist1 - creasePos1) / 0.0045, 2.0));
+        float creaseShadow1 = exp(-pow((diagDist1 - (creasePos1 + 0.006)) / 0.007, 2.0));
+        float cornerTip1 = smoothstep(creasePos1 + 0.01, creasePos1 - 0.02, diagDist1);
+
+        vec2 corner2 = vec2(1.0 - corner1.x, 1.0 - corner1.y);
+        vec2 dc2 = abs(v_texCoord - corner2);
+        float creasePos2 = 0.07 + fract(u_defectSeed * 71.9) * 0.05;
+        float diagDist2 = dc2.x * 0.65 + dc2.y * 0.76 + creaseJitter1 * 0.8;
+        float creaseEnable2 = step(0.42, fract(u_defectSeed * 11.3));
+        float creaseLine2 = exp(-pow((diagDist2 - creasePos2) / 0.0040, 2.0)) * creaseEnable2;
+
+        col = mix(col, col * 0.90 + vec3(0.05, 0.045, 0.04), cornerTip1 * amt * 0.30);
+        col *= (1.0 - creaseShadow1 * amt * 0.18);
+        col = mix(col, vec3(0.93, 0.90, 0.84), clamp((creaseLine1 * 0.78 + creaseLine2 * 0.62) * amt, 0.0, 0.85));
+
+        float angS = (fract(u_defectSeed * 43.7) - 0.5) * 0.9;
+        vec2 rotS = vec2(uvA.x * cos(angS) - uvA.y * sin(angS), uvA.x * sin(angS) + uvA.y * cos(angS));
+        float scuffField = valueNoise(vec2(rotS.x * 26.0 + u_defectSeed * 17.0, rotS.y * 3.2));
+        float scuffMask = smoothstep(0.56, 0.82, fbm(v_texCoord * 5.2 + u_defectSeed * 29.0));
+        float scuffStreak = smoothstep(0.86, 0.96, scuffField) * scuffMask;
+        col = mix(col, vec3(0.91, 0.88, 0.82), clamp(scuffStreak * amt * 0.36, 0.0, 0.45));
+
+        float dustLayer = 0.0;
+        for (int dl = 0; dl < 2; dl++) {
+          float scale = dl == 0 ? 18.0 : 34.0;
+          vec2 p = uvA * scale + vec2(u_defectSeed * (dl == 0 ? 23.0 : 59.0));
+          vec2 id = floor(p);
+          vec2 f = fract(p) - 0.5;
+          float rnd = hash12(id + float(dl) * 17.3);
+          if (rnd > (dl == 0 ? 0.91 : 0.93)) {
+            vec2 jitter = vec2(hash12(id + 3.1) - 0.5, hash12(id + 7.9) - 0.5) * 0.55;
+            float rSize = 0.055 + hash12(id + 12.7) * 0.095;
+            float d = length(f - jitter);
+            float speck = smoothstep(rSize, rSize * 0.25, d);
+            dustLayer += speck * (0.28 + 0.35 * hash12(id + 19.4));
+          }
+        }
+        col = mix(col, vec3(0.95, 0.93, 0.88), clamp(dustLayer * amt * 0.65, 0.0, 0.68));
+
+        for (int hi = 0; hi < 2; hi++) {
+          float s = u_defectSeed + float(hi) * 0.371;
+          vec2 hOrigin = vec2(0.18 + fract(s * 19.3) * 0.64, 0.18 + fract(s * 41.7) * 0.64) * vec2(aspect, 1.0);
+          float hAng = fract(s * 67.1) * 6.28318;
+          vec2 dH = uvA - hOrigin;
+          vec2 hp = vec2(dH.x * cos(hAng) - dH.y * sin(hAng), dH.x * sin(hAng) + dH.y * cos(hAng));
+          float hLen = 0.032 + fract(s * 83.9) * 0.078;
+          float hFreq = 18.0 + fract(s * 29.7) * 28.0;
+          float hAmp = 0.008 + fract(s * 47.3) * 0.022;
+          float hPhase = fract(s * 13.9) * 6.28;
+          float hairCurve = abs(hp.y - sin(hp.x * hFreq + hPhase) * hAmp);
+          float hairEnds = smoothstep(hLen, hLen * 0.68, abs(hp.x));
+          float hairMask = smoothstep(0.0017, 0.0003, hairCurve) * hairEnds;
+          col = mix(col, vec3(0.07, 0.06, 0.055), clamp(hairMask * amt * 0.82, 0.0, 0.88));
+        }
+      }
+
+      float finalLuma = dot(col, vec3(0.299, 0.587, 0.114));
+      float midtoneMask = 4.0 * finalLuma * (1.0 - finalLuma);
+      float strength = u_grain * (0.22 + 0.78 * midtoneMask);
+
+      vec2 grainCoord = gl_FragCoord.xy / max(0.5, u_grainSize);
+      if (u_isBW) {
+        float g = organicGrain(grainCoord, 1.3) * strength;
+        col += vec3(g);
+      } else {
+        float gR = organicGrain(grainCoord, 1.1) * strength;
+        float gG = organicGrain(grainCoord, 2.7) * strength * 0.88;
+        float gB = organicGrain(grainCoord, 4.3) * strength * 1.12;
+        col += vec3(gR, gG, gB);
+      }
+
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+    }
+  </script>
+
+  <script src="vintage-presets.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
