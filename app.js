@@ -1,5 +1,6 @@
 /* =========================================================
-   ANALOG PHOTOLAB v0.8 — APP.JS
+   ANALOG PHOTOLAB v0.9 — APP.JS
+   Home a 3 Percorsi (Simulazione Pellicole, Polaroid 300 DPI, Usa & Getta)
    Motore Blob, ZIP multi-download, Gestione Memoria, WebGL,
    Modalità Manuale M + Lancetta, Lab Pellicole & Backup
    ========================================================= */
@@ -14,13 +15,6 @@ const DEFAULT_FILMS = [
         saturation: 0.94, shadowTemp: -0.02, highTemp: 0.04,
         halation: 0.30, halThreshold: 0.86, bloom: 0.08, grain: 0.026, grainSize: 1.05,
         matrix: [1.03, -0.02, -0.01, 0.01, 1.00, -0.01, -0.02, 0.03, 0.99]
-    },
-    {
-        id: "polaroid-600", name: "Polaroid 600", iso: 640, mode: "instant",
-        toe: 0.032, shoulder: 0.48, contrast: 0.28, temp: 0.07, tint: -0.04,
-        saturation: 0.88, shadowTemp: -0.09, highTemp: 0.08,
-        halation: 0.24, halThreshold: 0.82, bloom: 0.16, grain: 0.022, grainSize: 1.35,
-        matrix: [1.01, 0.01, -0.02, -0.02, 1.03, -0.01, 0.02, 0.03, 0.95]
     },
     {
         id: "cinestill-800t", name: "Cinestill 800T", iso: 800, mode: "color",
@@ -54,11 +48,10 @@ const DEFAULT_FILMS = [
 
 const BRAND_PROFILES = [
     { keys: ["kodak", "portra", "ektar", "ultramax", "tri-x", "t-max", "tmax", "colorplus", "kodachrome", "ektachrome", "vision3", "pro image"], brand: "KODAK", color: "#f4b400", text: "#141004", bg: "#f4b400" },
-    { keys: ["fuji", "superia", "provia", "velvia", "astia", "pro 400h", "neopan", "acros", "c200", "instax"], brand: "FUJIFILM", color: "#1a9e56", text: "#ffffff", bg: "#1a9e56" },
+    { keys: ["fuji", "superia", "provia", "velvia", "astia", "pro 400h", "neopan", "acros", "c200"], brand: "FUJIFILM", color: "#1a9e56", text: "#ffffff", bg: "#1a9e56" },
     { keys: ["agfa", "apx", "vista", "precisa", "optima", "scala", "isopan", "agfachrome"], brand: "AGFA", color: "#e03c28", text: "#ffffff", bg: "#e03c28" },
     { keys: ["ilford", "hp5", "fp4", "delta", "xp2", "pan f"], brand: "ILFORD", color: "#cfd4dc", text: "#141418", bg: "#cfd4dc" },
     { keys: ["cinestill", "800t", "400d", "50d", "double-x"], brand: "CINESTILL", color: "#178ca6", text: "#ffffff", bg: "#178ca6" },
-    { keys: ["polaroid", "sx-70", "i-type"], brand: "POLAROID", color: "#e63946", text: "#181613", bg: "linear-gradient(90deg, #f5f1e6 0%, #f5f1e6 72%, #e63946 72%, #f4a261 80%, #e9c46a 87%, #2a9d8f 94%, #457b9d 100%)" },
     { keys: ["lomo", "lomochrome", "metropolis", "purple", "turquoise", "redscale", "earl grey", "lady grey"], brand: "LOMO", color: "#b9388e", text: "#ffffff", bg: "#b9388e" },
     { keys: ["harman", "phoenix"], brand: "HARMAN", color: "#e86a24", text: "#ffffff", bg: "#e86a24" },
     { keys: ["kentmere"], brand: "KENTMERE", color: "#4a6fa5", text: "#ffffff", bg: "#4a6fa5" },
@@ -149,27 +142,24 @@ const PAPER_STOCKS = [
         desc: "Baritata Cotone • Avorio caldo e ombre brune", swatch: "#efe2c6",
         baseTint: [1.04, 0.96, 0.84], shadowTint: [1.08, 0.95, 0.82], highTint: [1.05, 0.97, 0.86],
         dmax: 0.88, contrastOffset: 0.08, satMult: 0.90, texture: 0.032
-    },
-    {
-        id: "polaroid-integral", name: "Polaroid 600 Integral",
-        desc: "Istantanea • Ombre verde-blu, luci cremose", swatch: "#f5f2e8",
-        baseTint: [1.02, 1.00, 0.92], shadowTint: [0.88, 1.04, 1.06], highTint: [1.05, 1.01, 0.90],
-        dmax: 0.30, contrastOffset: -0.06, satMult: 0.86, texture: 0.014
     }
 ];
 
 const PRINT_PRESETS = [
     { id: "lab-std", name: "Laboratorio Standard", sub: "Endura Satinata", paperId: "kodak-endura", time: 12.0, grade: 2.5, mag: 0, yel: 0, burn: 0.10, border: "none" },
-    { id: "polaroid-600", name: "Polaroid 600 Istantanea", sub: "Cornice & chimica 600", paperId: "polaroid-integral", time: 12.0, grade: 2.0, mag: -2, yel: 5, burn: 0.14, border: "polaroid" },
     { id: "portrait-soft", name: "Baritata Cotone Calda", sub: "Ilford FB Avorio", paperId: "ilford-fb-warm", time: 11.5, grade: 2.0, mag: -2, yel: 6, burn: 0.18, border: "white" },
     { id: "gallery-punch", name: "Crystal Lucida Contrasto", sub: "Fuji DPII • Neri intensi", paperId: "fuji-crystal", time: 13.5, grade: 3.5, mag: 2, yel: -2, burn: 0.32, border: "white" },
     { id: "full-rebate", name: "Pieno Fotogramma 35mm", sub: "Perforazioni & bordo nero", paperId: "kodak-endura", time: 12.0, grade: 2.5, mag: 0, yel: 0, burn: 0.10, border: "rebate" }
 ];
 
-let films = JSON.parse(localStorage.getItem("analog_lab_films_v7"))
+let rawSavedFilms = JSON.parse(localStorage.getItem("analog_lab_films_v9"))
+    || JSON.parse(localStorage.getItem("analog_lab_films_v7"))
     || JSON.parse(localStorage.getItem("analog_lab_films_v6"))
     || JSON.parse(JSON.stringify(DEFAULT_FILMS));
-function saveFilms() { localStorage.setItem("analog_lab_films_v7", JSON.stringify(films)); }
+
+let films = rawSavedFilms.filter(f => f && f.id !== "polaroid-600" && f.mode !== "instant");
+if (films.length === 0) films = JSON.parse(JSON.stringify(DEFAULT_FILMS));
+function saveFilms() { localStorage.setItem("analog_lab_films_v9", JSON.stringify(films)); }
 
 let qualityMode = localStorage.getItem("analog_lab_quality_v7")
     || localStorage.getItem("analog_lab_quality_v6")
@@ -263,7 +253,6 @@ function downloadSingleBlob(blob, filename) {
     setTimeout(() => URL.revokeObjectURL(url), 2500);
 }
 
-// CRC32 + Builder ZIP (Store mode, zero overhead per JPEG già compressi)
 const CRC32_TABLE = (() => {
     const t = new Uint32Array(256);
     for (let i = 0; i < 256; i++) {
@@ -295,8 +284,8 @@ async function buildZipBlob(items) {
         const lv = new DataView(lh);
         lv.setUint32(0, 0x04034b50, true);
         lv.setUint16(4, 20, true);
-        lv.setUint16(6, 0x0800, true); // UTF-8
-        lv.setUint16(8, 0, true); // Store
+        lv.setUint16(6, 0x0800, true);
+        lv.setUint16(8, 0, true);
         lv.setUint16(10, 0, true);
         lv.setUint16(12, 0, true);
         lv.setUint32(14, crc, true);
@@ -362,7 +351,7 @@ async function downloadImagesBatch(items, zipName) {
    2. INDEXED-DB PERSISTENCE, BACKUP & PULIZIA MEMORIA
    ========================================================= */
 const DB_NAME = "AnalogCameraDB_v7";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 let db = null;
 
 function initDB() {
@@ -373,6 +362,7 @@ function initDB() {
             const d = e.target.result;
             if (!d.objectStoreNames.contains("rolls")) d.createObjectStore("rolls", { keyPath: "id" });
             if (!d.objectStoreNames.contains("vintageRolls")) d.createObjectStore("vintageRolls", { keyPath: "id" });
+            if (!d.objectStoreNames.contains("polaroidShots")) d.createObjectStore("polaroidShots", { keyPath: "id" });
         };
         req.onsuccess = (e) => { clearTimeout(timer); db = e.target.result; resolve(db); };
         req.onerror = (e) => { clearTimeout(timer); reject(e); };
@@ -420,6 +410,7 @@ function measureItemBytes(val) {
 async function refreshStorageSummary() {
     const rolls = await getAllRollsFromDB();
     const vRolls = typeof getAllVintageRollsFromDB === "function" ? await getAllVintageRollsFromDB() : [];
+    const pShots = typeof getAllPolaroidShotsFromDB === "function" ? await getAllPolaroidShotsFromDB() : [];
     let bytes = 0;
     let totalFrames = 0;
     let starredCount = 0;
@@ -438,12 +429,19 @@ async function refreshStorageSummary() {
     rolls.forEach(r => inspectFrames(r.frames));
     vRolls.forEach(r => inspectFrames(r.frames));
 
+    pShots.forEach(s => {
+        totalFrames++;
+        if (s.starred) starredCount++;
+        if (s.savedLocally) savedCount++;
+        bytes += measureItemBytes(s.innerBlob) + measureItemBytes(s.sheetBlob) + measureItemBytes(s.thumbBlob);
+    });
+
     const mb = (bytes / (1024 * 1024)).toFixed(1);
     const badge = document.getElementById("storageUsageBadge");
     const breakdown = document.getElementById("storageBreakdown");
     if (badge) badge.textContent = `${mb} MB`;
     if (breakdown) {
-        breakdown.textContent = `${rolls.length} rullini analogici • ${vRolls.length} rullini vintage • ${totalFrames} foto totali (★ ${starredCount} scelte, ✓ ${savedCount} già salvate in locale)`;
+        breakdown.textContent = `${rolls.length} rullini pellicola • ${pShots.length} Polaroid • ${vRolls.length} Usa & Getta • ${totalFrames} scatti totali (★ ${starredCount}, ✓ ${savedCount})`;
     }
 }
 
@@ -463,14 +461,20 @@ document.getElementById("cleanDiscardsBtn").addEventListener("click", async () =
         if (vr.frames.length === 0) await deleteVintageRollFromDB(vr.id);
         else await saveVintageRollToDB(vr);
     }
+    const pShots = await getAllPolaroidShotsFromDB();
+    for (const ps of pShots) {
+        if (!ps.starred && !ps.savedLocally) await deletePolaroidShotFromDB(ps.id);
+    }
     await refreshArchiveList();
     await refreshVintageArchiveList();
+    await refreshPolaroidGalleryBadge();
+    await refreshHomeStatus();
     await refreshStorageSummary();
     alert("Pulizia scarti completata! Restano solo le foto scelte (★) e salvate (✓).");
 });
 
 document.getElementById("cleanSavedBtn").addEventListener("click", async () => {
-    if (!confirm("Rimuovere dal browser i file temporanei delle foto già salvate in locale (✓)? I file .jpg già scaricati nella tua Galleria/Download resteranno intatti.")) return;
+    if (!confirm("Rimuovere dal browser i file temporanei delle foto già salvate in locale (✓)? I file .jpg già scaricati sul dispositivo resteranno intatti.")) return;
     const rolls = await getAllRollsFromDB();
     for (const r of rolls) {
         if (r.status !== "developed") continue;
@@ -485,22 +489,33 @@ document.getElementById("cleanSavedBtn").addEventListener("click", async () => {
         if (vr.frames.length === 0) await deleteVintageRollFromDB(vr.id);
         else await saveVintageRollToDB(vr);
     }
+    const pShots = await getAllPolaroidShotsFromDB();
+    for (const ps of pShots) {
+        if (ps.savedLocally) await deletePolaroidShotFromDB(ps.id);
+    }
     await refreshArchiveList();
     await refreshVintageArchiveList();
+    await refreshPolaroidGalleryBadge();
+    await refreshHomeStatus();
     await refreshStorageSummary();
     alert("Spazio liberato! I file .jpg salvati sul dispositivo restano al sicuro.");
 });
 
 document.getElementById("clearAllStorageBtn").addEventListener("click", async () => {
-    if (!confirm("Svuotare TUTTI i rullini e le foto temporanee dal browser? I tuoi preset pellicole e i .jpg già esportati sul dispositivo NON verranno toccati.")) return;
+    if (!confirm("Svuotare TUTTI i rullini, le Polaroid e le foto temporanee dal browser? I preset pellicole e i .jpg già esportati NON verranno toccati.")) return;
     const rolls = await getAllRollsFromDB();
     for (const r of rolls) await deleteRollFromDB(r.id);
     const vRolls = await getAllVintageRollsFromDB();
     for (const vr of vRolls) await deleteVintageRollFromDB(vr.id);
+    const pShots = await getAllPolaroidShotsFromDB();
+    for (const ps of pShots) await deletePolaroidShotFromDB(ps.id);
+
     currentRoll = null;
     currentVintageRoll = null;
     await refreshArchiveList();
     await refreshVintageArchiveList();
+    await refreshPolaroidGalleryBadge();
+    await refreshHomeStatus();
     await refreshStorageSummary();
     alert("Memoria temporanea svuotata completamente!");
 });
@@ -508,12 +523,12 @@ document.getElementById("clearAllStorageBtn").addEventListener("click", async ()
 document.getElementById("exportBackupBtn").addEventListener("click", async () => {
     const rolls = await getAllRollsFromDB();
     const vRolls = await getAllVintageRollsFromDB();
-    if (rolls.length === 0 && vRolls.length === 0 && films.length === DEFAULT_FILMS.length) {
-        alert("Nessun rullino salvato in archivio da esportare.");
+    const pShots = await getAllPolaroidShotsFromDB();
+    if (rolls.length === 0 && vRolls.length === 0 && pShots.length === 0 && films.length === DEFAULT_FILMS.length) {
+        alert("Nessun dato salvato in archivio da esportare.");
         return;
     }
 
-    // Serializza Blob in DataURL dentro il backup JSON
     const serializeRoll = async (roll) => {
         const clone = { ...roll, frames: [] };
         for (const f of roll.frames) {
@@ -530,8 +545,19 @@ document.getElementById("exportBackupBtn").addEventListener("click", async () =>
     for (const r of rolls) serRolls.push(await serializeRoll(r));
     const serVRolls = [];
     for (const vr of vRolls) serVRolls.push(await serializeRoll(vr));
+    const serPShots = [];
+    for (const ps of pShots) {
+        const pc = { ...ps };
+        if (pc.innerBlob instanceof Blob) { pc.innerDataUrl = await blobToDataUrl(pc.innerBlob); delete pc.innerBlob; }
+        if (pc.sheetBlob instanceof Blob) { pc.sheetDataUrl = await blobToDataUrl(pc.sheetBlob); delete pc.sheetBlob; }
+        if (pc.thumbBlob instanceof Blob) { pc.thumbDataUrl = await blobToDataUrl(pc.thumbBlob); delete pc.thumbBlob; }
+        serPShots.push(pc);
+    }
 
-    const backupPayload = { app: "AnalogPhotoLab", version: "0.8", exportedAt: new Date().toISOString(), films, rolls: serRolls, vintageRolls: serVRolls };
+    const backupPayload = {
+        app: "AnalogPhotoLab", version: "0.9", exportedAt: new Date().toISOString(),
+        films, rolls: serRolls, vintageRolls: serVRolls, polaroidShots: serPShots
+    };
     const blob = new Blob([JSON.stringify(backupPayload)], { type: "application/json" });
     downloadSingleBlob(blob, `analog-photolab-backup-${new Date().toISOString().slice(0, 10)}.json`);
 });
@@ -543,7 +569,7 @@ document.getElementById("importBackupInput").addEventListener("change", (e) => {
     reader.onload = async (ev) => {
         try {
             const parsed = JSON.parse(ev.target.result);
-            if (!parsed || (!Array.isArray(parsed.rolls) && !Array.isArray(parsed.vintageRolls))) {
+            if (!parsed || (!Array.isArray(parsed.rolls) && !Array.isArray(parsed.vintageRolls) && !Array.isArray(parsed.polaroidShots))) {
                 throw new Error("Formato backup non riconosciuto.");
             }
             const hydrateRoll = async (r) => {
@@ -572,18 +598,31 @@ document.getElementById("importBackupInput").addEventListener("change", (e) => {
                     }
                 }
             }
+            if (Array.isArray(parsed.polaroidShots)) {
+                for (const ps of parsed.polaroidShots) {
+                    if (ps && ps.id) {
+                        if (ps.innerDataUrl && !ps.innerBlob) { ps.innerBlob = await dataUrlToBlob(ps.innerDataUrl); delete ps.innerDataUrl; }
+                        if (ps.sheetDataUrl && !ps.sheetBlob) { ps.sheetBlob = await dataUrlToBlob(ps.sheetDataUrl); delete ps.sheetDataUrl; }
+                        if (ps.thumbDataUrl && !ps.thumbBlob) { ps.thumbBlob = await dataUrlToBlob(ps.thumbDataUrl); delete ps.thumbDataUrl; }
+                        await savePolaroidShotToDB(ps);
+                        count++;
+                    }
+                }
+            }
             if (Array.isArray(parsed.films) && parsed.films.length > 0) {
                 const existingIds = new Set(films.map(f => f.id));
                 parsed.films.forEach(f => {
-                    if (f && f.id && !existingIds.has(f.id)) films.push(f);
+                    if (f && f.id && f.id !== "polaroid-600" && f.mode !== "instant" && !existingIds.has(f.id)) films.push(f);
                 });
                 saveFilms();
                 renderLoadView();
             }
             await refreshArchiveList();
             await refreshVintageArchiveList();
+            await refreshPolaroidGalleryBadge();
+            await refreshHomeStatus();
             await refreshStorageSummary();
-            alert(`Ripristino completato: ${count} rullini importati!`);
+            alert(`Ripristino completato: ${count} elementi importati!`);
         } catch (err) {
             alert("Errore durante il ripristino del backup: file JSON non valido.");
         }
@@ -840,32 +879,20 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     const rotRad = (rotDeg * Math.PI) / 180.0;
     const panX = printOpts ? (printOpts.panX || 0) : 0;
     const panY = printOpts ? (printOpts.panY || 0) : 0;
-    const borderMode = printOpts ? printOpts.border : "none";
 
     const isQuarterTurn = Math.abs(Math.sin(rotRad)) > Math.abs(Math.cos(rotRad));
     const rotSrcW = isQuarterTurn ? srcH : srcW;
     const rotSrcH = isQuarterTurn ? srcW : srcH;
 
-    let baseOutW = rotSrcW;
-    let baseOutH = rotSrcH;
-    let coverScale = 1.0;
-
-    if (borderMode === "polaroid") {
-        const sqSide = Math.min(srcW, Math.round(srcH / 1.02));
-        baseOutW = sqSide;
-        baseOutH = Math.round(sqSide * 1.02);
-        coverScale = Math.max(baseOutW / rotSrcW, baseOutH / rotSrcH);
-    }
-
-    let outW = baseOutW;
-    let outH = baseOutH;
+    let outW = rotSrcW;
+    let outH = rotSrcH;
     if (outW > targetMaxDim || outH > targetMaxDim) {
         const r = Math.min(targetMaxDim / outW, targetMaxDim / outH);
         outW = Math.round(outW * r);
         outH = Math.round(outH * r);
     }
 
-    const dimScale = outW / baseOutW;
+    const dimScale = outW / rotSrcW;
     const effSrcW = srcW * dimScale;
     const effSrcH = srcH * dimScale;
 
@@ -911,7 +938,7 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     gl.uniform1f(gl.getUniformLocation(program, "u_zoom"), zoom);
     gl.uniform1f(gl.getUniformLocation(program, "u_rotationRad"), rotRad);
     gl.uniform2f(gl.getUniformLocation(program, "u_pan"), panX, panY);
-    gl.uniform1f(gl.getUniformLocation(program, "u_coverScale"), coverScale);
+    gl.uniform1f(gl.getUniformLocation(program, "u_coverScale"), 1.0);
     gl.uniform1i(gl.getUniformLocation(program, "u_showOriginal"), showOrig ? 1 : 0);
 
     gl.uniform1f(gl.getUniformLocation(program, "u_exposure"), effectiveExp);
@@ -992,8 +1019,10 @@ let hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false };
 
 let thirdsVisible = localStorage.getItem("analog_lab_thirds_v7") === "1";
 function syncThirdsUI() {
-    document.getElementById("vfThirdsGrid").classList.toggle("visible", thirdsVisible);
-    document.getElementById("vfThirdsToggleBtn").classList.toggle("active", thirdsVisible);
+    const vfGrid = document.getElementById("vfThirdsGrid");
+    const vfBtn = document.getElementById("vfThirdsToggleBtn");
+    if (vfGrid) vfGrid.classList.toggle("visible", thirdsVisible);
+    if (vfBtn) vfBtn.classList.toggle("active", thirdsVisible);
 }
 document.getElementById("vfThirdsToggleBtn").addEventListener("click", () => {
     thirdsVisible = !thirdsVisible;
@@ -1292,7 +1321,7 @@ document.querySelectorAll("#camModeSelector .mode-pill").forEach(pill => {
 });
 
 /* =========================================================
-   6. VIEW 1: SWITCH HOME + RULLINI + ARCHIVIO
+   6. NAVIGAZIONE HOME 3 PERCORSI, RULLINI & ARCHIVIO
    ========================================================= */
 let selectedLoadFilmId = films[0].id;
 let selectedExposures = 12;
@@ -1300,24 +1329,134 @@ let currentRoll = null;
 let mediaStream = null;
 let facingMode = "environment";
 
-document.querySelectorAll("#homeModeSwitch .home-mode-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-        document.querySelectorAll("#homeModeSwitch .home-mode-tab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        const mode = tab.dataset.homeMode;
-        document.getElementById("homePanelRolls").classList.toggle("active", mode === "rolls");
-        document.getElementById("homePanelVintage").classList.toggle("active", mode === "vintage");
-    });
-});
-
 function switchView(viewId) {
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
     document.getElementById(viewId).classList.add("active");
-    if (viewId !== "view-camera" && viewId !== "view-vintage-camera") {
+    if (viewId !== "view-camera" && viewId !== "view-vintage-camera" && viewId !== "view-polaroid") {
         stopCamera();
         if (meterInterval) { clearInterval(meterInterval); meterInterval = null; }
     }
 }
+
+async function refreshHomeStatus() {
+    const rolls = await getAllRollsFromDB();
+    const vRolls = typeof getAllVintageRollsFromDB === "function" ? await getAllVintageRollsFromDB() : [];
+    const pShots = typeof getAllPolaroidShotsFromDB === "function" ? await getAllPolaroidShotsFromDB() : [];
+
+    // 1. Simulazione Pellicole
+    const activeRoll = rolls.find(r => r.status === "shooting");
+    const rewoundRoll = rolls.find(r => r.status === "rewound");
+    const devRolls = rolls.filter(r => r.status === "developed");
+    const rCard = document.getElementById("pathRollsBtn");
+    const rBadge = document.getElementById("homeRollsStatusBadge");
+    const rCta = document.getElementById("homeRollsCta");
+    const rArchBtn = document.getElementById("homeRollsArchiveBtn");
+
+    if (rCard && rBadge && rCta) {
+        rCard.classList.toggle("has-active-roll", !!(activeRoll || rewoundRoll));
+        if (activeRoll) {
+            rBadge.className = "path-badge live";
+            rBadge.textContent = `● Rullino attivo: ${String(activeRoll.frames.length).padStart(2, "0")}/${activeRoll.capacity}`;
+            rCta.textContent = `Riprendi ${activeRoll.film.name} →`;
+        } else if (rewoundRoll) {
+            rBadge.className = "path-badge live";
+            rBadge.textContent = "● In Camera Oscura";
+            rCta.textContent = "Sviluppa Rullino →";
+        } else {
+            rBadge.className = "path-badge";
+            rBadge.textContent = "Nessun rullino attivo";
+            rCta.textContent = "Carica Pellicola →";
+        }
+    }
+    if (rArchBtn) rArchBtn.textContent = `Archivio (${devRolls.length})`;
+
+    // 2. Polaroid
+    const pBadge = document.getElementById("homePolaroidStatusBadge");
+    const pGalBtn = document.getElementById("homePolaroidGalleryBtn");
+    if (pBadge) pBadge.textContent = `${pShots.length} ${pShots.length === 1 ? "istantanea" : "istantanee"}`;
+    if (pGalBtn) pGalBtn.textContent = `Galleria (${pShots.length})`;
+
+    // 3. Usa & Getta
+    const activeV = vRolls.find(r => r.status === "shooting");
+    const devVRolls = vRolls.filter(r => r.status === "developed");
+    const dCard = document.getElementById("pathDisposableBtn");
+    const dBadge = document.getElementById("homeDisposableStatusBadge");
+    const dCta = document.getElementById("homeDisposableCta");
+    const dArchBtn = document.getElementById("homeDisposableArchiveBtn");
+
+    if (dCard && dBadge && dCta) {
+        dCard.classList.toggle("has-active-roll", !!activeV);
+        if (activeV) {
+            dBadge.className = "path-badge live";
+            dBadge.textContent = `● Rullino attivo: ${String(activeV.frames.length).padStart(2, "0")}/${activeV.capacity}`;
+            dCta.textContent = "Riprendi Usa & Getta →";
+        } else {
+            dBadge.className = "path-badge";
+            dBadge.textContent = "Pronto";
+            dCta.textContent = "Carica Usa & Getta →";
+        }
+    }
+    if (dArchBtn) dArchBtn.textContent = `Archivio (${devVRolls.length})`;
+}
+
+async function enterRollsSection() {
+    const rolls = await getAllRollsFromDB();
+    const activeShooting = rolls.find(r => r.status === "shooting");
+    const activeRewound = rolls.find(r => r.status === "rewound");
+    if (activeShooting) {
+        currentRoll = activeShooting;
+        enterCameraMode();
+        return;
+    }
+    if (activeRewound) {
+        currentRoll = activeRewound;
+        goToDarkroom();
+        return;
+    }
+    await refreshArchiveList();
+    renderLoadView();
+    switchView("view-load");
+}
+
+document.getElementById("pathRollsBtn").addEventListener("click", () => {
+    getAudioCtx();
+    enterRollsSection();
+});
+
+document.getElementById("homeRollsArchiveBtn").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    await refreshArchiveList();
+    renderLoadView();
+    switchView("view-load");
+});
+
+document.getElementById("pathPolaroidBtn").addEventListener("click", () => {
+    getAudioCtx();
+    if (typeof enterPolaroidMode === "function") enterPolaroidMode();
+});
+
+document.getElementById("homePolaroidGalleryBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (typeof openPolaroidGallery === "function") openPolaroidGallery();
+});
+
+document.getElementById("pathDisposableBtn").addEventListener("click", () => {
+    getAudioCtx();
+    if (typeof enterDisposableSection === "function") enterDisposableSection();
+});
+
+document.getElementById("homeDisposableArchiveBtn").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    if (typeof refreshVintageArchiveList === "function") await refreshVintageArchiveList();
+    switchView("view-disposable-load");
+});
+
+document.getElementById("backHomeFromLoadBtn").addEventListener("click", () => {
+    refreshHomeStatus();
+    switchView("view-home");
+});
+
+document.getElementById("openLabFromRollsBtn").addEventListener("click", openLabModal);
 
 function renderLoadView() {
     const grid = document.getElementById("loadFilmGrid");
@@ -1328,8 +1467,7 @@ function renderLoadView() {
         div.className = "film-option" + (f.id === selectedLoadFilmId ? " selected" : "");
         div.style.setProperty("--brand-color", theme.color);
         const modeTxt = f.mode === "bw" ? "Bianco & Nero"
-            : (f.mode === "slide" ? "Diapositiva"
-                : (f.mode === "instant" ? "Istantanea 600" : "Negativo Colore"));
+            : (f.mode === "slide" ? "Diapositiva" : "Negativo Colore");
 
         div.innerHTML = `
       <div class="film-canister-strip">
@@ -1342,18 +1480,15 @@ function renderLoadView() {
         div.addEventListener("click", () => {
             selectedLoadFilmId = f.id;
             document.getElementById("selectedFilmIso").textContent = "ISO " + f.iso;
-            if (f.mode === "instant") {
-                selectedExposures = 8;
-                document.querySelectorAll("#expCountRow .exp-pill").forEach(p => {
-                    p.classList.toggle("selected", parseInt(p.dataset.count) === 8);
-                });
-            }
             renderLoadView();
         });
         grid.appendChild(div);
     });
     const selF = films.find(x => x.id === selectedLoadFilmId) || films[0];
-    document.getElementById("selectedFilmIso").textContent = "ISO " + selF.iso;
+    if (selF) {
+        selectedLoadFilmId = selF.id;
+        document.getElementById("selectedFilmIso").textContent = "ISO " + selF.iso;
+    }
 }
 
 document.querySelectorAll("#expCountRow .exp-pill").forEach(pill => {
@@ -1408,7 +1543,7 @@ async function refreshArchiveList() {
 }
 
 document.getElementById("loadRollBtn").addEventListener("click", async () => {
-    getAudioCtx(); // Sblocca audio su interazione utente
+    getAudioCtx();
     const filmCopy = JSON.parse(JSON.stringify(films.find(f => f.id === selectedLoadFilmId) || films[0]));
     currentRoll = {
         id: "roll-" + Date.now(),
@@ -1421,6 +1556,7 @@ document.getElementById("loadRollBtn").addEventListener("click", async () => {
         frames: []
     };
     await saveRollToDB(currentRoll);
+    await refreshHomeStatus();
     enterCameraMode();
 });
 
@@ -1465,7 +1601,6 @@ function updateCameraHUD() {
     const cur = String(currentRoll.frames.length).padStart(2, "0");
     const tot = String(currentRoll.capacity).padStart(2, "0");
     document.getElementById("camCounter").textContent = `${cur} / ${tot}`;
-    document.getElementById("vfFrame").classList.toggle("instant-ratio", currentRoll.film.mode === "instant");
 
     const isFull = currentRoll.frames.length >= currentRoll.capacity;
     document.getElementById("rewindEarlyBtn").classList.toggle("pulse-finish", isFull);
@@ -1491,6 +1626,12 @@ function enterCameraMode() {
     if (meterInterval) clearInterval(meterInterval);
     meterInterval = setInterval(sampleLiveSceneEV, 350);
 }
+
+document.getElementById("camHomeBtn").addEventListener("click", () => {
+    if (isRewinding) return;
+    refreshHomeStatus();
+    switchView("view-home");
+});
 
 document.getElementById("camExpSlider").addEventListener("input", (e) => {
     camCompEV = parseFloat(e.target.value);
@@ -1624,6 +1765,7 @@ async function recordLatentFrame(sourceCanvasOrImg, usedFlash = false, hardwareF
     setShutterArmedState(false);
     updateCameraHUD();
     await saveRollToDB(currentRoll);
+    await refreshHomeStatus();
     await refreshStorageSummary();
 }
 
@@ -1649,8 +1791,7 @@ document.getElementById("shutterBtn").addEventListener("click", async () => {
 
     isCapturing = true;
     try {
-        const targetRatio = currentRoll.film.mode === "instant" ? (1 / 1.02) : (3 / 4);
-        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithRealFlash(video, targetRatio);
+        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithRealFlash(video, 3 / 4);
         await recordLatentFrame(capCanvas, flashActive, hardwareFlashFired);
         capCanvas.width = 0; capCanvas.height = 0;
     } finally {
@@ -1723,13 +1864,14 @@ async function executeRewindSequence() {
 }
 
 document.getElementById("finishRewindBtn").addEventListener("click", executeRewindSequence);
-document.getElementById("rewindEarlyBtn").addEventListener("click", () => {
+document.getElementById("rewindEarlyBtn").addEventListener("click", async () => {
     if (isRewinding || !currentRoll) return;
     if (currentRoll.frames.length === 0) {
         if (confirm("Nessuna foto scattata. Estrarre il rullino vuoto?")) {
-            deleteRollFromDB(currentRoll.id);
+            await deleteRollFromDB(currentRoll.id);
             currentRoll = null;
-            refreshStorageSummary();
+            await refreshHomeStatus();
+            await refreshStorageSummary();
             switchView("view-load");
         }
         return;
@@ -1754,6 +1896,7 @@ let devAgedPaper = false;
 async function goToDarkroom() {
     currentRoll.status = "rewound";
     await saveRollToDB(currentRoll);
+    await refreshHomeStatus();
     selectedPushStops = 0;
     devLightLeaks = false;
     devChemStains = false;
@@ -1771,6 +1914,11 @@ async function goToDarkroom() {
     document.getElementById("startDevelopBtn").style.display = "inline-flex";
     switchView("view-darkroom");
 }
+
+document.getElementById("darkroomHomeBtn").addEventListener("click", () => {
+    refreshHomeStatus();
+    switchView("view-home");
+});
 
 document.querySelectorAll("#pushGrid .push-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1833,13 +1981,14 @@ document.getElementById("startDevelopBtn").addEventListener("click", async () =>
     statusTxt.textContent = "Lavaggio e asciugatura completati!";
     currentRoll.status = "developed";
     await saveRollToDB(currentRoll);
+    await refreshHomeStatus();
     await refreshStorageSummary();
 
     setTimeout(() => { refreshArchiveList(); openContactSheet(); }, 420);
 });
 
 /* =========================================================
-   9. PROVINO A CONTATTO (★ SELEZIONE + SALVA SELEZIONATE / TUTTE)
+   9. PROVINO A CONTATTO
    ========================================================= */
 function updateContactSelectionUI() {
     if (!currentRoll) return;
@@ -1964,8 +2113,9 @@ document.getElementById("csSaveAllBtn").addEventListener("click", async () => {
 document.getElementById("newRollFromCsBtn").addEventListener("click", () => {
     currentRoll = null;
     refreshArchiveList();
+    refreshHomeStatus();
     refreshStorageSummary();
-    switchView("view-load");
+    switchView("view-home");
 });
 
 /* =========================================================
@@ -1991,7 +2141,6 @@ let printState = {
     burn: 0.10,
     border: "none",
     borderThickness: 0.06,
-    lastNonPolaroidBorder: "none",
     grainScale: 1.0,
     zoom: 1.0,
     rotation: 0,
@@ -2013,8 +2162,6 @@ function layoutPrintPreview() {
     if (printState.border === "white") {
         const t = printState.borderThickness;
         pSide = t; pTop = t; pBot = t;
-    } else if (printState.border === "polaroid") {
-        pSide = 0.075; pTop = 0.078; pBot = 0.25;
     } else if (printState.border === "rebate") {
         pSide = 0.045; pTop = 0.085 / aspect; pBot = 0.085 / aspect;
     }
@@ -2041,7 +2188,6 @@ function renderPrintPresetsAndPapers() {
         chip.className = "preset-chip" + (printState.presetId === pr.id ? " active" : "");
         chip.innerHTML = `<strong>${pr.name}</strong><small>${pr.sub}</small>`;
         chip.addEventListener("click", () => {
-            if (pr.border !== "polaroid") printState.lastNonPolaroidBorder = pr.border;
             activePrintPresetDefaults = {
                 time: pr.time, grade: pr.grade, mag: pr.mag, yel: pr.yel, burn: pr.burn,
                 zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0
@@ -2078,11 +2224,6 @@ function renderPrintPresetsAndPapers() {
         card.addEventListener("click", () => {
             printState.presetId = "custom";
             printState.paperId = pk.id;
-            if (pk.id !== "polaroid-integral" && printState.border === "polaroid") {
-                printState.border = printState.lastNonPolaroidBorder || "none";
-            } else if (pk.id === "polaroid-integral" && printState.border !== "polaroid") {
-                printState.border = "polaroid";
-            }
             syncPrintControlsUI();
             updatePrintPreview();
         });
@@ -2120,7 +2261,6 @@ function syncPrintControlsUI() {
     document.getElementById("prBorderThickSlider").value = printState.borderThickness;
     document.getElementById("prBorderThickVal").textContent = Math.round(printState.borderThickness * 100) + "%";
     document.getElementById("borderThicknessRow").style.display = printState.border === "white" ? "flex" : "none";
-    document.getElementById("polaroidFixedNote").style.display = printState.border === "polaroid" ? "block" : "none";
 
     const d = printState.defects;
     document.getElementById("boxPrLeaks").classList.toggle("active", d.lightLeak.active);
@@ -2154,7 +2294,6 @@ function syncPrintControlsUI() {
     wrap.className = "print-frame-wrapper";
     if (printState.border === "white") wrap.classList.add("border-white");
     if (printState.border === "rebate") wrap.classList.add("border-rebate");
-    if (printState.border === "polaroid") wrap.classList.add("border-polaroid");
 
     document.querySelectorAll("#borderSelector button").forEach(b => {
         b.classList.toggle("btn-gold-outline", b.dataset.border === printState.border);
@@ -2192,37 +2331,19 @@ async function openPrintEnlarger(idx) {
     printState.grainScale = 1.0;
     printState.defects = JSON.parse(JSON.stringify(frameDef));
 
-    if (currentRoll.film.mode === "instant") {
-        const p600 = PRINT_PRESETS.find(p => p.id === "polaroid-600");
-        activePrintPresetDefaults = {
-            time: p600.time, grade: p600.grade, mag: p600.mag, yel: p600.yel, burn: p600.burn,
-            zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0
-        };
-        printState.presetId = "polaroid-600";
-        printState.paperId = "polaroid-integral";
-        printState.border = "polaroid";
-        printState.lastNonPolaroidBorder = "none";
-        printState.time = p600.time;
-        printState.grade = p600.grade;
-        printState.mag = p600.mag;
-        printState.yel = p600.yel;
-        printState.burn = p600.burn;
-    } else {
-        const std = PRINT_PRESETS[0];
-        activePrintPresetDefaults = {
-            time: std.time, grade: std.grade, mag: std.mag, yel: std.yel, burn: std.burn,
-            zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0
-        };
-        printState.presetId = "lab-std";
-        printState.paperId = "kodak-endura";
-        printState.border = "none";
-        printState.lastNonPolaroidBorder = "none";
-        printState.time = std.time;
-        printState.grade = std.grade;
-        printState.mag = std.mag;
-        printState.yel = std.yel;
-        printState.burn = std.burn;
-    }
+    const std = PRINT_PRESETS[0];
+    activePrintPresetDefaults = {
+        time: std.time, grade: std.grade, mag: std.mag, yel: std.yel, burn: std.burn,
+        zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0
+    };
+    printState.presetId = "lab-std";
+    printState.paperId = "kodak-endura";
+    printState.border = "none";
+    printState.time = std.time;
+    printState.grade = std.grade;
+    printState.mag = std.mag;
+    printState.yel = std.yel;
+    printState.burn = std.burn;
 
     activePrintImg = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
     document.getElementById("printModal").classList.add("open");
@@ -2377,7 +2498,6 @@ document.querySelectorAll("#borderSelector button").forEach(btn => {
     btn.addEventListener("click", () => {
         printState.presetId = "custom";
         printState.border = btn.dataset.border;
-        if (printState.border !== "polaroid") printState.lastNonPolaroidBorder = printState.border;
         updatePrintPreview();
         syncPrintControlsUI();
     });
@@ -2478,20 +2598,6 @@ document.getElementById("downloadPrintBtn").addEventListener("click", async () =
         ctx.fillStyle = paperBgColor;
         ctx.fillRect(0, 0, outCanvas.width, outCanvas.height);
         ctx.drawImage(glCanvas, pad, pad);
-    } else if (printState.border === "polaroid") {
-        const padSide = Math.round(imgW * 0.075);
-        const padTop = Math.round(imgW * 0.078);
-        const padChin = Math.round(imgW * 0.25);
-
-        outCanvas.width = imgW + padSide * 2;
-        outCanvas.height = imgH + padTop + padChin;
-
-        ctx.fillStyle = agedActive ? "#ebdcc0" : "#f6f4ee";
-        ctx.fillRect(0, 0, outCanvas.width, outCanvas.height);
-
-        ctx.fillStyle = "rgba(0,0,0,0.16)";
-        ctx.fillRect(padSide - 2, padTop - 2, imgW + 4, imgH + 4);
-        ctx.drawImage(glCanvas, padSide, padTop);
     } else if (printState.border === "rebate") {
         const padX = Math.round(imgW * 0.045);
         const padY = Math.round(imgH * 0.085);
@@ -2531,7 +2637,7 @@ document.getElementById("downloadPrintBtn").addEventListener("click", async () =
 });
 
 /* =========================================================
-   11. LAB PELLICOLE (AUTO "CUSTOM" + ANNULLA + RESET)
+   11. LAB PELLICOLE
    ========================================================= */
 let labEditingId = films[0].id;
 let labSampleImg = null;
@@ -2684,10 +2790,11 @@ function applyIsoPhysics(film, newIso) {
 function openLabModal() {
     labSnapshotFilms = JSON.parse(JSON.stringify(films));
     labSnapshotSelectedId = selectedLoadFilmId;
-    labEditingId = selectedLoadFilmId;
+    labEditingId = films.some(f => f.id === selectedLoadFilmId) ? selectedLoadFilmId : films[0].id;
 
     films.forEach(f => {
         delete f._nameEditedManually;
+        if (f.mode === "instant") f.mode = "color";
         if (!DEFAULT_FILMS.some(d => d.id === f.id) && !f._presetDefaults) {
             f._presetDefaults = {
                 toe: f.toe, shoulder: f.shoulder, contrast: f.contrast,
@@ -2719,7 +2826,7 @@ function syncLabForm() {
     const f = films.find(x => x.id === labEditingId) || films[0];
     document.getElementById("edName").value = f.name;
     document.getElementById("edIso").value = f.iso;
-    document.getElementById("edMode").value = f.mode;
+    document.getElementById("edMode").value = f.mode === "instant" ? "color" : f.mode;
 
     document.querySelectorAll("#labIsoPresets .iso-chip").forEach(ch => {
         ch.classList.toggle("active", parseInt(ch.dataset.iso) === f.iso);
@@ -2911,6 +3018,7 @@ document.getElementById("importJsonBtn").addEventListener("click", () => {
         const parsed = JSON.parse(document.getElementById("jsonArea").value);
         if (!parsed.name || typeof parsed.shoulder !== "number") throw new Error();
         parsed.id = "imp-" + Date.now();
+        if (parsed.mode === "instant") parsed.mode = "color";
         parsed._presetDefaults = {
             toe: parsed.toe, shoulder: parsed.shoulder, contrast: parsed.contrast,
             temp: parsed.temp, tint: parsed.tint, saturation: parsed.saturation,
@@ -2982,14 +3090,16 @@ async function refreshDiagSummary() {
     try {
         const rolls = await getAllRollsFromDB();
         const vRolls = await getAllVintageRollsFromDB();
+        const pShots = await getAllPolaroidShotsFromDB();
         const totalFrames = rolls.reduce((acc, r) => acc + (r.frames ? r.frames.length : 0), 0)
-            + vRolls.reduce((acc, r) => acc + (r.frames ? r.frames.length : 0), 0);
+            + vRolls.reduce((acc, r) => acc + (r.frames ? r.frames.length : 0), 0)
+            + pShots.length;
         if (navigator.storage && navigator.storage.estimate) {
             const est = await navigator.storage.estimate();
             const usedMB = ((est.usage || 0) / (1024 * 1024)).toFixed(1);
-            document.getElementById("diagMem").textContent = `${usedMB} MB (${totalFrames} pose)`;
+            document.getElementById("diagMem").textContent = `${usedMB} MB (${totalFrames} scatti)`;
         } else {
-            document.getElementById("diagMem").textContent = `${rolls.length + vRolls.length} rullini / ${totalFrames} pose`;
+            document.getElementById("diagMem").textContent = `${rolls.length + vRolls.length} rullini / ${totalFrames} scatti`;
         }
     } catch (e) {
         document.getElementById("diagMem").textContent = "N/D";
@@ -3065,6 +3175,9 @@ setQualityMode(qualityMode);
 syncThirdsUI();
 renderLoadView();
 
+if (typeof initPolaroidEventListeners === "function") {
+    initPolaroidEventListeners();
+}
 if (typeof initVintageEventListeners === "function") {
     initVintageEventListeners();
 }
@@ -3077,31 +3190,15 @@ if (typeof initVintageEventListeners === "function") {
     }
 
     await refreshStorageSummary();
+    await refreshHomeStatus();
 
     if (db) {
         await refreshArchiveList();
         if (typeof refreshVintageArchiveList === "function") {
             await refreshVintageArchiveList();
         }
-
-        const rolls = await getAllRollsFromDB();
-        const activeShooting = rolls.find(r => r.status === "shooting");
-        const activeRewound = rolls.find(r => r.status === "rewound");
-        if (activeShooting) {
-            currentRoll = activeShooting;
-            enterCameraMode();
-            return;
-        } else if (activeRewound) {
-            currentRoll = activeRewound;
-            goToDarkroom();
-            return;
-        }
-
-        const vRolls = await getAllVintageRollsFromDB();
-        const activeVintage = vRolls.find(r => r.status === "shooting");
-        if (activeVintage) {
-            currentVintageRoll = activeVintage;
-            enterVintageCameraMode();
+        if (typeof refreshPolaroidGalleryBadge === "function") {
+            await refreshPolaroidGalleryBadge();
         }
     }
 })();

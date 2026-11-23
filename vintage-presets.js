@@ -1,6 +1,6 @@
 /* =========================================================
-   VINTAGE-PRESETS.JS
-   Rullini Automatici Vintage (12/24/36 pose + 4s sviluppo)
+   VINTAGE-PRESETS.JS — USA & GETTA
+   Rullini Automatici Usa & Getta (12/24/36 pose + 4s sviluppo)
    7 Decadi Iconiche + Eccezioni Casuali Indipendenti (0-70%)
    ========================================================= */
 
@@ -76,7 +76,7 @@ const VINTAGE_DECADES = [
         yearStamp: "'77",
         color: "#c97b2b",
         textColor: "#ffffff",
-        paperId: "polaroid-integral",
+        paperId: "ilford-fb-warm",
         grade: 2.0,
         burn: 0.30,
         stampColor: "#ff7828",
@@ -157,7 +157,7 @@ const VINTAGE_DECADES = [
 let selectedVintageDecadeId = localStorage.getItem("analog_photolab_vintage_decade") || "1990s";
 let selectedVintageExposures = 12;
 let vintageRandomEnabled = true;
-let vintageDateMode = "era"; // "era" | "today" | "off"
+let vintageDateMode = "era";
 let vintageFlashEnabled = false;
 let vintageCapturing = false;
 let vintageDeveloping = false;
@@ -182,7 +182,7 @@ function getVintageDateStampString(decade) {
 }
 
 /* =========================================================
-   PERSISTENZA RULLINI VINTAGE (INDEXEDDB + FALLBACK MEMORIA)
+   PERSISTENZA RULLINI USA & GETTA
    ========================================================= */
 function saveVintageRollToDB(vRoll) {
     const idx = memoryVintageRolls.findIndex(r => r.id === vRoll.id);
@@ -226,7 +226,22 @@ function deleteVintageRollFromDB(id) {
 }
 
 /* =========================================================
-   UI HOME DECADI & ARCHIVIO RULLINI VINTAGE
+   ACCESSO SEZIONE USA & GETTA (RIPRENDE RULLINO ATTIVO)
+   ========================================================= */
+async function enterDisposableSection() {
+    const vRolls = await getAllVintageRollsFromDB();
+    const activeShooting = vRolls.find(r => r.status === "shooting");
+    if (activeShooting) {
+        currentVintageRoll = activeShooting;
+        enterVintageCameraMode();
+        return;
+    }
+    await refreshVintageArchiveList();
+    switchView("view-disposable-load");
+}
+
+/* =========================================================
+   UI DECADI & ARCHIVIO USA & GETTA
    ========================================================= */
 function renderVintageHomeGrid() {
     const grid = document.getElementById("vintageDecadeGrid");
@@ -301,7 +316,7 @@ function updateVintageCameraHUD() {
     if (!currentVintageRoll) return;
     const d = getActiveVintageDecade(currentVintageRoll.decadeId);
     document.getElementById("vintageTopEraBadge").textContent = d.tag;
-    document.getElementById("vintageVfEraLabel").textContent = `${d.name.toUpperCase()} • AUTO`;
+    document.getElementById("vintageVfEraLabel").textContent = `${d.name.toUpperCase()} • USA & GETTA`;
 
     const cur = String(currentVintageRoll.frames.length).padStart(2, "0");
     const tot = String(currentVintageRoll.capacity).padStart(2, "0");
@@ -384,7 +399,7 @@ function enterVintageCameraMode() {
 }
 
 /* =========================================================
-   SCATTO SUL RULLINO VINTAGE + SVILUPPO 4s (RANDOM 0-70%)
+   SCATTO SUL RULLINO USA & GETTA + SVILUPPO 4s (RANDOM 0-70%)
    ========================================================= */
 async function recordVintageLatentFrame(sourceCanvas, usedFlash = false, hardwareFlashFired = false) {
     if (!currentVintageRoll || currentVintageRoll.frames.length >= currentVintageRoll.capacity) return;
@@ -423,9 +438,9 @@ async function recordVintageLatentFrame(sourceCanvas, usedFlash = false, hardwar
 
     updateVintageCameraHUD();
     await saveVintageRollToDB(currentVintageRoll);
+    if (typeof refreshHomeStatus === "function") refreshHomeStatus();
 }
 
-// Estrazione indipendente per ciascuno dei 4 effetti (da 0 a tutti e 4) con range 0% - 70% MAX
 function generateVintageRandomExceptions(decade) {
     const def = createDefaultFrameDefects(Math.random());
     if (!vintageRandomEnabled) return def;
@@ -433,7 +448,7 @@ function generateVintageRandomExceptions(decade) {
     const ex = decade.exceptions;
     const rollDefect = (prob, target) => {
         if (Math.random() < prob) {
-            const pct = +(Math.random() * 0.70).toFixed(2); // Range 0% - 70% max
+            const pct = +(Math.random() * 0.70).toFixed(2);
             target.intensity = pct;
             target.active = pct > 0;
         } else {
@@ -454,7 +469,7 @@ async function executeVintageDevelopSequence() {
     if (currentVintageRoll.frames.length === 0) return;
 
     vintageDeveloping = true;
-    getAudioCtx(); // Sblocca audio su gesture
+    getAudioCtx();
     document.getElementById("vintageFinishedOverlay").classList.remove("open");
     const overlay = document.getElementById("vintageDevAnimOverlay");
     const fill = document.getElementById("vintageDevProgressFill");
@@ -472,7 +487,6 @@ async function executeVintageDevelopSequence() {
     const maxRes = qualityMode === "max" ? Math.min(4096, MAX_GL_TEX) : 1800;
     const jpegQ = qualityMode === "max" ? 0.96 : 0.90;
 
-    // Sviluppo reale fotogramma per fotogramma durante i 4 secondi di riavvolgimento
     for (let i = 0; i < total; i++) {
         const frame = currentVintageRoll.frames[i];
         const decade = getActiveVintageDecade(frame.decadeId || currentVintageRoll.decadeId);
@@ -544,7 +558,6 @@ async function executeVintageDevelopSequence() {
         thumbCanvas.getContext("2d").drawImage(outCanvas, 0, 0, tW, tH);
         frame.thumbBlob = await canvasToBlob(thumbCanvas, "image/jpeg", 0.80);
 
-        // Libera il rawBlob pesante dopo sviluppo vintage perché non serve un ingranditore manuale
         delete frame.rawBlob;
         delete frame.rawDataUrl;
         outCanvas.width = 0; outCanvas.height = 0;
@@ -557,7 +570,6 @@ async function executeVintageDevelopSequence() {
         counterEl.textContent = `${String(Math.max(0, total - i - 1)).padStart(2, "0")} / ${totStr}`;
     }
 
-    // Completa esattamente i 4 secondi di attesa riavvolgimento/sviluppo
     const remaining = minDurationMs - (performance.now() - startTime);
     if (remaining > 0) {
         sub.textContent = "Asciugatura e preparazione provini...";
@@ -580,6 +592,7 @@ async function executeVintageDevelopSequence() {
     await saveVintageRollToDB(currentVintageRoll);
     await refreshVintageArchiveList();
     await refreshStorageSummary();
+    if (typeof refreshHomeStatus === "function") refreshHomeStatus();
 
     overlay.classList.remove("open");
     vintageDeveloping = false;
@@ -587,7 +600,7 @@ async function executeVintageDevelopSequence() {
 }
 
 /* =========================================================
-   GALLERIA RULLINO VINTAGE SVILUPPATO (★ + SALVA SELEZIONATE / TUTTE)
+   GALLERIA RULLINO USA & GETTA SVILUPPATO
    ========================================================= */
 function updateVintageSelectionUI() {
     if (!currentVintageRoll) return;
@@ -708,7 +721,7 @@ async function exportVintageFrames(framesToExport, labelSlug) {
         }
         if (blob) {
             items.push({
-                name: `vintage-${currentVintageRoll.decadeId}-f${String(fr.number).padStart(2, "0")}.jpg`,
+                name: `usa-getta-${currentVintageRoll.decadeId}-f${String(fr.number).padStart(2, "0")}.jpg`,
                 blob
             });
             fr.savedLocally = true;
@@ -724,6 +737,11 @@ async function exportVintageFrames(framesToExport, labelSlug) {
 function initVintageEventListeners() {
     renderVintageHomeGrid();
 
+    document.getElementById("backHomeFromDisposableBtn").addEventListener("click", () => {
+        refreshHomeStatus();
+        switchView("view-home");
+    });
+
     document.querySelectorAll("#vintageExpCountRow .exp-pill").forEach(pill => {
         pill.addEventListener("click", () => {
             document.querySelectorAll("#vintageExpCountRow .exp-pill").forEach(p => p.classList.remove("selected"));
@@ -733,7 +751,7 @@ function initVintageEventListeners() {
     });
 
     document.getElementById("startVintageCamBtn").addEventListener("click", async () => {
-        getAudioCtx(); // Sblocca audio su click utente
+        getAudioCtx();
         currentVintageRoll = {
             id: "vroll-" + Date.now(),
             createdAt: Date.now(),
@@ -743,26 +761,28 @@ function initVintageEventListeners() {
             frames: []
         };
         await saveVintageRollToDB(currentVintageRoll);
+        if (typeof refreshHomeStatus === "function") refreshHomeStatus();
         enterVintageCameraMode();
     });
 
     document.getElementById("vintageExitBtn").addEventListener("click", () => {
         if (vintageDeveloping) return;
-        if (currentVintageRoll && currentVintageRoll.frames.length > 0) {
-            if (!confirm(`Uscire? Il rullino ha ${currentVintageRoll.frames.length} scatti non ancora sviluppati (puoi anche premere Riavvolgi).`)) return;
-        }
         stopCamera();
         refreshVintageArchiveList();
-        switchView("view-load");
+        if (typeof refreshHomeStatus === "function") refreshHomeStatus();
+        switchView("view-home");
     });
 
-    document.getElementById("vintageRewindBtn").addEventListener("click", () => {
+    document.getElementById("vintageRewindBtn").addEventListener("click", async () => {
         if (vintageDeveloping || !currentVintageRoll) return;
         if (currentVintageRoll.frames.length === 0) {
-            if (confirm("Nessuna foto scattata. Tornare alla Home?")) {
+            if (confirm("Nessuna foto scattata. Estrarre il rullino Usa & Getta vuoto?")) {
+                await deleteVintageRollFromDB(currentVintageRoll.id);
                 currentVintageRoll = null;
                 stopCamera();
-                switchView("view-load");
+                await refreshVintageArchiveList();
+                if (typeof refreshHomeStatus === "function") refreshHomeStatus();
+                switchView("view-disposable-load");
             }
             return;
         }
@@ -810,7 +830,7 @@ function initVintageEventListeners() {
         }
         const video = document.getElementById("vintageVideo");
         if (!mediaStream || video.videoWidth === 0) {
-            alert("Fotocamera live non attiva: tocca '+ GALLERIA' qui a sinistra per caricare foto sul rullino vintage!");
+            alert("Fotocamera live non attiva: tocca '📷 Carica Foto' qui a sinistra per caricare foto sul rullino Usa & Getta!");
             return;
         }
 
@@ -827,43 +847,48 @@ function initVintageEventListeners() {
         }
     });
 
-    document.getElementById("vintageGalleryInput").addEventListener("change", (e) => {
-        if (vintageDeveloping || (currentVintageRoll && currentVintageRoll.frames.length >= currentVintageRoll.capacity)) {
+    document.getElementById("vintageGalleryInput").addEventListener("change", async (e) => {
+        if (vintageDeveloping || !currentVintageRoll) {
             e.target.value = "";
             return;
         }
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const img = new Image();
-            img.onload = async () => {
-                let w = img.width, h = img.height;
-                if (qualityMode !== "max") {
-                    const maxD = 1800;
-                    if (w > maxD || h > maxD) {
-                        const r = Math.min(maxD / w, maxD / h);
-                        w = Math.round(w * r); h = Math.round(h * r);
-                    }
-                }
-                const c = document.createElement("canvas");
-                c.width = w; c.height = h;
-                c.getContext("2d").drawImage(img, 0, 0, w, h);
-                await recordVintageLatentFrame(c, vintageFlashEnabled, false);
-                c.width = 0; c.height = 0;
-            };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
+        const files = Array.from(e.target.files || []);
         e.target.value = "";
+        if (!files.length) return;
+
+        for (const file of files) {
+            if (currentVintageRoll.frames.length >= currentVintageRoll.capacity) {
+                alert(`Rullino Usa & Getta pieno (${currentVintageRoll.capacity} pose)! Premi Riavvolgi e Sviluppa.`);
+                break;
+            }
+            const dataUrl = await new Promise((res) => {
+                const r = new FileReader();
+                r.onload = (ev) => res(ev.target.result);
+                r.readAsDataURL(file);
+            });
+            const img = await loadImageFromSource(dataUrl);
+            let w = img.width, h = img.height;
+            if (qualityMode !== "max") {
+                const maxD = 1800;
+                if (w > maxD || h > maxD) {
+                    const r = Math.min(maxD / w, maxD / h);
+                    w = Math.round(w * r); h = Math.round(h * r);
+                }
+            }
+            const c = document.createElement("canvas");
+            c.width = w; c.height = h;
+            c.getContext("2d").drawImage(img, 0, 0, w, h);
+            await recordVintageLatentFrame(c, vintageFlashEnabled, false);
+            c.width = 0; c.height = 0;
+        }
     });
 
-    // Galleria Rullino Vintage sviluppato
     document.getElementById("vintageLabHomeBtn").addEventListener("click", () => {
         currentVintageRoll = null;
         refreshVintageArchiveList();
         refreshStorageSummary();
-        switchView("view-load");
+        if (typeof refreshHomeStatus === "function") refreshHomeStatus();
+        switchView("view-home");
     });
 
     document.getElementById("vintageSelectAllBtn").addEventListener("click", async () => {
@@ -885,7 +910,6 @@ function initVintageEventListeners() {
         await exportVintageFrames(currentVintageRoll.frames, `${currentVintageRoll.decadeId}-tutte`);
     });
 
-    // Modal dettaglio scatto Vintage
     document.getElementById("vintageDetailCloseBtn").addEventListener("click", () => {
         document.getElementById("vintageDetailModal").classList.remove("open");
     });

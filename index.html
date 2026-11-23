@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Analog PhotoLab v0.8 — Fotocamera Meccanica, Carte & Camera Oscura</title>
+  <title>Analog PhotoLab v0.9 — Pellicole, Polaroid 300 DPI & Usa & Getta</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -14,141 +14,77 @@
   <div id="frontScreenFlash"></div>
 
   <!-- =========================================================
-       VIEW 1: HOME — RULLINI ANALOGICI, PRESET VINTAGE & MEMORIA
+       VIEW 0: HOME INIZIALE A 3 PERCORSI
        ========================================================= -->
-  <div id="view-load" class="view active">
+  <div id="view-home" class="view active">
     <header>
       <div class="brand">
-        <h1>Analog PhotoLab v0.8</h1>
-        <span>Rullini Meccanici & Preset Vintage Automatici</span>
+        <h1>Analog PhotoLab v0.9</h1>
+        <span>Simulazione Pellicole • Polaroid 300 DPI • Usa &amp; Getta</span>
       </div>
       <div style="display:flex; gap:6px;">
-        <button class="btn" id="openDiagBtn" title="Test Fotocamera, Risoluzione e Memoria">Test & Info</button>
+        <button class="btn" id="openDiagBtn" title="Test Fotocamera, Risoluzione e Memoria">Test &amp; Info</button>
         <button class="btn btn-gold-outline" id="openLabFromLoadBtn">Lab Pellicole</button>
       </div>
     </header>
 
     <div class="scroll-body">
-      <div class="home-mode-switch" id="homeModeSwitch">
-        <button type="button" class="home-mode-tab active" data-home-mode="rolls">
-          🎞️ Rullini Analogici
-          <small>Controllo completo & Camera Oscura</small>
-        </button>
-        <button type="button" class="home-mode-tab" data-home-mode="vintage">
-          ⚡ Preset Vintage
-          <small>Rullino automatico • Decadi • 0–70%</small>
-        </button>
-      </div>
-
-      <!-- PANNELLO A: RULLINI ANALOGICI -->
-      <div id="homePanelRolls" class="home-panel active">
-        <div class="card">
-          <div class="card-title">
-            <span>1. Scegli la Pellicola / Cartuccia</span>
-            <span id="selectedFilmIso" style="color:#fff;">ISO 400</span>
+      <div class="home-paths-grid">
+        <!-- PERCORSO 1: SIMULAZIONE PELLICOLE -->
+        <div class="path-card" id="pathRollsBtn" role="button" tabindex="0">
+          <div class="path-card-top">
+            <span class="path-icon">🎞️</span>
+            <span class="path-badge" id="homeRollsStatusBadge">Pronto</span>
           </div>
-          <div class="film-grid" id="loadFilmGrid"></div>
-
-          <div class="card-title" style="margin-top:2px;">
-            <span>2. Lunghezza Rullino</span>
+          <div class="path-card-body">
+            <strong>Simulazione Pellicole</strong>
+            <small>Rullini 35mm meccanici, leva caricamento, esposimetro M, Camera Oscura e Ingranditore.</small>
           </div>
-          <div class="exposures-row" id="expCountRow">
-            <div class="exp-pill" data-count="8">8 Pose<span>Polaroid 600</span></div>
-            <div class="exp-pill selected" data-count="12">12 Pose<span>Test rapido</span></div>
-            <div class="exp-pill" data-count="24">24 Pose<span>Standard</span></div>
-            <div class="exp-pill" data-count="36">36 Pose<span>Lungo</span></div>
+          <div class="path-card-foot">
+            <span class="path-cta" id="homeRollsCta">Apri Simulazione →</span>
+            <button type="button" class="btn path-sub-btn" id="homeRollsArchiveBtn">Archivio (0)</button>
           </div>
-
-          <div class="card-title" style="margin-top:2px;">
-            <span>3. Qualità Acquisizione & Stampa</span>
-          </div>
-          <div class="quality-row" id="qualityRow">
-            <div class="exp-pill selected" data-quality="standard">
-              Standard (1800px)
-              <span>Rapida, leggera per iPhone/Android</span>
-            </div>
-            <div class="exp-pill" data-quality="max">
-              Massima Sensore (4K+)
-              <span>Risoluzione nativa completa</span>
-            </div>
-          </div>
-
-          <button class="btn btn-gold" id="loadRollBtn" style="padding:12px; font-size:13px; margin-top:2px;">
-            Carica Pellicola nella Fotocamera
-          </button>
         </div>
 
-        <div class="card" id="archiveCard">
-          <div class="card-title">
-            <span>Archivio Rullini Sviluppati</span>
-            <span id="archiveCount">0 rullini</span>
+        <!-- PERCORSO 2: POLAROID -->
+        <div class="path-card polaroid-accent" id="pathPolaroidBtn" role="button" tabindex="0">
+          <div class="polaroid-rainbow-bar"></div>
+          <div class="path-card-top">
+            <span class="path-icon">📷</span>
+            <span class="path-badge" id="homePolaroidStatusBadge">0 scatti</span>
           </div>
-          <div id="archiveEmptyMsg" style="font-size:11px; color:var(--muted); text-align:center; padding:4px 0;">
-            Nessun rullino sviluppato in questo browser.
+          <div class="path-card-body">
+            <strong>Polaroid Istantanea</strong>
+            <small>Scatto singolo con sviluppo progressivo dal vivo, 6 carte Polaroid ed esportazione esatta 300
+              DPI.</small>
           </div>
-          <div class="archive-list" id="archiveList"></div>
-        </div>
-      </div>
-
-      <!-- PANNELLO B: PRESET VINTAGE AUTOMATICI (12-36 POSE + 4s SVILUPPO) -->
-      <div id="homePanelVintage" class="home-panel">
-        <div class="card">
-          <div class="card-title">
-            <span>1. Scegli la Decade Iconica</span>
-            <span id="selectedVintageEraBadge" style="color:#fff;">'98 AUTO</span>
+          <div class="path-card-foot">
+            <span class="path-cta">Scatta Polaroid →</span>
+            <button type="button" class="btn path-sub-btn" id="homePolaroidGalleryBtn">Galleria (0)</button>
           </div>
-          <div class="helper-tip">
-            Carica un rullino automatico punta-e-scatta: a fine rullino (4 secondi di sviluppo) vedrai tutte le pose con
-            effetti casuali indipendenti (da 0 a 4 attivi, max 70%) per scegliere e salvare le migliori!
-          </div>
-
-          <div class="vintage-decade-grid" id="vintageDecadeGrid"></div>
-
-          <div class="card-title" style="margin-top:2px;">
-            <span>2. Lunghezza Rullino Vintage</span>
-          </div>
-          <div class="exposures-row cols-3" id="vintageExpCountRow">
-            <div class="exp-pill selected" data-count="12">12 Pose<span>Test veloce</span></div>
-            <div class="exp-pill" data-count="24">24 Pose<span>Standard</span></div>
-            <div class="exp-pill" data-count="36">36 Pose<span>Viaggio</span></div>
-          </div>
-
-          <div class="card-title" style="margin-top:2px;">
-            <span>3. Qualità Acquisizione</span>
-          </div>
-          <div class="quality-row" id="vintageQualityRow">
-            <div class="exp-pill selected" data-quality="standard">
-              Standard (1800px)
-              <span>Rapida e leggera</span>
-            </div>
-            <div class="exp-pill" data-quality="max">
-              Massima Sensore (4K+)
-              <span>Risoluzione nativa completa</span>
-            </div>
-          </div>
-
-          <button class="btn btn-gold" id="startVintageCamBtn" style="padding:13px; font-size:13px; margin-top:2px;">
-            ⚡ Carica Rullino Vintage
-          </button>
         </div>
 
-        <div class="card" id="vintageArchiveCard">
-          <div class="card-title">
-            <span>Rullini Vintage Sviluppati</span>
-            <span id="vintageArchiveCount">0 rullini</span>
+        <!-- PERCORSO 3: USA & GETTA -->
+        <div class="path-card disposable-accent" id="pathDisposableBtn" role="button" tabindex="0">
+          <div class="path-card-top">
+            <span class="path-icon">⚡</span>
+            <span class="path-badge" id="homeDisposableStatusBadge">Pronto</span>
           </div>
-          <div id="vintageArchiveEmptyMsg"
-            style="font-size:11px; color:var(--muted); text-align:center; padding:4px 0;">
-            Nessun rullino vintage sviluppato in questo browser.
+          <div class="path-card-body">
+            <strong>Usa &amp; Getta</strong>
+            <small>Rullini automatici 12/24/36 pose per decadi iconiche, effetti casuali 0–70% e sviluppo in 4s.</small>
           </div>
-          <div class="archive-list" id="vintageArchiveList"></div>
+          <div class="path-card-foot">
+            <span class="path-cta" id="homeDisposableCta">Apri Usa &amp; Getta →</span>
+            <button type="button" class="btn path-sub-btn" id="homeDisposableArchiveBtn">Archivio (0)</button>
+          </div>
         </div>
       </div>
 
       <!-- GESTIONE MEMORIA, BACKUP & PULIZIA FILE TEMPORANEI -->
       <div class="card" id="storageCard">
         <div class="card-title">
-          <span>Gestione Memoria & Backup</span>
+          <span>Gestione Memoria &amp; Backup</span>
           <span id="storageUsageBadge" style="color:#fff;">0.0 MB</span>
         </div>
         <div id="storageBreakdown" style="font-size:11px; color:var(--muted); line-height:1.4;">
@@ -179,11 +115,77 @@
   </div>
 
   <!-- =========================================================
-       VIEW 2: FOTOCAMERA ANALOGICA (CON ESPOSIMETRO A LANCETTA)
+       VIEW 1: CONFIGURAZIONE RULLINO — SIMULAZIONE PELLICOLE
+       ========================================================= -->
+  <div id="view-load" class="view">
+    <header>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn" id="backHomeFromLoadBtn" style="padding:6px 9px;">← Home</button>
+        <div class="brand">
+          <h1>Simulazione Pellicole</h1>
+          <span>Scegli emulsione, lunghezza rullino o archivio</span>
+        </div>
+      </div>
+      <button class="btn btn-gold-outline" id="openLabFromRollsBtn">Lab Pellicole</button>
+    </header>
+
+    <div class="scroll-body">
+      <div class="card">
+        <div class="card-title">
+          <span>1. Scegli la Pellicola</span>
+          <span id="selectedFilmIso" style="color:#fff;">ISO 400</span>
+        </div>
+        <div class="film-grid" id="loadFilmGrid"></div>
+
+        <div class="card-title" style="margin-top:2px;">
+          <span>2. Lunghezza Rullino</span>
+        </div>
+        <div class="exposures-row cols-3" id="expCountRow">
+          <div class="exp-pill selected" data-count="12">12 Pose<span>Test rapido</span></div>
+          <div class="exp-pill" data-count="24">24 Pose<span>Standard</span></div>
+          <div class="exp-pill" data-count="36">36 Pose<span>Lungo</span></div>
+        </div>
+
+        <div class="card-title" style="margin-top:2px;">
+          <span>3. Qualità Acquisizione &amp; Stampa</span>
+        </div>
+        <div class="quality-row" id="qualityRow">
+          <div class="exp-pill selected" data-quality="standard">
+            Standard (1800px)
+            <span>Rapida, leggera per iPhone/Android</span>
+          </div>
+          <div class="exp-pill" data-quality="max">
+            Massima Sensore (4K+)
+            <span>Risoluzione nativa completa</span>
+          </div>
+        </div>
+
+        <button class="btn btn-gold" id="loadRollBtn" style="padding:12px; font-size:13px; margin-top:2px;">
+          Carica Pellicola nella Fotocamera
+        </button>
+      </div>
+
+      <div class="card" id="archiveCard">
+        <div class="card-title">
+          <span>Archivio Rullini Sviluppati</span>
+          <span id="archiveCount">0 rullini</span>
+        </div>
+        <div id="archiveEmptyMsg" style="font-size:11px; color:var(--muted); text-align:center; padding:4px 0;">
+          Nessun rullino sviluppato in questo browser.
+        </div>
+        <div class="archive-list" id="archiveList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2: FOTOCAMERA ANALOGICA (SIMULAZIONE PELLICOLE)
        ========================================================= -->
   <div id="view-camera" class="view">
     <div class="wa-top-plate">
       <div class="wa-left-cluster">
+        <button type="button" class="wa-home-btn" id="camHomeBtn" title="Torna alla Home (il rullino resta attivo)">←
+          Home</button>
         <div class="wa-film-slot" title="Finestrella pellicola caricata">
           <div class="wa-film-slot-glass">
             <div class="wa-film-canister" id="camFilmCanister">
@@ -306,7 +308,6 @@
         <div class="mode-pill" data-mode="M">M • MANUALE</div>
       </div>
 
-      <!-- Contenitore 2 colonne in M per risparmiare spazio verticale sul mirino -->
       <div class="wa-dials-grid" id="waDialsGrid">
         <div class="wa-dial-box" id="apertureDialBox" style="display:none;">
           <div class="dial-header">
@@ -380,12 +381,221 @@
   </div>
 
   <!-- =========================================================
-       VIEW 2B: FOTOCAMERA AUTOMATICA PRESET VINTAGE (12-36 POSE)
+       VIEW 2P: FOTOCAMERA POLAROID ISTANTANEA (SCATTO SINGOLO + 300 DPI)
+       ========================================================= -->
+  <div id="view-polaroid" class="view">
+    <div class="pol-top-bar">
+      <button type="button" class="btn pol-btn-light" id="polaroidExitBtn">← Home</button>
+      <div class="pol-spec-pill" id="polaroidSpecBadge">88.5×107.5mm • 300 DPI</div>
+      <button type="button" class="btn btn-gold" id="polaroidOpenGalleryBtn" style="padding:6px 10px;">Galleria
+        (0)</button>
+    </div>
+    <div class="polaroid-rainbow-bar thick"></div>
+
+    <div class="pol-stage">
+      <div class="pol-body-shell">
+        <div class="pol-viewfinder-wrap">
+          <div class="pol-viewfinder" id="polaroidVfFrame">
+            <video id="polaroidVideo" autoplay playsinline muted></video>
+            <div class="vf-thirds-grid" id="polaroidThirdsGrid">
+              <div class="thirds-v v1"></div>
+              <div class="thirds-v v2"></div>
+              <div class="thirds-h h1"></div>
+              <div class="thirds-h h2"></div>
+            </div>
+            <div class="pol-round-mask" id="polaroidRoundMask"></div>
+            <button type="button" class="vf-thirds-btn" id="polaroidThirdsToggleBtn">⊞ 3×3</button>
+            <div class="pol-vf-stock-tag" id="polaroidVfStockTag">COLOR 600 • LUCIDA</div>
+            <div id="polaroidCurtain"></div>
+            <div id="polaroidFallbackMsg" class="pol-fallback-msg">
+              <strong style="color:#fff;">Mirino Live non attivo</strong>
+              <span>Tocca <b>📷 Carica Foto</b> in basso per sviluppare subito una foto in Polaroid 300 DPI!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fessura espulsione rulli Polaroid + Tray di sviluppo dal vivo -->
+        <div class="pol-ejection-slot">
+          <div class="pol-slot-lip"></div>
+          <div class="pol-tray" id="polaroidDevTray">
+            <div class="pol-card-ejecting" id="polaroidEjectCard">
+              <div class="pol-card-inner" id="polaroidEjectFrame">
+                <canvas id="polaroidLiveCanvas"></canvas>
+                <div class="pol-card-chin" id="polaroidEjectChin">SVILUPPO CHIMICO...</div>
+              </div>
+              <div class="pol-dev-bar-row">
+                <span id="polaroidDevStatusTxt">Sviluppo in corso... 0%</span>
+                <div style="display:flex; gap:5px;">
+                  <button type="button" class="btn" id="polaroidSkipDevBtn"
+                    style="padding:4px 8px; font-size:10px;">Completa</button>
+                  <button type="button" class="btn btn-gold" id="polaroidOpenEjectedBtn"
+                    style="padding:4px 8px; font-size:10px; display:none;">Stampa 300 DPI</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pol-deck">
+      <div class="pol-stock-strip" id="polaroidStockStrip"></div>
+
+      <div class="pol-options-row">
+        <div class="pol-frame-strip" id="polaroidFrameStrip"></div>
+        <div class="pol-ld-box" title="Compensazione Chiaro / Scuro">
+          <span>L/D</span>
+          <button type="button" class="pol-ld-btn" id="polaroidLdMinus">−</button>
+          <strong id="polaroidLdVal">0</strong>
+          <button type="button" class="pol-ld-btn" id="polaroidLdPlus">+</button>
+        </div>
+        <button type="button" class="pol-flash-pill" id="polaroidFlashBtn">⚡ OFF</button>
+      </div>
+
+      <div class="pol-shoot-dock">
+        <label class="pol-action-btn">
+          📷 Carica Foto
+          <input type="file" id="polaroidGalleryInput" accept="image/*" />
+        </label>
+
+        <button type="button" class="pol-red-shutter" id="polaroidShutterBtn" aria-label="Scatta Polaroid"></button>
+
+        <button type="button" class="pol-action-btn secondary" id="polaroidSwitchCamBtn">
+          ↻ Gira Cam
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2PG: GALLERIA POLAROID (★ + ESPORTA 300 DPI)
+       ========================================================= -->
+  <div id="view-polaroid-gallery" class="view">
+    <header>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn" id="polaroidGalleryBackCamBtn" style="padding:6px 9px;">← Camera</button>
+        <div class="brand">
+          <h1>Istantanee Polaroid</h1>
+          <span id="polaroidGallerySub">Dimensioni esatte • Esportazione 300 DPI</span>
+        </div>
+      </div>
+      <button class="btn btn-gold" id="polaroidGalleryHomeBtn">Home</button>
+    </header>
+
+    <div class="sheet-toolbar">
+      <button type="button" class="btn" id="polaroidSelectAllBtn">★ Tutte</button>
+      <button type="button" class="btn btn-gold-outline" id="polaroidSaveSelectedBtn">Salva Selezionate (0)</button>
+      <button type="button" class="btn btn-gold" id="polaroidSaveAllBtn">Salva Tutte (300 DPI)</button>
+    </div>
+
+    <div class="scroll-body">
+      <div id="polaroidGalleryEmpty" style="font-size:12px; color:var(--muted); text-align:center; padding:30px 10px;">
+        Nessuna Polaroid scattata. Torna alla fotocamera istantanea!
+      </div>
+      <div class="contact-grid" id="polaroidGalleryGrid"></div>
+    </div>
+  </div>
+
+  <!-- Modal dettaglio + Export 300 DPI Polaroid -->
+  <div id="polaroidDetailModal" class="full-modal">
+    <header>
+      <div class="brand" style="min-width:0;">
+        <h1 id="polaroidDetailTitle">Polaroid</h1>
+        <span id="polaroidDetailMeta">1045 × 1270 px • 300 DPI</span>
+      </div>
+      <div style="display:flex; gap:5px; align-items:center;">
+        <button class="btn" id="polaroidDetailStarBtn" style="padding:7px 9px;">☆</button>
+        <button class="btn btn-gold" id="polaroidDetailSaveBtn" style="padding:7px 10px;">Esporta 300 DPI</button>
+        <button class="btn" id="polaroidDetailCloseBtn" style="padding:7px 9px;">✕</button>
+      </div>
+    </header>
+    <div class="print-stage" style="background:#08080a; flex-direction:column; gap:10px;">
+      <img id="polaroidDetailImg" alt="Polaroid print"
+        style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 14px 36px rgba(0,0,0,0.85);" />
+    </div>
+    <div class="pol-detail-caption-bar">
+      <input type="text" id="polaroidCaptionInput" maxlength="42"
+        placeholder="Scrivi una dedica o data sul bordo inferiore..." />
+      <button type="button" class="btn btn-gold-outline" id="polaroidApplyCaptionBtn">Applica</button>
+      <button type="button" class="btn btn-red" id="polaroidDeleteShotBtn" title="Elimina Polaroid">🗑</button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2D: SETUP & ARCHIVIO — USA & GETTA
+       ========================================================= -->
+  <div id="view-disposable-load" class="view">
+    <header>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn" id="backHomeFromDisposableBtn" style="padding:6px 9px;">← Home</button>
+        <div class="brand">
+          <h1>Usa &amp; Getta</h1>
+          <span>Scegli decade, pose del rullino o archivio</span>
+        </div>
+      </div>
+      <span id="selectedVintageEraBadge" class="vintage-era-pill">'98 AUTO</span>
+    </header>
+
+    <div class="scroll-body">
+      <div class="card">
+        <div class="card-title">
+          <span>1. Scegli la Decade Iconica</span>
+        </div>
+        <div class="helper-tip">
+          Carica un rullino Usa &amp; Getta automatico: a fine rullino (4 secondi di sviluppo) vedrai tutte le pose con
+          effetti casuali indipendenti (da 0 a 4 attivi, max 70%) per scegliere e salvare le migliori!
+        </div>
+
+        <div class="vintage-decade-grid" id="vintageDecadeGrid"></div>
+
+        <div class="card-title" style="margin-top:2px;">
+          <span>2. Lunghezza Rullino Usa &amp; Getta</span>
+        </div>
+        <div class="exposures-row cols-3" id="vintageExpCountRow">
+          <div class="exp-pill selected" data-count="12">12 Pose<span>Test veloce</span></div>
+          <div class="exp-pill" data-count="24">24 Pose<span>Standard</span></div>
+          <div class="exp-pill" data-count="36">36 Pose<span>Viaggio</span></div>
+        </div>
+
+        <div class="card-title" style="margin-top:2px;">
+          <span>3. Qualità Acquisizione</span>
+        </div>
+        <div class="quality-row" id="vintageQualityRow">
+          <div class="exp-pill selected" data-quality="standard">
+            Standard (1800px)
+            <span>Rapida e leggera</span>
+          </div>
+          <div class="exp-pill" data-quality="max">
+            Massima Sensore (4K+)
+            <span>Risoluzione nativa completa</span>
+          </div>
+        </div>
+
+        <button class="btn btn-gold" id="startVintageCamBtn" style="padding:13px; font-size:13px; margin-top:2px;">
+          ⚡ Carica Rullino Usa &amp; Getta
+        </button>
+      </div>
+
+      <div class="card" id="vintageArchiveCard">
+        <div class="card-title">
+          <span>Rullini Usa &amp; Getta Sviluppati</span>
+          <span id="vintageArchiveCount">0 rullini</span>
+        </div>
+        <div id="vintageArchiveEmptyMsg" style="font-size:11px; color:var(--muted); text-align:center; padding:4px 0;">
+          Nessun rullino Usa &amp; Getta sviluppato in questo browser.
+        </div>
+        <div class="archive-list" id="vintageArchiveList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2B: FOTOCAMERA USA & GETTA (12/24/36 POSE + CARICA FOTO)
        ========================================================= -->
   <div id="view-vintage-camera" class="view">
     <div class="vintage-top-bar">
       <div style="display:flex; align-items:center; gap:6px;">
-        <button type="button" class="btn" id="vintageExitBtn" style="padding:5px 9px;">← Esci</button>
+        <button type="button" class="btn" id="vintageExitBtn" style="padding:5px 9px;">← Home</button>
         <div class="vintage-era-pill" id="vintageTopEraBadge">'98 AUTO</div>
       </div>
       <div class="wa-counter-window" style="padding:2px 9px;">
@@ -405,20 +615,18 @@
         </div>
         <button type="button" class="vf-thirds-btn" id="vintageThirdsToggleBtn">⊞ 3×3</button>
 
-        <div class="vintage-vf-badge" id="vintageVfEraLabel">ANNI '90 • AUTO</div>
+        <div class="vintage-vf-badge" id="vintageVfEraLabel">ANNI '90 • USA &amp; GETTA</div>
         <div class="vintage-date-preview" id="vintageDatePreview">'98 11 22</div>
         <div id="vintageCurtain"></div>
 
-        <!-- Prompt fine rullino Vintage -->
         <div id="vintageFinishedOverlay" class="vf-modal-overlay">
           <div class="vf-modal-box">
-            <strong>Rullino Vintage Completo!</strong>
+            <strong>Rullino Usa &amp; Getta Completo!</strong>
             <span id="vintageFinishedSub">Tutte le pose sono pronte. Riavvolgi e sviluppa (4 secondi).</span>
             <button type="button" class="btn btn-gold" id="vintageFinishRewindBtn">↺ Riavvolgi e Sviluppa</button>
           </div>
         </div>
 
-        <!-- Animazione 4 secondi riavvolgimento + sviluppo Vintage -->
         <div id="vintageDevAnimOverlay" class="vf-modal-overlay">
           <div class="vf-modal-box">
             <div class="rewind-reel-icon">↺</div>
@@ -433,7 +641,7 @@
         <div id="vintageFallbackMsg"
           style="display:none; position:absolute; inset:20px; text-align:center; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:11px;">
           <strong style="color:#fff;">Mirino Live non attivo</strong>
-          <span>Usa <b>+ Galleria</b> qui sotto per caricare foto sul tuo rullino vintage!</span>
+          <span>Usa <b>📷 Carica Foto</b> qui sotto per caricare una o più foto sul rullino Usa &amp; Getta!</span>
         </div>
       </div>
     </div>
@@ -448,29 +656,28 @@
       <div class="vintage-decade-strip" id="vintageQuickDecadeStrip"></div>
 
       <div class="vintage-shoot-dock">
-        <label class="wa-mini-btn" style="width:auto; padding:7px 10px;">
-          + GALLERIA
-          <input type="file" id="vintageGalleryInput" accept="image/*" />
+        <label class="btn btn-gold-outline" style="padding:8px 11px; font-size:11px; cursor:pointer;">
+          📷 Carica Foto
+          <input type="file" id="vintageGalleryInput" accept="image/*" multiple />
         </label>
 
         <button type="button" class="vintage-shutter-btn" id="vintageShutterBtn"
-          aria-label="Scatta Preset Vintage"></button>
+          aria-label="Scatta Usa e Getta"></button>
 
-        <button type="button" class="wa-mini-btn secondary" id="vintageSwitchCamBtn"
-          style="width:auto; padding:7px 10px;">
-          GIRA CAM
+        <button type="button" class="btn" id="vintageSwitchCamBtn" style="padding:8px 11px; font-size:11px;">
+          ↻ Gira Cam
         </button>
       </div>
     </div>
   </div>
 
   <!-- =========================================================
-       VIEW 2C: GALLERIA RULLINO VINTAGE SVILUPPATO (★ + SALVA TUTTE)
+       VIEW 2C: GALLERIA RULLINO USA & GETTA SVILUPPATO
        ========================================================= -->
   <div id="view-vintage-lab" class="view">
     <header>
       <div class="brand">
-        <h1 id="vintageLabTitle">Rullino Vintage</h1>
+        <h1 id="vintageLabTitle">Rullino Usa &amp; Getta</h1>
         <span id="vintageLabSubtitle">Metti ★ alle migliori e salva selezionate o tutte</span>
       </div>
       <button class="btn btn-gold" id="vintageLabHomeBtn">Home</button>
@@ -490,11 +697,11 @@
     </div>
   </div>
 
-  <!-- Modal dettaglio scatto Vintage -->
+  <!-- Modal dettaglio scatto Usa & Getta -->
   <div id="vintageDetailModal" class="full-modal">
     <header>
       <div class="brand">
-        <h1 id="vintageDetailTitle">Scatto Vintage</h1>
+        <h1 id="vintageDetailTitle">Scatto Usa &amp; Getta</h1>
         <span id="vintageDetailMeta">1990s</span>
       </div>
       <div style="display:flex; gap:5px; align-items:center;">
@@ -504,20 +711,21 @@
       </div>
     </header>
     <div class="print-stage" style="background:#050506;">
-      <img id="vintageDetailImg" alt="Vintage shot"
+      <img id="vintageDetailImg" alt="Usa e getta shot"
         style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 12px 35px rgba(0,0,0,0.85);" />
     </div>
   </div>
 
   <!-- =========================================================
-       VIEW 3: CAMERA OSCURA
+       VIEW 3: CAMERA OSCURA (SIMULAZIONE PELLICOLE)
        ========================================================= -->
   <div id="view-darkroom" class="view">
     <header>
       <div class="brand">
         <h1 style="color:#ff6b5b;">Camera Oscura</h1>
-        <span>Bagno Chimico, Sviluppo & Imperfezioni Casuali</span>
+        <span>Bagno Chimico, Sviluppo &amp; Imperfezioni Casuali</span>
       </div>
+      <button class="btn" id="darkroomHomeBtn" style="padding:6px 9px;">← Home</button>
     </header>
 
     <div class="darkroom-center">
@@ -564,8 +772,8 @@
         </div>
 
         <div class="toggle-row" id="drToggleAged">
-          <div class="toggle-info"><strong>Carta Invecchiata & Ossidazione</strong><small>Patina d'archivio, fioriture
-              (foxing) e sbiadimento su alcuni scatti</small></div>
+          <div class="toggle-info"><strong>Carta Invecchiata &amp; Ossidazione</strong><small>Patina d'archivio,
+              fioriture (foxing) e sbiadimento su alcuni scatti</small></div>
           <div class="toggle-pill"></div>
         </div>
 
@@ -584,7 +792,7 @@
   </div>
 
   <!-- =========================================================
-       VIEW 4: PROVINO A CONTATTO (★ + SALVA SELEZIONATE / TUTTE)
+       VIEW 4: PROVINO A CONTATTO
        ========================================================= -->
   <div id="view-contact" class="view">
     <header>
@@ -613,7 +821,7 @@
   </div>
 
   <!-- =========================================================
-       MODAL INGRANDITORE / STAMPA
+       MODAL INGRANDITORE / STAMPA (SIMULAZIONE PELLICOLE)
        ========================================================= -->
   <div id="printModal">
     <header>
@@ -637,23 +845,23 @@
 
     <div class="print-panel">
       <div class="print-tabs" id="printTabs">
-        <div class="print-tab active" data-tab="tab-paper">1. Carta & Preset</div>
+        <div class="print-tab active" data-tab="tab-paper">1. Carta &amp; Preset</div>
         <div class="print-tab" data-tab="tab-enlarger">2. Ingranditore</div>
         <div class="print-tab" data-tab="tab-defects">3. Difetti Vintage</div>
-        <div class="print-tab" data-tab="tab-finish">4. Bordi & Qualità</div>
+        <div class="print-tab" data-tab="tab-finish">4. Bordi &amp; Qualità</div>
       </div>
 
       <div class="print-tab-body active" id="tab-paper">
         <div class="card-title"><span>Preset Rapidi di Stampa</span></div>
         <div class="preset-strip" id="printPresetStrip"></div>
 
-        <div class="card-title" style="margin-top:2px;"><span>Carta Fotosensibile (Resa Tonale & Superficie)</span>
+        <div class="card-title" style="margin-top:2px;"><span>Carta Fotosensibile (Resa Tonale &amp; Superficie)</span>
         </div>
         <div class="paper-grid" id="paperGrid"></div>
       </div>
 
       <div class="print-tab-body" id="tab-enlarger">
-        <div class="card-title"><span>Inquadratura Ingranditore (Zoom & Rotazione)</span></div>
+        <div class="card-title"><span>Inquadratura Ingranditore (Zoom &amp; Rotazione)</span></div>
         <div class="geom-actions-row">
           <button class="btn btn-gold-outline" id="prRotate90Btn" type="button">↻ Ruota 90°</button>
           <button class="btn" id="prResetGeomBtn" type="button">Reset Inquadratura</button>
@@ -673,7 +881,7 @@
           <button type="button" class="slider-reset-btn" data-reset-print="rotation" title="Reset Rotazione">↺</button>
         </div>
 
-        <div class="card-title" style="margin-top:4px;"><span>Lampada, Contrasto & Testa Colori</span></div>
+        <div class="card-title" style="margin-top:4px;"><span>Lampada, Contrasto &amp; Testa Colori</span></div>
         <div class="slider-row">
           <label>Timer Lampada</label>
           <input type="range" id="prTimeSlider" min="4" max="32" step="0.5" value="12" />
@@ -712,8 +920,8 @@
 
       <div class="print-tab-body" id="tab-defects">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-          <span style="font-size:10.5px; color:var(--gold); font-weight:700; text-transform:uppercase;">Errori Luce &
-            Carta (Partono da 0%)</span>
+          <span style="font-size:10.5px; color:var(--gold); font-weight:700; text-transform:uppercase;">Errori Luce
+            &amp; Carta (Partono da 0%)</span>
           <div style="display:flex; gap:5px;">
             <button class="btn" id="clearFrameDefectsBtn" style="padding:5px 8px; font-size:10.5px;">Rimuovi
               Tutti</button>
@@ -738,7 +946,7 @@
 
         <div class="defect-box" id="boxPrChem">
           <div class="toggle-row" id="prToggleChem">
-            <div class="toggle-info"><strong>Macchie Chimiche & Errori di Sviluppo</strong><small>Aloni della tank,
+            <div class="toggle-info"><strong>Macchie Chimiche &amp; Errori di Sviluppo</strong><small>Aloni della tank,
                 colature chimiche, viraggi e anelli d'asciugatura</small></div>
             <div class="toggle-pill"></div>
           </div>
@@ -766,7 +974,7 @@
 
         <div class="defect-box" id="boxPrScratches">
           <div class="toggle-row" id="prToggleScratches">
-            <div class="toggle-info"><strong>Polvere, Pieghe & Usura Carta</strong><small>Pulviscolo leggero, pieghe
+            <div class="toggle-info"><strong>Polvere, Pieghe &amp; Usura Carta</strong><small>Pulviscolo leggero, pieghe
                 agli angoli, peli e lieve usura</small></div>
             <div class="toggle-pill"></div>
           </div>
@@ -780,11 +988,10 @@
       </div>
 
       <div class="print-tab-body" id="tab-finish">
-        <div class="card-title"><span>Marginatore & Formato Stampa</span></div>
-        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;" id="borderSelector">
+        <div class="card-title"><span>Marginatore &amp; Formato Stampa</span></div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px;" id="borderSelector">
           <button class="btn btn-gold-outline" data-border="none">Senza Bordo</button>
           <button class="btn" data-border="white">Margini Carta</button>
-          <button class="btn" data-border="polaroid">Polaroid 600</button>
           <button class="btn" data-border="rebate">Negativo 35mm</button>
         </div>
 
@@ -794,11 +1001,6 @@
           <span id="prBorderThickVal">6%</span>
           <button type="button" class="slider-reset-btn" data-reset-print="borderThickness"
             title="Reset Spessore">↺</button>
-        </div>
-
-        <div class="helper-tip" id="polaroidFixedNote" style="display:none; margin-top:2px;">
-          La cornice <b>Polaroid 600</b> mantiene le proporzioni standard originali fisse (rapporto 1:1.02 con mento
-          inferiore classico).
         </div>
 
         <div class="slider-row" style="margin-top:4px;">
@@ -857,7 +1059,7 @@
       </div>
 
       <div class="lab-section">
-        <h3>Pellicola, ISO & Colore Caricatore</h3>
+        <h3>Pellicola, ISO &amp; Colore Caricatore</h3>
         <select id="labFilmSelect"
           style="background:var(--bg); color:#fff; border:1px solid var(--border); padding:8px; border-radius:6px; font-size:13px;"></select>
         <div class="input-group">
@@ -865,9 +1067,8 @@
           <input type="number" id="edIso" placeholder="ISO" min="12" max="12800" />
           <select id="edMode">
             <option value="color">Colore Neg.</option>
-            <option value="instant">Istantanea (Polaroid)</option>
             <option value="slide">Diapositiva</option>
-            <option value="bw">Bianco & Nero</option>
+            <option value="bw">Bianco &amp; Nero</option>
           </select>
         </div>
 
@@ -897,7 +1098,7 @@
       </div>
 
       <div class="lab-section">
-        <h3>Sensitometria & Colore</h3>
+        <h3>Sensitometria &amp; Colore</h3>
         <div class="slider-row"><label>Toe (Neri)</label><input type="range" id="edToe" min="0.0" max="0.06"
             step="0.002" /><span id="vToe"></span><button type="button" class="slider-reset-btn" data-reset-lab="toe"
             title="Reset Preset">↺</button></div>
@@ -919,7 +1120,7 @@
       </div>
 
       <div class="lab-section">
-        <h3>Ottica, Halation & Grana</h3>
+        <h3>Ottica, Halation &amp; Grana</h3>
         <div class="slider-row"><label>Halation</label><input type="range" id="edHalation" min="0.0" max="2.0"
             step="0.05" /><span id="vHalation"></span><button type="button" class="slider-reset-btn"
             data-reset-lab="halation" title="Reset Preset">↺</button></div>
@@ -952,7 +1153,7 @@
   <div id="diagModal" class="full-modal">
     <header>
       <div class="brand">
-        <h1>Test Fotocamera & Prestazioni</h1>
+        <h1>Test Fotocamera &amp; Prestazioni</h1>
         <span>Verifica sensore, risoluzione, memoria e WebGL</span>
       </div>
       <button class="btn btn-gold" id="closeDiagBtn">Chiudi</button>
@@ -960,7 +1161,7 @@
 
     <div class="scroll-body">
       <div class="lab-section">
-        <h3>Stato Dispositivo & Browser</h3>
+        <h3>Stato Dispositivo &amp; Browser</h3>
         <div class="diag-grid">
           <div class="diag-stat"><small>Contesto Sicuro (HTTPS)</small><strong id="diagHttps">—</strong></div>
           <div class="diag-stat"><small>Fotocamere Rilevate</small><strong id="diagCams">—</strong></div>
@@ -970,7 +1171,7 @@
       </div>
 
       <div class="lab-section">
-        <h3>Test Risoluzione Sensore & Benchmark Render</h3>
+        <h3>Test Risoluzione Sensore &amp; Benchmark Render</h3>
         <p style="font-size:11px; color:var(--muted); line-height:1.4;">
           Esegue un test reale aprendo temporaneamente il sensore fotografico per rilevare i megapixel effettivi
           concessi da iOS/Android e misura la velocità di sviluppo WebGL a 1800px e 4K.
@@ -980,7 +1181,7 @@
           </div>
           <div class="diag-stat"><small>Tempo Sviluppo GPU</small><strong id="diagGpuTime">Non testato</strong></div>
         </div>
-        <button class="btn btn-gold" id="runDiagTestBtn" style="padding:11px;">Avvia Test Fotocamera & GPU</button>
+        <button class="btn btn-gold" id="runDiagTestBtn" style="padding:11px;">Avvia Test Fotocamera &amp; GPU</button>
         <div id="diagLog"
           style="font-family:monospace; font-size:10.5px; color:#8ee09a; background:var(--bg); padding:8px; border-radius:6px; border:1px solid var(--border); min-height:54px;">
           Pronto per il test diagnostico.
@@ -1271,7 +1472,6 @@
         col = mix(col, vec3(0.89, 0.83, 0.70), clamp(edgeWear * amt * 0.85, 0.0, 0.85));
       }
 
-      // 3C. POLVERE LEGGERA MORBIDA, PIEGHE AGLI ANGOLI, USURA CARTA & PELI RANDOM
       if (u_scratchesAmount > 0.001) {
         float amt = clamp(u_scratchesAmount, 0.0, 1.0);
         float aspect = u_outResolution.x / max(1.0, u_outResolution.y);
@@ -1364,6 +1564,7 @@
     }
   </script>
 
+  <script src="polaroid.js"></script>
   <script src="vintage-presets.js"></script>
   <script src="app.js"></script>
 </body>
