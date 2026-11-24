@@ -1072,7 +1072,13 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     gl.uniform3f(gl.getUniformLocation(program, "u_shadowTint"), 1.0 + film.shadowTemp * 0.45, 1.0 + Math.abs(film.shadowTemp) * 0.08, 1.0 - film.shadowTemp * 0.45);
     gl.uniform3f(gl.getUniformLocation(program, "u_highlightTint"), 1.0 + film.highTemp * 0.45, 1.0 + film.highTemp * 0.12, 1.0 - film.highTemp * 0.45);
     gl.uniform3f(gl.getUniformLocation(program, "u_bwWeights"), 0.34, 0.56, 0.10);
-
+    const grade = frameData.grade || {};
+    const sLift = grade.shadowLift || [0.0, 0.0, 0.0];
+    const mGain = grade.midGain || [1.0, 1.0, 1.0];
+    const hGain = grade.highGain || [1.0, 1.0, 1.0];
+    gl.uniform3fv(gl.getUniformLocation(program, "u_shadowLift"), new Float32Array(sLift));
+    gl.uniform3fv(gl.getUniformLocation(program, "u_midGain"), new Float32Array(mGain));
+    gl.uniform3fv(gl.getUniformLocation(program, "u_highGain"), new Float32Array(hGain));
     gl.uniform1f(gl.getUniformLocation(program, "u_halation"), film.halation);
     gl.uniform1f(gl.getUniformLocation(program, "u_halThreshold"), film.halThreshold);
     gl.uniform3f(gl.getUniformLocation(program, "u_halationColor"), 0.96, 0.18, 0.04);

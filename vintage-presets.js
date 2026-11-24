@@ -1,161 +1,200 @@
 /* =========================================================
-   VINTAGE-PRESETS.JS — USA & GETTA v1.0.2 (STILE HUJI)
+   VINTAGE-PRESETS.JS — USA & GETTA v1.0.3 (MOTORE DECADI & HUJI '98)
+   - Zero aloni nebbiosi: halation rimossa dai rullini C-41 consumer, bloom solo su luci speculari
+   - Motore Lift / Gamma / Gain reale per ogni decade (1940s -> Y2K)
+   - Huji '98 fedele: ombre verde-petrolio/blu, rossi e incarnati caldi, verdi smeraldo,
+     luci crema, centro nitido, leggera CA periferica e light leaks ai bordi
    ========================================================= */
 
 const VINTAGE_DECADES = [
     {
         id: "1940s",
         name: "Anni '40",
-        subtitle: "Nitrate Noir • Orto B&N",
+        subtitle: "Nitrate Noir • Orto B&N profondo",
         tag: "'40 NOIR",
         yearStamp: "'46",
         color: "#b8b2a6",
         textColor: "#14120e",
         paperId: "ilford-fb-warm",
         grade: 3.1,
-        burn: 0.48,
+        burn: 0.28,
         stampColor: "#e6c79c",
-        optics: { ca: 0.14, barrel: 0.030, softness: 0.44, fadeBlack: 0.032, orthoBW: true },
+        optics: { ca: 0.0, barrel: 0.024, softness: 0.14, fadeBlack: 0.015, orthoBW: true },
+        colorGrade: {
+            shadowLift: [0.014, 0.012, 0.008],
+            midGain: [1.02, 1.00, 0.96],
+            highGain: [1.03, 0.99, 0.91]
+        },
         film: {
             id: "vintage-40s", name: "1940s Nitrate Noir", iso: 100, mode: "bw",
-            toe: 0.012, shoulder: 0.30, contrast: 0.66, temp: 0.0, tint: 0.0,
-            saturation: 0.0, shadowTemp: 0.09, highTemp: 0.05,
-            halation: 0.52, halThreshold: 0.76, bloom: 0.38, grain: 0.058, grainSize: 1.45,
+            toe: 0.010, shoulder: 0.30, contrast: 0.62, temp: 0.0, tint: 0.0,
+            saturation: 0.0, shadowTemp: 0.06, highTemp: 0.04,
+            halation: 0.08, halThreshold: 0.86, bloom: 0.06, grain: 0.052, grainSize: 1.38,
             matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1]
         },
-        exceptions: { leakProb: 0.25, chemProb: 0.42, agedProb: 0.60, scratchProb: 0.58 }
+        exceptions: { leakProb: 0.14, chemProb: 0.14, agedProb: 0.35, scratchProb: 0.28 }
     },
     {
         id: "1950s",
         name: "Anni '50",
-        subtitle: "Kodachrome • Rossi & Cobalto",
+        subtitle: "Kodachrome • Rossi carminio & cobalto",
         tag: "'50 CHROME",
         yearStamp: "'55",
         color: "#d94e3f",
         textColor: "#ffffff",
         paperId: "kodak-endura",
-        grade: 2.8,
-        burn: 0.28,
+        grade: 2.7,
+        burn: 0.14,
         stampColor: "#ff9b54",
-        optics: { ca: 0.20, barrel: 0.025, softness: 0.24, fadeBlack: 0.012, orthoBW: false },
+        optics: { ca: 0.10, barrel: 0.016, softness: 0.02, fadeBlack: 0.0, orthoBW: false },
+        colorGrade: {
+            shadowLift: [-0.008, -0.002, 0.008],
+            midGain: [1.04, 0.99, 0.95],
+            highGain: [1.04, 1.01, 0.91]
+        },
         film: {
             id: "vintage-50s", name: "1950s Kodachrome", iso: 64, mode: "slide",
-            toe: 0.012, shoulder: 0.42, contrast: 0.56, temp: 0.15, tint: 0.03,
-            saturation: 1.24, shadowTemp: -0.09, highTemp: 0.14,
-            halation: 0.36, halThreshold: 0.82, bloom: 0.18, grain: 0.024, grainSize: 1.05,
-            matrix: [1.11, -0.06, -0.05, 0.01, 1.01, -0.02, -0.07, 0.04, 1.03]
+            toe: 0.008, shoulder: 0.38, contrast: 0.54, temp: 0.11, tint: 0.02,
+            saturation: 1.22, shadowTemp: -0.06, highTemp: 0.10,
+            halation: 0.0, halThreshold: 0.92, bloom: 0.03, grain: 0.020, grainSize: 1.00,
+            matrix: [1.14, -0.08, -0.06, 0.02, 0.99, -0.01, -0.06, 0.06, 1.00]
         },
-        exceptions: { leakProb: 0.32, chemProb: 0.28, agedProb: 0.45, scratchProb: 0.35 }
+        exceptions: { leakProb: 0.14, chemProb: 0.04, agedProb: 0.18, scratchProb: 0.15 }
     },
     {
         id: "1960s",
         name: "Anni '60",
-        subtitle: "Agfacolor • Sole & Ciani",
+        subtitle: "Agfacolor • Sole caldo & ombre menta",
         tag: "'60 MOD",
         yearStamp: "'68",
         color: "#e08a28",
         textColor: "#141004",
         paperId: "kodak-endura",
-        grade: 2.6,
-        burn: 0.30,
+        grade: 2.5,
+        burn: 0.18,
         stampColor: "#ff8c3a",
-        optics: { ca: 0.32, barrel: 0.032, softness: 0.28, fadeBlack: 0.024, orthoBW: false },
+        optics: { ca: 0.18, barrel: 0.022, softness: 0.06, fadeBlack: 0.008, orthoBW: false },
+        colorGrade: {
+            shadowLift: [-0.010, 0.016, 0.020],
+            midGain: [1.04, 1.00, 0.93],
+            highGain: [1.05, 1.01, 0.89]
+        },
         film: {
             id: "vintage-60s", name: "1960s Agfa Ekta", iso: 160, mode: "color",
-            toe: 0.022, shoulder: 0.48, contrast: 0.44, temp: 0.17, tint: -0.06,
-            saturation: 1.24, shadowTemp: -0.14, highTemp: 0.15,
-            halation: 0.56, halThreshold: 0.78, bloom: 0.24, grain: 0.032, grainSize: 1.15,
-            matrix: [1.08, -0.05, -0.03, -0.02, 1.05, -0.03, -0.06, 0.06, 1.00]
+            toe: 0.014, shoulder: 0.44, contrast: 0.40, temp: 0.13, tint: -0.04,
+            saturation: 1.18, shadowTemp: -0.08, highTemp: 0.10,
+            halation: 0.0, halThreshold: 0.92, bloom: 0.05, grain: 0.026, grainSize: 1.12,
+            matrix: [1.08, -0.05, -0.03, -0.02, 1.04, -0.02, -0.05, 0.05, 1.00]
         },
-        exceptions: { leakProb: 0.48, chemProb: 0.32, agedProb: 0.40, scratchProb: 0.30 }
+        exceptions: { leakProb: 0.24, chemProb: 0.06, agedProb: 0.24, scratchProb: 0.18 }
     },
     {
         id: "1970s",
         name: "Anni '70",
-        subtitle: "Ambra Sbiadita • Ombre Teak",
+        subtitle: "Stampa Ambra • Neri cioccolato caldi",
         tag: "'70 AMBER",
         yearStamp: "'77",
         color: "#c97b2b",
         textColor: "#ffffff",
         paperId: "ilford-fb-warm",
         grade: 2.1,
-        burn: 0.34,
+        burn: 0.22,
         stampColor: "#ff7828",
-        optics: { ca: 0.40, barrel: 0.038, softness: 0.32, fadeBlack: 0.048, orthoBW: false },
+        optics: { ca: 0.24, barrel: 0.026, softness: 0.10, fadeBlack: 0.024, orthoBW: false },
+        colorGrade: {
+            shadowLift: [0.038, 0.024, 0.008],
+            midGain: [1.06, 0.98, 0.88],
+            highGain: [1.06, 1.00, 0.86]
+        },
         film: {
             id: "vintage-70s", name: "1970s Amber Fade", iso: 200, mode: "color",
-            toe: 0.044, shoulder: 0.62, contrast: 0.26, temp: 0.22, tint: 0.04,
-            saturation: 0.88, shadowTemp: 0.11, highTemp: 0.16,
-            halation: 0.62, halThreshold: 0.76, bloom: 0.28, grain: 0.036, grainSize: 1.35,
-            matrix: [1.06, 0.01, -0.07, 0.03, 0.99, -0.02, -0.09, 0.05, 1.04]
+            toe: 0.022, shoulder: 0.56, contrast: 0.26, temp: 0.16, tint: 0.03,
+            saturation: 0.86, shadowTemp: 0.08, highTemp: 0.10,
+            halation: 0.06, halThreshold: 0.90, bloom: 0.06, grain: 0.032, grainSize: 1.28,
+            matrix: [1.06, 0.01, -0.07, 0.03, 0.99, -0.02, -0.08, 0.04, 1.04]
         },
-        exceptions: { leakProb: 0.55, chemProb: 0.36, agedProb: 0.55, scratchProb: 0.32 }
+        exceptions: { leakProb: 0.28, chemProb: 0.08, agedProb: 0.36, scratchProb: 0.22 }
     },
     {
         id: "1980s",
         name: "Anni '80",
-        subtitle: "Minilab Pop • Magenta & Flash",
+        subtitle: "Minilab Pop • Contrasto & Magenta",
         tag: "'80 MINILAB",
         yearStamp: "'86",
         color: "#d9488b",
         textColor: "#ffffff",
         paperId: "fuji-crystal-glossy",
-        grade: 3.0,
-        burn: 0.32,
+        grade: 2.8,
+        burn: 0.18,
         stampColor: "#ff661a",
-        optics: { ca: 0.48, barrel: 0.040, softness: 0.26, fadeBlack: 0.022, orthoBW: false },
+        optics: { ca: 0.28, barrel: 0.028, softness: 0.05, fadeBlack: 0.004, orthoBW: false },
+        colorGrade: {
+            shadowLift: [0.006, -0.004, 0.012],
+            midGain: [1.03, 0.97, 1.02],
+            highGain: [1.03, 0.98, 0.99]
+        },
         film: {
             id: "vintage-80s", name: "1980s Minilab Pop", iso: 400, mode: "color",
-            toe: 0.024, shoulder: 0.40, contrast: 0.48, temp: 0.09, tint: 0.10,
-            saturation: 1.22, shadowTemp: 0.06, highTemp: 0.05,
-            halation: 0.68, halThreshold: 0.78, bloom: 0.18, grain: 0.038, grainSize: 1.22,
+            toe: 0.012, shoulder: 0.38, contrast: 0.44, temp: 0.06, tint: 0.08,
+            saturation: 1.18, shadowTemp: 0.04, highTemp: 0.04,
+            halation: 0.0, halThreshold: 0.92, bloom: 0.03, grain: 0.032, grainSize: 1.18,
             matrix: [1.07, -0.06, -0.01, -0.03, 0.98, 0.05, 0.01, 0.02, 0.97]
         },
-        exceptions: { leakProb: 0.50, chemProb: 0.30, agedProb: 0.28, scratchProb: 0.26 }
+        exceptions: { leakProb: 0.26, chemProb: 0.04, agedProb: 0.08, scratchProb: 0.10 }
     },
     {
         id: "1990s",
         name: "Anni '90 (Huji)",
-        subtitle: "Usa & Getta '98 • Ombre Verde-Blu",
+        subtitle: "Huji '98 • Ombre verde-blu, colori vivi",
         tag: "'98 HUJI",
         yearStamp: "'98",
         color: "#1fa35b",
         textColor: "#ffffff",
         paperId: "fuji-crystal-glossy",
-        grade: 3.3,
-        burn: 0.48,
+        grade: 2.8,
+        burn: 0.26,
         stampColor: "#ff5e0e",
-        optics: { ca: 0.65, barrel: 0.048, softness: 0.34, fadeBlack: 0.020, orthoBW: false },
+        optics: { ca: 0.45, barrel: 0.038, softness: 0.08, fadeBlack: 0.004, orthoBW: false },
+        colorGrade: {
+            shadowLift: [-0.014, 0.024, 0.028],
+            midGain: [1.03, 1.00, 0.95],
+            highGain: [1.04, 0.99, 0.90]
+        },
         film: {
             id: "vintage-90s", name: "1998 Huji Usa & Getta", iso: 800, mode: "color",
-            toe: 0.018, shoulder: 0.34, contrast: 0.60, temp: -0.04, tint: -0.09,
-            saturation: 1.30, shadowTemp: -0.18, highTemp: 0.13,
-            halation: 1.15, halThreshold: 0.72, bloom: 0.24, grain: 0.044, grainSize: 1.30,
-            matrix: [1.05, -0.03, -0.02, -0.04, 1.09, -0.05, -0.03, 0.05, 0.98]
+            toe: 0.008, shoulder: 0.34, contrast: 0.48, temp: 0.02, tint: -0.05,
+            saturation: 1.20, shadowTemp: -0.10, highTemp: 0.06,
+            halation: 0.0, halThreshold: 0.92, bloom: 0.03, grain: 0.034, grainSize: 1.20,
+            matrix: [1.08, -0.05, -0.03, -0.03, 1.06, -0.03, -0.04, 0.06, 0.98]
         },
-        exceptions: { leakProb: 0.68, chemProb: 0.34, agedProb: 0.24, scratchProb: 0.26 }
+        exceptions: { leakProb: 0.38, chemProb: 0.03, agedProb: 0.04, scratchProb: 0.07 }
     },
     {
         id: "y2k",
         name: "Y2K (2000s)",
-        subtitle: "Ibrido CCD/C-41 • Luci Ciano",
+        subtitle: "Compatta '02 • Luci ciano & flash",
         tag: "'02 Y2K",
         yearStamp: "'02",
         color: "#3ea3d8",
         textColor: "#0d141a",
         paperId: "fuji-crystal-glossy",
-        grade: 3.1,
-        burn: 0.28,
+        grade: 2.9,
+        burn: 0.16,
         stampColor: "#ff3d1f",
-        optics: { ca: 0.50, barrel: 0.034, softness: 0.20, fadeBlack: 0.012, orthoBW: false },
+        optics: { ca: 0.32, barrel: 0.026, softness: 0.03, fadeBlack: 0.0, orthoBW: false },
+        colorGrade: {
+            shadowLift: [-0.006, 0.004, 0.016],
+            midGain: [1.00, 1.01, 1.02],
+            highGain: [0.96, 1.00, 1.06]
+        },
         film: {
             id: "vintage-y2k", name: "Y2K Early Compact", iso: 400, mode: "color",
-            toe: 0.014, shoulder: 0.32, contrast: 0.54, temp: -0.13, tint: 0.06,
-            saturation: 1.18, shadowTemp: -0.08, highTemp: -0.10,
-            halation: 0.74, halThreshold: 0.74, bloom: 0.34, grain: 0.030, grainSize: 1.08,
+            toe: 0.008, shoulder: 0.32, contrast: 0.50, temp: -0.10, tint: 0.03,
+            saturation: 1.15, shadowTemp: -0.05, highTemp: -0.08,
+            halation: 0.0, halThreshold: 0.92, bloom: 0.04, grain: 0.024, grainSize: 1.05,
             matrix: [1.00, -0.02, 0.02, -0.01, 1.02, -0.01, 0.02, 0.02, 1.05]
         },
-        exceptions: { leakProb: 0.42, chemProb: 0.24, agedProb: 0.16, scratchProb: 0.20 }
+        exceptions: { leakProb: 0.22, chemProb: 0.02, agedProb: 0.03, scratchProb: 0.06 }
     }
 ];
 
@@ -603,7 +642,7 @@ async function recordVintageLatentFrame(sourceCanvas, usedFlash = false, hardwar
 
 function buildInitialVintageEdit(decade, applyRandom) {
     const ex = decade.exceptions;
-    const rollVal = (prob) => (applyRandom && Math.random() < prob) ? +(0.18 + Math.random() * 0.54).toFixed(2) : 0;
+    const rollVal = (prob) => (applyRandom && Math.random() < prob) ? +(0.22 + Math.random() * 0.45).toFixed(2) : 0;
 
     return {
         enabled: true,
@@ -614,9 +653,9 @@ function buildInitialVintageEdit(decade, applyRandom) {
         chemStain: rollVal(ex.chemProb),
         agedPaper: rollVal(ex.agedProb),
         scratches: rollVal(ex.scratchProb),
-        ca: decade.optics ? decade.optics.ca : 0.45,
-        vignette: decade.burn || 0.35,
-        ev: applyRandom ? +((Math.random() - 0.48) * 0.36).toFixed(2) : 0
+        ca: decade.optics ? decade.optics.ca : 0.35,
+        vignette: decade.burn || 0.24,
+        ev: applyRandom ? +((Math.random() - 0.48) * 0.24).toFixed(2) : 0
     };
 }
 
@@ -657,19 +696,20 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             agedPaper: { active: edit.agedPaper > 0, intensity: edit.agedPaper },
             scratches: { active: edit.scratches > 0, intensity: edit.scratches }
         };
-        const flashBoost = (frame.flash && !frame.hardwareFlashFired) ? 0.34 : 0.0;
-        const flashFalloff = (frame.flash && !frame.hardwareFlashFired) ? 0.85 : (frame.flash ? 0.35 : 0.0);
+        const flashBoost = (frame.flash && !frame.hardwareFlashFired) ? 0.25 : 0.0;
+        const flashFalloff = (frame.flash && !frame.hardwareFlashFired) ? 0.80 : (frame.flash ? 0.30 : 0.0);
 
         const frameStub = {
             exposureEV: (edit.ev || 0) + flashBoost,
-            aperture: 2.8,
+            aperture: 4.0,
             defectSeed: edit.seed,
             defects,
+            grade: decade.colorGrade || null,
             optics: {
                 ca: edit.ca,
-                barrel: decade.optics ? decade.optics.barrel : 0.035,
-                softness: decade.optics ? decade.optics.softness : 0.28,
-                fadeBlack: decade.optics ? decade.optics.fadeBlack : 0.02,
+                barrel: decade.optics ? decade.optics.barrel : 0.025,
+                softness: decade.optics ? decade.optics.softness : 0.06,
+                fadeBlack: decade.optics ? decade.optics.fadeBlack : 0.005,
                 orthoBW: decade.optics ? !!decade.optics.orthoBW : false,
                 flashFalloff
             }
@@ -683,7 +723,7 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             yel: 0,
             burn: edit.vignette,
             grainScale: 1.0,
-            paperTexScale: 0.5,
+            paperTexScale: 0.35,
             enlargerApIdx: 3,
             tonerType: 0,
             tonerAmount: 0,
@@ -931,8 +971,8 @@ function syncVintageEditorUI(frame) {
         b.addEventListener("click", () => {
             edit.decadeId = item.id;
             edit.enabled = true;
-            edit.ca = item.optics ? item.optics.ca : 0.45;
-            edit.vignette = item.burn || 0.35;
+            edit.ca = item.optics ? item.optics.ca : 0.35;
+            edit.vignette = item.burn || 0.24;
             syncVintageEditorUI(frame);
             refreshVintageDetailPreview(frame);
             scheduleSaveVintageEditedFrame(frame);
