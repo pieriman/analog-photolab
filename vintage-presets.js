@@ -1,5 +1,5 @@
 /* =========================================================
-   VINTAGE-PRESETS.JS — USA & GETTA v1.0.5 (HUJI '98 ENGINE)
+   VINTAGE-PRESETS.JS — USA & GETTA v1.0.6 (HUJI '98 ENGINE)
    ========================================================= */
 
 const VINTAGE_DECADES = [
@@ -300,13 +300,13 @@ function playFlashCapacitorWhine() {
         const g = ctx.createGain();
         osc.type = "sine";
         osc.frequency.setValueAtTime(680, now);
-        osc.frequency.exponentialRampToValueAtTime(3400, now + 0.95);
+        osc.frequency.exponentialRampToValueAtTime(3400, now + 0.75);
         g.gain.setValueAtTime(0.001, now);
-        g.gain.linearRampToValueAtTime(0.065, now + 0.15);
-        g.gain.setValueAtTime(0.05, now + 0.72);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.98);
+        g.gain.linearRampToValueAtTime(0.065, now + 0.12);
+        g.gain.setValueAtTime(0.05, now + 0.55);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.78);
         osc.connect(g); g.connect(ctx.destination);
-        osc.start(now); osc.stop(now + 1.0);
+        osc.start(now); osc.stop(now + 0.80);
     } catch (e) { }
 }
 
@@ -352,6 +352,7 @@ function deleteVintageRollFromDB(id) {
 }
 
 async function enterDisposableSection() {
+    await vintageSaveQueue.catch(() => { });
     const vRolls = await getAllVintageRollsFromDB();
     const activeShooting = vRolls.find(r => r.status === "shooting");
     if (activeShooting) {
@@ -522,7 +523,7 @@ function triggerVintageFlashCharge() {
                 vintageFlashState = "ready";
                 updateVintageFlashButtonUI();
             }
-        }, 950);
+        }, 780);
     } else {
         vintageFlashState = "off";
         updateVintageFlashButtonUI();
@@ -601,7 +602,7 @@ async function startVintageCameraStream() {
     stopCamera();
     const video = document.getElementById("vintageVideo");
     const fallback = document.getElementById("vintageFallbackMsg");
-    const videoConstraints = { facingMode: facingMode, width: { ideal: 4096 }, height: { ideal: 3072 } };
+    const videoConstraints = { facingMode: facingMode, width: { ideal: 2560 }, height: { ideal: 1920 } };
 
     try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
@@ -652,13 +653,14 @@ function enqueueVintageLatentFrame(sourceCanvas, usedFlash = false, hardwareFlas
                 vintageFlashState = "ready";
                 updateVintageFlashButtonUI();
             }
-        }, 700);
+        }, 650);
     }
     updateVintageCameraHUD();
 
     const job = vintageSaveQueue.then(async () => {
+        await new Promise(r => setTimeout(r, 40));
         try {
-            const rawBlob = await canvasToBlob(sourceCanvas, "image/jpeg", 0.94);
+            const rawBlob = await canvasToBlob(sourceCanvas, "image/jpeg", 0.90);
             sourceCanvas.width = 0; sourceCanvas.height = 0;
 
             rollRef.frames.push({
@@ -815,29 +817,32 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
 async function executeVintageDevelopSequence() {
     if (vintageDeveloping || !currentVintageRoll) return;
     vintageDeveloping = true;
-    await vintageSaveQueue.catch(() => { });
-    if (currentVintageRoll.frames.length === 0) {
-        vintageDeveloping = false;
-        return;
-    }
-
     getAudioCtx();
     document.getElementById("vintageFinishedOverlay").classList.remove("open");
     const overlay = document.getElementById("vintageDevAnimOverlay");
     const fill = document.getElementById("vintageDevProgressFill");
     const sub = document.getElementById("vintageDevAnimSub");
     const counterEl = document.getElementById("vintageCounter");
-    fill.style.width = "0%";
+    fill.style.width = "5%";
+    sub.textContent = "Riavvolgimento e preparazione sviluppo...";
     overlay.classList.add("open");
 
-    const minDurationMs = 4000;
-    playFilmRewindSound(4.0);
+    await vintageSaveQueue.catch(() => { });
+    if (currentVintageRoll.frames.length === 0) {
+        overlay.classList.remove("open");
+        vintageDeveloping = false;
+        return;
+    }
+
+    const minDurationMs = 1200;
+    playFilmRewindSound(1.2);
     const startTime = performance.now();
 
     const total = currentVintageRoll.frames.length;
     const totStr = String(currentVintageRoll.capacity).padStart(2, "0");
 
     for (let i = 0; i < total; i++) {
+        await vWaitPaint();
         const frame = currentVintageRoll.frames[i];
         const decade = getActiveVintageDecade(frame.decadeId || currentVintageRoll.decadeId);
         frame.vintageEdit = buildInitialVintageEdit(decade, vintageRandomEnabled);
@@ -845,7 +850,7 @@ async function executeVintageDevelopSequence() {
         const srcImg = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
         const outCanvas = await renderVintageShotWithEdit(srcImg, frame, null);
 
-        frame.developedBlob = await canvasToBlob(outCanvas, "image/jpeg", 0.95);
+        frame.developedBlob = await canvasToBlob(outCanvas, "image/jpeg", 0.92);
 
         const thumbCanvas = document.createElement("canvas");
         const tW = 360;
@@ -859,7 +864,7 @@ async function executeVintageDevelopSequence() {
         thumbCanvas.width = 0; thumbCanvas.height = 0;
 
         const elapsed = performance.now() - startTime;
-        const p = Math.min(0.95, Math.max((i + 1) / total * 0.85, elapsed / minDurationMs));
+        const p = Math.min(0.96, Math.max((i + 1) / total * 0.85, elapsed / minDurationMs));
         fill.style.width = `${Math.round(p * 100)}%`;
         sub.textContent = `Sviluppo posa ${i + 1} di ${total}...`;
         counterEl.textContent = `${String(Math.max(0, total - i - 1)).padStart(2, "0")} / ${totStr}`;
@@ -885,8 +890,8 @@ async function executeVintageDevelopSequence() {
     counterEl.textContent = `00 / ${totStr}`;
     currentVintageRoll.status = "developed";
     await saveVintageRollToDB(currentVintageRoll);
-    await refreshVintageArchiveList();
-    await refreshStorageSummary();
+    refreshVintageArchiveList().catch(() => { });
+    refreshStorageSummary().catch(() => { });
     if (typeof refreshHomeStatus === "function") refreshHomeStatus();
 
     overlay.classList.remove("open");
@@ -1165,7 +1170,7 @@ function initVintageEventListeners() {
             frames: []
         };
         await saveVintageRollToDB(currentVintageRoll);
-        if (typeof refreshHomeStatus === "function") refreshHomeStatus();
+        refreshHomeStatus().catch(() => { });
         enterVintageCameraMode();
     });
 
@@ -1174,26 +1179,28 @@ function initVintageEventListeners() {
         await vintageSaveQueue.catch(() => { });
         stopCamera();
         refreshVintageArchiveList();
+        refreshStorageSummary();
         if (typeof refreshHomeStatus === "function") refreshHomeStatus();
         switchView("view-home");
     });
 
     vOn("vintageRewindBtn", "click", async () => {
         if (vintageDeveloping || !currentVintageRoll) return;
-        await vintageSaveQueue.catch(() => { });
-        if (currentVintageRoll.frames.length === 0) {
+        const count = getEffectiveVintageCount();
+        if (count === 0) {
             if (confirm("Nessuna foto scattata. Estrarre il rullino Usa & Getta vuoto?")) {
+                await vintageSaveQueue.catch(() => { });
                 await deleteVintageRollFromDB(currentVintageRoll.id);
                 currentVintageRoll = null;
                 stopCamera();
-                await refreshVintageArchiveList();
+                refreshVintageArchiveList().catch(() => { });
                 if (typeof refreshHomeStatus === "function") refreshHomeStatus();
                 switchView("view-disposable-load");
             }
             return;
         }
-        if (currentVintageRoll.frames.length >= currentVintageRoll.capacity ||
-            confirm(`Riavvolgere e sviluppare ora il rullino con ${currentVintageRoll.frames.length} foto?`)) {
+        if (count >= currentVintageRoll.capacity ||
+            confirm(`Riavvolgere e sviluppare ora il rullino con ${count} foto?`)) {
             executeVintageDevelopSequence();
         }
     });
@@ -1306,28 +1313,34 @@ function initVintageEventListeners() {
 
         const useFlash = vintageFlashState === "ready";
         vintageCapturing = true;
-
-        playShutterSound(1 / 125, useFlash);
         const curtain = document.getElementById("vintageCurtain");
-        if (curtain) {
-            curtain.classList.add("blink");
-            setTimeout(() => curtain.classList.remove("blink"), 110);
-        }
 
         const prevFlashActive = flashActive;
         flashActive = useFlash;
         try {
-            const useHardwareWait = useFlash && (
-                (hardwareFlashSupport && hardwareFlashSupport.hasTorch) || facingMode === "user"
-            );
-            if (!useHardwareWait) {
+            if (useFlash && facingMode === "user") {
+                const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, true);
+                playShutterSound(1 / 125, true);
+                if (curtain) {
+                    curtain.classList.add("blink");
+                    setTimeout(() => curtain.classList.remove("blink"), 110);
+                }
+                await vWaitPaint();
+                enqueueVintageLatentFrame(capCanvas, true, hardwareFlashFired);
+            } else {
+                playShutterSound(1 / 125, useFlash);
+                if (curtain) {
+                    curtain.style.backgroundColor = useFlash ? "#fff8ea" : "#000000";
+                    curtain.classList.add("blink");
+                    setTimeout(() => {
+                        curtain.classList.remove("blink");
+                        curtain.style.backgroundColor = "#000000";
+                    }, 110);
+                }
                 const mirror = facingMode === "user";
-                const capCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, 3 / 4, mirror);
+                const capCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, 3 / 4, mirror, 2400);
                 await vWaitPaint();
                 enqueueVintageLatentFrame(capCanvas, useFlash, false);
-            } else {
-                const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, useFlash);
-                enqueueVintageLatentFrame(capCanvas, useFlash, hardwareFlashFired);
             }
         } finally {
             flashActive = prevFlashActive;
