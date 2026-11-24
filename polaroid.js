@@ -1,9 +1,5 @@
 /* =========================================================
-   POLAROID.JS — v1.0.3
-   Emulazione Polaroid a Scatto Singolo alla MASSIMA RISOLUZIONE NATIVA
-   - Proporzioni fisiche esatte (600/i-Type/SX-70, Round, Go) senza downscale
-   - Calibrazione Lift/Gamma/Gain reale per tutte le 6 emulsioni (zero aloni)
-   - Sviluppo progressivo chimico dal vivo in fessura
+   POLAROID.JS — v1.0.4
    ========================================================= */
 
 const POLAROID_STOCKS = [
@@ -20,18 +16,18 @@ const POLAROID_STOCKS = [
         surface: "Lucida (Glossy)",
         devSeconds: 10,
         paperId: "kodak-endura",
-        optics: { ca: 0.16, barrel: 0.020, softness: 0.08, fadeBlack: 0.018, edgeBleed: 0.14 },
+        optics: { ca: 0.08, barrel: 0.012, softness: 0.02, fadeBlack: 0.014, edgeBleed: 0.14 },
         colorGrade: {
-            shadowLift: [-0.010, 0.018, 0.020],
-            midGain: [1.01, 1.00, 0.96],
-            highGain: [1.04, 1.00, 0.91]
+            shadowLift: [-0.008, 0.014, 0.016],
+            midGain: [1.01, 1.00, 0.97],
+            highGain: [1.02, 1.00, 0.93]
         },
         film: {
             id: "pol-600", name: "Polaroid Color 600", iso: 640, mode: "color",
-            toe: 0.022, shoulder: 0.48, contrast: 0.30, temp: 0.06, tint: -0.04,
-            saturation: 0.90, shadowTemp: -0.10, highTemp: 0.08,
-            halation: 0.04, halThreshold: 0.88, bloom: 0.05, grain: 0.022, grainSize: 1.28,
-            matrix: [1.02, 0.01, -0.03, -0.03, 1.04, -0.01, 0.02, 0.04, 0.94]
+            toe: 0.018, shoulder: 0.48, contrast: 0.30, temp: 0.05, tint: -0.02,
+            saturation: 0.92, shadowTemp: -0.06, highTemp: 0.06,
+            halation: 0.02, halThreshold: 0.90, bloom: 0.03, grain: 0.020, grainSize: 1.24,
+            matrix: [1.02, 0.01, -0.03, -0.02, 1.03, -0.01, 0.02, 0.03, 0.95]
         }
     },
     {
@@ -47,18 +43,18 @@ const POLAROID_STOCKS = [
         surface: "Lucida (Glossy)",
         devSeconds: 9,
         paperId: "fuji-crystal-glossy",
-        optics: { ca: 0.10, barrel: 0.014, softness: 0.04, fadeBlack: 0.010, edgeBleed: 0.08 },
+        optics: { ca: 0.05, barrel: 0.010, softness: 0.0, fadeBlack: 0.008, edgeBleed: 0.08 },
         colorGrade: {
-            shadowLift: [-0.004, 0.008, 0.010],
-            midGain: [1.02, 1.00, 0.98],
-            highGain: [1.03, 1.01, 0.95]
+            shadowLift: [-0.004, 0.006, 0.008],
+            midGain: [1.01, 1.00, 0.99],
+            highGain: [1.02, 1.00, 0.96]
         },
         film: {
             id: "pol-itype", name: "Polaroid Color i-Type", iso: 640, mode: "color",
-            toe: 0.014, shoulder: 0.40, contrast: 0.38, temp: 0.03, tint: -0.01,
-            saturation: 1.06, shadowTemp: -0.05, highTemp: 0.04,
-            halation: 0.02, halThreshold: 0.90, bloom: 0.03, grain: 0.018, grainSize: 1.15,
-            matrix: [1.04, -0.01, -0.03, -0.01, 1.02, -0.01, 0.00, 0.02, 0.98]
+            toe: 0.012, shoulder: 0.42, contrast: 0.36, temp: 0.02, tint: 0.0,
+            saturation: 1.06, shadowTemp: -0.04, highTemp: 0.03,
+            halation: 0.0, halThreshold: 0.92, bloom: 0.02, grain: 0.016, grainSize: 1.12,
+            matrix: [1.03, -0.01, -0.02, -0.01, 1.02, -0.01, 0.00, 0.02, 0.98]
         }
     },
     {
@@ -73,19 +69,19 @@ const POLAROID_STOCKS = [
         mmLabel: "88.5×107.5mm",
         surface: "Lucida Spessa",
         devSeconds: 12,
-        paperId: "ilford-fb-warm",
-        optics: { ca: 0.20, barrel: 0.024, softness: 0.12, fadeBlack: 0.018, edgeBleed: 0.16 },
+        paperId: "kodak-endura",
+        optics: { ca: 0.10, barrel: 0.014, softness: 0.04, fadeBlack: 0.016, edgeBleed: 0.16 },
         colorGrade: {
-            shadowLift: [0.012, 0.016, 0.006],
-            midGain: [1.05, 0.99, 0.90],
-            highGain: [1.06, 1.01, 0.87]
+            shadowLift: [0.010, 0.014, 0.006],
+            midGain: [1.04, 0.99, 0.91],
+            highGain: [1.04, 1.00, 0.89]
         },
         film: {
             id: "pol-sx70", name: "Polaroid SX-70", iso: 160, mode: "color",
-            toe: 0.020, shoulder: 0.54, contrast: 0.32, temp: 0.14, tint: 0.02,
-            saturation: 0.94, shadowTemp: 0.03, highTemp: 0.12,
-            halation: 0.06, halThreshold: 0.86, bloom: 0.07, grain: 0.020, grainSize: 1.22,
-            matrix: [1.07, 0.00, -0.07, 0.02, 1.00, -0.02, -0.06, 0.05, 1.01]
+            toe: 0.018, shoulder: 0.54, contrast: 0.32, temp: 0.11, tint: 0.02,
+            saturation: 0.94, shadowTemp: 0.02, highTemp: 0.09,
+            halation: 0.03, halThreshold: 0.88, bloom: 0.04, grain: 0.018, grainSize: 1.20,
+            matrix: [1.06, 0.00, -0.06, 0.02, 1.00, -0.02, -0.05, 0.04, 1.01]
         }
     },
     {
@@ -101,17 +97,17 @@ const POLAROID_STOCKS = [
         surface: "Satinata / Lucida",
         devSeconds: 8,
         paperId: "ilford-fb-warm",
-        optics: { ca: 0.0, barrel: 0.018, softness: 0.06, fadeBlack: 0.024, edgeBleed: 0.12 },
+        optics: { ca: 0.0, barrel: 0.012, softness: 0.02, fadeBlack: 0.020, edgeBleed: 0.12 },
         colorGrade: {
-            shadowLift: [0.018, 0.016, 0.012],
+            shadowLift: [0.014, 0.012, 0.010],
             midGain: [1.02, 1.00, 0.97],
-            highGain: [1.03, 1.00, 0.94]
+            highGain: [1.02, 1.00, 0.95]
         },
         film: {
             id: "pol-bw", name: "Polaroid B&W 600", iso: 640, mode: "bw",
-            toe: 0.024, shoulder: 0.42, contrast: 0.44, temp: 0.0, tint: 0.0,
-            saturation: 0.0, shadowTemp: 0.04, highTemp: 0.05,
-            halation: 0.02, halThreshold: 0.88, bloom: 0.04, grain: 0.034, grainSize: 1.30,
+            toe: 0.020, shoulder: 0.42, contrast: 0.44, temp: 0.0, tint: 0.0,
+            saturation: 0.0, shadowTemp: 0.03, highTemp: 0.04,
+            halation: 0.02, halThreshold: 0.90, bloom: 0.03, grain: 0.032, grainSize: 1.28,
             matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1]
         }
     },
@@ -128,18 +124,18 @@ const POLAROID_STOCKS = [
         surface: "Lucida (Glossy)",
         devSeconds: 10,
         paperId: "kodak-endura",
-        optics: { ca: 0.16, barrel: 0.020, softness: 0.08, fadeBlack: 0.018, edgeBleed: 0.14 },
+        optics: { ca: 0.08, barrel: 0.012, softness: 0.02, fadeBlack: 0.014, edgeBleed: 0.14 },
         colorGrade: {
-            shadowLift: [-0.010, 0.018, 0.020],
-            midGain: [1.01, 1.00, 0.96],
-            highGain: [1.04, 1.00, 0.91]
+            shadowLift: [-0.008, 0.014, 0.016],
+            midGain: [1.01, 1.00, 0.97],
+            highGain: [1.02, 1.00, 0.93]
         },
         film: {
             id: "pol-round", name: "Polaroid Round 600", iso: 640, mode: "color",
-            toe: 0.022, shoulder: 0.48, contrast: 0.30, temp: 0.06, tint: -0.04,
-            saturation: 0.90, shadowTemp: -0.10, highTemp: 0.08,
-            halation: 0.04, halThreshold: 0.88, bloom: 0.05, grain: 0.022, grainSize: 1.28,
-            matrix: [1.02, 0.01, -0.03, -0.03, 1.04, -0.01, 0.02, 0.04, 0.94]
+            toe: 0.018, shoulder: 0.48, contrast: 0.30, temp: 0.05, tint: -0.02,
+            saturation: 0.92, shadowTemp: -0.06, highTemp: 0.06,
+            halation: 0.02, halThreshold: 0.90, bloom: 0.03, grain: 0.020, grainSize: 1.24,
+            matrix: [1.02, 0.01, -0.03, -0.02, 1.03, -0.01, 0.02, 0.03, 0.95]
         }
     },
     {
@@ -155,18 +151,18 @@ const POLAROID_STOCKS = [
         surface: "Lucida (Glossy)",
         devSeconds: 9,
         paperId: "fuji-crystal-glossy",
-        optics: { ca: 0.18, barrel: 0.026, softness: 0.06, fadeBlack: 0.012, edgeBleed: 0.18 },
+        optics: { ca: 0.10, barrel: 0.014, softness: 0.02, fadeBlack: 0.010, edgeBleed: 0.18 },
         colorGrade: {
-            shadowLift: [-0.006, 0.012, 0.016],
-            midGain: [1.03, 0.99, 0.98],
-            highGain: [1.04, 1.00, 0.93]
+            shadowLift: [-0.005, 0.010, 0.014],
+            midGain: [1.02, 0.99, 0.98],
+            highGain: [1.03, 1.00, 0.94]
         },
         film: {
             id: "pol-go", name: "Polaroid Go", iso: 640, mode: "color",
-            toe: 0.016, shoulder: 0.40, contrast: 0.38, temp: 0.04, tint: -0.02,
-            saturation: 1.06, shadowTemp: -0.06, highTemp: 0.05,
-            halation: 0.03, halThreshold: 0.88, bloom: 0.04, grain: 0.024, grainSize: 1.22,
-            matrix: [1.04, -0.01, -0.03, -0.01, 1.03, -0.02, 0.00, 0.02, 0.98]
+            toe: 0.014, shoulder: 0.40, contrast: 0.38, temp: 0.03, tint: -0.01,
+            saturation: 1.06, shadowTemp: -0.05, highTemp: 0.04,
+            halation: 0.02, halThreshold: 0.90, bloom: 0.02, grain: 0.022, grainSize: 1.20,
+            matrix: [1.03, -0.01, -0.02, -0.01, 1.03, -0.02, 0.00, 0.02, 0.98]
         }
     }
 ];
@@ -615,18 +611,11 @@ async function captureAndDevelopPolaroid(sourceCanvas, usedFlash = false, hardwa
     const stock = getPolaroidStock();
     const frameStyle = getPolaroidFrameStyle();
 
-    playPolaroidEjectSound();
-    const curtain = document.getElementById("polaroidCurtain");
-    if (curtain) {
-        curtain.classList.add("blink");
-        setTimeout(() => curtain.classList.remove("blink"), 110);
-    }
-
     const croppedCanvas = drawCroppedToCanvas(sourceCanvas, sourceCanvas.width, sourceCanvas.height, stock.imgRatio, false);
 
-    const flashBoost = (usedFlash && !hardwareFlashFired) ? 0.25 : 0.0;
+    const flashBoost = (usedFlash && !hardwareFlashFired) ? 0.22 : 0.0;
     const frameStub = {
-        exposureEV: polaroidLdEV + flashBoost,
+        exposureEV: polaroidLdEV + flashBoost - 0.10,
         aperture: 4.0,
         defectSeed: Math.random(),
         defects: createDefaultFrameDefects(Math.random()),
@@ -636,7 +625,7 @@ async function captureAndDevelopPolaroid(sourceCanvas, usedFlash = false, hardwa
             barrel: stock.optics.barrel,
             softness: stock.optics.softness,
             fadeBlack: stock.optics.fadeBlack,
-            flashFalloff: (usedFlash && !hardwareFlashFired) ? 0.72 : (usedFlash ? 0.28 : 0.0)
+            flashFalloff: (usedFlash && !hardwareFlashFired) ? 0.70 : (usedFlash ? 0.26 : 0.0)
         }
     };
     const printOptsStub = {
@@ -646,9 +635,9 @@ async function captureAndDevelopPolaroid(sourceCanvas, usedFlash = false, hardwa
         cyan: 0,
         mag: 0,
         yel: 0,
-        burn: 0.16,
+        burn: 0.14,
         grainScale: 1.0,
-        paperTexScale: 0.35,
+        paperTexScale: 0.25,
         enlargerApIdx: 3,
         tonerType: 0,
         tonerAmount: 0,
@@ -910,11 +899,18 @@ function initPolaroidEventListeners() {
             return;
         }
         polaroidCapturing = true;
+        playPolaroidEjectSound();
+        const curtain = document.getElementById("polaroidCurtain");
+        if (curtain) {
+            curtain.classList.add("blink");
+            setTimeout(() => curtain.classList.remove("blink"), 110);
+        }
+
         const prevFlash = flashActive;
         flashActive = polaroidFlashEnabled;
         try {
             const stock = getPolaroidStock();
-            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameFullRes(video, stock.imgRatio, polaroidFlashEnabled);
+            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, stock.imgRatio, polaroidFlashEnabled);
             await captureAndDevelopPolaroid(capCanvas, polaroidFlashEnabled, hardwareFlashFired);
             capCanvas.width = 0; capCanvas.height = 0;
         } finally {
@@ -930,6 +926,7 @@ function initPolaroidEventListeners() {
         reader.onload = (ev) => {
             const img = new Image();
             img.onload = async () => {
+                playPolaroidEjectSound();
                 const c = document.createElement("canvas");
                 c.width = img.width;
                 c.height = img.height;

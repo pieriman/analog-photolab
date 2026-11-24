@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
   <title>Analog PhotoLab v1.0 — Pellicole, Polaroid &amp; Usa &amp; Getta</title>
-  <link rel="stylesheet" href="style.css?v=1.0.3" />
+  <link rel="stylesheet" href="style.css?v=1.0.4" />
 </head>
 
 <body>
@@ -1436,7 +1436,9 @@
       if (u_barrelDistort > 0.0005) {
         vec2 d = uv - 0.5;
         float r2 = dot(d, d);
-        uv = 0.5 + d * (1.0 + u_barrelDistort * r2);
+        // Compensa verso l'interno per non creare mai bordi neri storti
+        float zoomComp = 1.0 - u_barrelDistort * 0.55;
+        uv = 0.5 + d * zoomComp * (1.0 + u_barrelDistort * r2);
       }
       return uv;
     }
@@ -1475,7 +1477,7 @@
     vec3 filmicCurve(vec3 x, float toeLift, float shoulderStrength, float contrast) {
       x = max(x, vec3(0.0));
       vec3 rolled = x / (1.0 + x * shoulderStrength);
-      rolled *= (1.0 + shoulderStrength);
+      rolled *= (1.0 + shoulderStrength * 0.88);
       vec3 sCurve = smoothstep(0.0, 1.0, mix(rolled, rolled * rolled * (3.0 - 2.0 * rolled), contrast));
       return mix(vec3(toeLift), vec3(1.0), sCurve);
     }
@@ -1484,12 +1486,12 @@
       if (u_chromaticAberration <= 0.001) {
         return texture2D(u_image, uv).rgb;
       }
-      // Aberrazione cromatica strettamente periferica: centro nitido
-      float edgeCA = smoothstep(0.14, 1.0, distSqSrc);
-      vec2 dir = (uv - 0.5) * edgeCA * (u_chromaticAberration * 0.016);
+      // Aberrazione cromatica delicata e reale: max 1-3 px agli angoli estremi, centro nitidissimo
+      float edgeCA = smoothstep(0.32, 1.0, distSqSrc);
+      vec2 dir = (uv - 0.5) * edgeCA * (u_chromaticAberration * 0.0032);
       float r = texture2D(u_image, clamp(uv + dir, 0.001, 0.999)).r;
       float g = texture2D(u_image, uv).g;
-      float b = texture2D(u_image, clamp(uv - dir * 1.15, 0.001, 0.999)).b;
+      float b = texture2D(u_image, clamp(uv - dir * 1.1, 0.001, 0.999)).b;
       return vec3(r, g, b);
     }
 
@@ -1503,7 +1505,7 @@
         float angle = float(i) * 2.3999632;
         float normDist = sqrt(float(i + 1) / 16.0);
 
-        vec2 offH = vec2(cos(angle), sin(angle)) * (normDist * 18.0) * texelSize;
+        vec2 offH = vec2(cos(angle), sin(angle)) * (normDist * 16.0) * texelSize;
         vec3 sH = texture2D(u_image, clamp(uv + offH, 0.001, 0.999)).rgb;
         float lumH = dot(sH, vec3(0.299, 0.587, 0.114));
         float bright = max(0.0, lumH - threshold) / max(0.05, 1.0 - threshold);
@@ -1511,11 +1513,10 @@
         halAccum += sH * (bright * bright) * wH;
         wHalTotal += wH;
 
-        vec2 offB = vec2(cos(angle + 0.5), sin(angle + 0.5)) * (normDist * 22.0) * texelSize;
+        vec2 offB = vec2(cos(angle + 0.5), sin(angle + 0.5)) * (normDist * 18.0) * texelSize;
         vec3 sB = texture2D(u_image, clamp(uv + offB, 0.001, 0.999)).rgb;
         float lumB = dot(sB, vec3(0.299, 0.587, 0.114));
-        // Bloom solo su alte luci reali (> 0.80), niente alone grigio sui mezzitoni
-        float bBright = max(0.0, lumB - 0.80) / 0.20;
+        float bBright = max(0.0, lumB - 0.88) / 0.12;
         float wB = 1.0 - normDist * 0.55;
         bloomAccum += sB * (bBright * bBright) * wB;
         wBloomTotal += wB;
@@ -1545,11 +1546,10 @@
       vec2 srcTexel = 1.0 / u_srcResolution;
       vec3 baseRgb = sampleWithCA(srcUV, distSqSrc);
 
-      // Morbidezza lente solo verso gli angoli esterni (centro nitido)
       if (u_lensSoftness > 0.001) {
-        float edgeBlur = smoothstep(0.20, 1.0, distSqSrc);
-        float blurRad = u_lensSoftness * edgeBlur * 4.2;
-        if (blurRad > 0.05) {
+        float edgeBlur = smoothstep(0.38, 1.0, distSqSrc);
+        float blurRad = u_lensSoftness * edgeBlur * 2.2;
+        if (blurRad > 0.08) {
           vec3 bSum = baseRgb;
           bSum += sampleWithCA(clamp(srcUV + vec2(blurRad, 0.0) * srcTexel, 0.001, 0.999), distSqSrc);
           bSum += sampleWithCA(clamp(srcUV - vec2(blurRad, 0.0) * srcTexel, 0.001, 0.999), distSqSrc);
@@ -1573,14 +1573,13 @@
       col *= pow(2.0, u_exposure + stripEV);
       col *= u_wbGain;
 
-      // Flash diretto stile fotocamera compatta / usa e getta
       if (u_flashFalloff > 0.001) {
-        float flashGain = mix(1.42, 0.44, smoothstep(0.04, 0.92, distSqSrc));
+        float flashGain = mix(1.36, 0.46, smoothstep(0.05, 0.92, distSqSrc));
         col *= mix(1.0, flashGain, u_flashFalloff);
       }
 
-      float lensVig = 1.0 - clamp(distSqSrc * u_lensVignette, 0.0, 0.68);
-      float paperBurn = 1.0 - clamp(distSqOut * (u_edgeBurn * 0.50), 0.0, 0.62);
+      float lensVig = 1.0 - clamp(distSqSrc * u_lensVignette, 0.0, 0.58);
+      float paperBurn = 1.0 - clamp(distSqOut * (u_edgeBurn * 0.45), 0.0, 0.52);
       col *= lensVig * paperBurn;
 
       if (u_halation > 0.001 || u_bloom > 0.001) {
@@ -1614,30 +1613,6 @@
         col = col * (1.0 - spotRing * amt * 0.50) + vec3(0.24, 0.17, 0.08) * spotCore * amt;
       }
 
-      // Light Leaks realistici stile Huji: fiammate caldo-cremisi-ambra lungo i bordi/angoli dello sportello
-      if (u_lightLeakAmount > 0.001) {
-        float amt = clamp(u_lightLeakAmount, 0.0, 1.0);
-        float sideChoice = fract(u_defectSeed * 17.31);
-        float leakPos = 0.15 + fract(u_defectSeed * 31.73) * 0.70;
-        float edgeCoord = sideChoice < 0.30 ? v_texCoord.x :
-                          (sideChoice < 0.60 ? (1.0 - v_texCoord.x) :
-                          (sideChoice < 0.80 ? v_texCoord.y : (1.0 - v_texCoord.y)));
-        float alongCoord = sideChoice < 0.60 ? v_texCoord.y : v_texCoord.x;
-
-        float nLeak = fbm(v_texCoord * 3.6 + u_defectSeed * 19.0);
-        float spread = mix(7.2, 3.2, amt);
-        float edgeBand = exp(-pow((edgeCoord - 0.01) * (spread + nLeak * 2.2), 2.0));
-        float focalSpot = exp(-pow((alongCoord - leakPos) * 1.65, 2.0));
-        float streakFlare = exp(-pow((alongCoord - leakPos) * 8.5 + (nLeak - 0.5) * 1.4, 2.0)) * exp(-edgeCoord * 2.4);
-
-        float leakIntensity = clamp((edgeBand * (0.45 + 0.85 * focalSpot) + streakFlare * 0.55) * (0.72 + 0.55 * nLeak) * (amt * 1.45), 0.0, 2.2);
-
-        vec3 crimsonOuter = vec3(1.45, 0.10, 0.02) * leakIntensity;
-        vec3 fieryOrange = vec3(1.30, 0.48, 0.04) * pow(leakIntensity, 1.45);
-        vec3 amberCore = vec3(1.35, 1.08, 0.46) * pow(leakIntensity, 2.35);
-        col += crimsonOuter + fieryOrange + amberCore;
-      }
-
       col = pow(max(col, 0.0), vec3(1.0 / 2.2));
       float effectiveToe = max(0.0, u_toe + u_fadeBlack);
       if (u_agedPaperAmount > 0.001) {
@@ -1657,7 +1632,7 @@
         col = mix(col * u_shadowTint, col * u_highlightTint, clamp(luma, 0.0, 1.0));
       }
 
-      // Motore Color Grading Lift / Gamma / Gain per decadi e Polaroid
+      // Color Grading Lift / Gamma / Gain
       float gLuma = clamp(dot(col, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
       float shadowW = pow(1.0 - gLuma, 2.2);
       float midW = 4.0 * gLuma * (1.0 - gLuma);
@@ -1666,6 +1641,44 @@
       col = mix(col, col * u_midGain, midW);
       col = mix(col, col * u_highGain, highW);
       col = clamp(col, 0.0, 1.0);
+
+      // Light Leaks realistici in Screen blend (fiammate d'angolo + perforazioni 35mm stile Huji)
+      if (u_lightLeakAmount > 0.001) {
+        float amt = clamp(u_lightLeakAmount, 0.0, 1.0);
+        float leakType = fract(u_defectSeed * 17.31);
+        float leakPos = 0.15 + fract(u_defectSeed * 31.73) * 0.70;
+        float nLeak = fbm(v_texCoord * 3.2 + u_defectSeed * 19.0);
+        vec3 leakRGB = vec3(0.0);
+
+        if (leakType < 0.45) {
+          // Perforazioni 35mm traslucide lungo il bordo superiore/inferiore (stile Huji!)
+          float yTop = leakType < 0.25 ? (1.0 - v_texCoord.y) : v_texCoord.y;
+          float bandY = exp(-pow((yTop - 0.11) * 16.0, 2.0));
+          float cellX = fract(v_texCoord.x * 7.5 + fract(u_defectSeed * 9.1));
+          float sprocketBox = smoothstep(0.18, 0.28, cellX) * (1.0 - smoothstep(0.58, 0.68, cellX));
+          float fadeSide = smoothstep(0.05, 0.85, v_texCoord.x + 0.15 * nLeak);
+          float spMask = bandY * sprocketBox * fadeSide * amt * 0.85;
+          vec3 spCol = mix(vec3(0.35, 0.85, 0.82), vec3(1.00, 0.55, 0.18), smoothstep(0.25, 0.85, v_texCoord.x));
+          leakRGB += spCol * spMask;
+
+          // Morbida velatura caldo-rosa d'angolo
+          float cornerD = length(vec2(v_texCoord.x, yTop));
+          float cornerGlow = exp(-pow(cornerD * 2.2, 2.0)) * amt * 0.42;
+          leakRGB += vec3(0.95, 0.35, 0.42) * cornerGlow;
+        } else {
+          // Fiammata d'angolo/bordo calda rosso-ambra traslucida
+          float edgeCoord = leakType < 0.65 ? v_texCoord.x : (leakType < 0.85 ? (1.0 - v_texCoord.x) : (1.0 - v_texCoord.y));
+          float alongCoord = leakType < 0.85 ? v_texCoord.y : v_texCoord.x;
+          float spread = mix(8.0, 3.6, amt);
+          float edgeBand = exp(-pow((edgeCoord - 0.01) * (spread + nLeak * 2.0), 2.0));
+          float focalSpot = exp(-pow((alongCoord - leakPos) * 1.8, 2.0));
+          float lMask = clamp(edgeBand * (0.40 + 0.75 * focalSpot) * (0.75 + 0.45 * nLeak) * (amt * 1.15), 0.0, 1.3);
+          leakRGB += vec3(0.98, 0.18, 0.04) * lMask + vec3(0.95, 0.60, 0.12) * pow(lMask, 1.7);
+        }
+
+        // Screen blend: illumina in modo organico senza bruciare o impastare i neri
+        col = 1.0 - (1.0 - col) * (1.0 - clamp(leakRGB, 0.0, 0.92));
+      }
 
       if (u_paperIsBW) {
         float silverLuma = dot(col, vec3(0.30, 0.59, 0.11));
@@ -1835,9 +1848,9 @@
     }
   </script>
 
-  <script src="polaroid.js?v=1.0.3"></script>
-  <script src="vintage-presets.js?v=1.0.3"></script>
-  <script src="app.js?v=1.0.3"></script>
+  <script src="polaroid.js?v=1.0.4"></script>
+  <script src="vintage-presets.js?v=1.0.4"></script>
+  <script src="app.js?v=1.0.4"></script>
 
 </body>
 

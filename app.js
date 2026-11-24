@@ -1079,6 +1079,9 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     gl.uniform3fv(gl.getUniformLocation(program, "u_shadowLift"), new Float32Array(sLift));
     gl.uniform3fv(gl.getUniformLocation(program, "u_midGain"), new Float32Array(mGain));
     gl.uniform3fv(gl.getUniformLocation(program, "u_highGain"), new Float32Array(hGain));
+    gl.uniform3fv(gl.getUniformLocation(program, "u_shadowLift"), new Float32Array(sLift));
+    gl.uniform3fv(gl.getUniformLocation(program, "u_midGain"), new Float32Array(mGain));
+    gl.uniform3fv(gl.getUniformLocation(program, "u_highGain"), new Float32Array(hGain));
     gl.uniform1f(gl.getUniformLocation(program, "u_halation"), film.halation);
     gl.uniform1f(gl.getUniformLocation(program, "u_halThreshold"), film.halThreshold);
     gl.uniform3f(gl.getUniformLocation(program, "u_halationColor"), 0.96, 0.18, 0.04);
@@ -1776,26 +1779,15 @@ function drawCroppedToCanvas(sourceObj, srcW, srcH, targetRatio, mirror = false)
     ctx.drawImage(sourceObj, sx, sy, sw, sh, 0, 0, sw, sh);
     return c;
 }
-
-async function captureFrameFullRes(video, targetRatio, useFlash = false) {
+async function captureFrameInstant(video, targetRatio, useFlash = false) {
     const track = mediaStream ? mediaStream.getVideoTracks()[0] : null;
     const mirror = facingMode === "user";
 
     if (useFlash && track) {
-        if (hardwareFlashSupport.hasPhotoFlash && typeof ImageCapture !== "undefined") {
-            try {
-                const ic = new ImageCapture(track);
-                const blob = await ic.takePhoto({ fillLightMode: "flash" });
-                const bitmap = await createImageBitmap(blob);
-                const c = drawCroppedToCanvas(bitmap, bitmap.width, bitmap.height, targetRatio, mirror);
-                bitmap.close();
-                return { canvas: c, hardwareFlashFired: true };
-            } catch (err) { }
-        }
         if (hardwareFlashSupport.hasTorch) {
             try {
                 await track.applyConstraints({ advanced: [{ torch: true }] });
-                await new Promise(r => setTimeout(r, 320));
+                await new Promise(r => setTimeout(r, 260));
                 const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
                 return { canvas: c, hardwareFlashFired: true };
             } catch (err) {
@@ -1805,30 +1797,33 @@ async function captureFrameFullRes(video, targetRatio, useFlash = false) {
         }
         if (facingMode === "user") {
             const frontFlash = document.getElementById("frontScreenFlash");
-            frontFlash.classList.add("lit");
-            await new Promise(r => setTimeout(r, 260));
+            if (frontFlash) frontFlash.classList.add("lit");
+            await new Promise(r => setTimeout(r, 220));
             const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
-            frontFlash.classList.remove("lit");
+            if (frontFlash) frontFlash.classList.remove("lit");
             return { canvas: c, hardwareFlashFired: true };
         }
     }
 
-    if (track && typeof ImageCapture !== "undefined") {
-        try {
-            const ic = new ImageCapture(track);
-            const blob = await ic.takePhoto({ fillLightMode: "off" });
-            const bitmap = await createImageBitmap(blob);
-            if (bitmap.width >= video.videoWidth && bitmap.height >= video.videoHeight) {
-                const c = drawCroppedToCanvas(bitmap, bitmap.width, bitmap.height, targetRatio, mirror);
-                bitmap.close();
-                return { canvas: c, hardwareFlashFired: false };
-            }
-            bitmap.close();
-        } catch (err) { }
-    }
-
     const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
     return { canvas: c, hardwareFlashFired: false };
+}
+if (track && typeof ImageCapture !== "undefined") {
+    try {
+        const ic = new ImageCapture(track);
+        const blob = await ic.takePhoto({ fillLightMode: "off" });
+        const bitmap = await createImageBitmap(blob);
+        if (bitmap.width >= video.videoWidth && bitmap.height >= video.videoHeight) {
+            const c = drawCroppedToCanvas(bitmap, bitmap.width, bitmap.height, targetRatio, mirror);
+            bitmap.close();
+            return { canvas: c, hardwareFlashFired: false };
+        }
+        bitmap.close();
+    } catch (err) { }
+}
+
+const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
+return { canvas: c, hardwareFlashFired: false };
 }
 
 async function recordLatentFrame(sourceCanvasOrImg, usedFlash = false, hardwareFlashFired = false) {
@@ -1920,7 +1915,7 @@ onId("shutterBtn", "click", async () => {
 
     isCapturing = true;
     try {
-        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameFullRes(video, 3 / 4, flashActive);
+        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, flashActive);
         await recordLatentFrame(capCanvas, flashActive, hardwareFlashFired);
         capCanvas.width = 0; capCanvas.height = 0;
     } finally {

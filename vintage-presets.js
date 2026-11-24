@@ -1,38 +1,40 @@
 /* =========================================================
-   VINTAGE-PRESETS.JS — USA & GETTA v1.0.3 (MOTORE DECADI & HUJI '98)
-   - Zero aloni nebbiosi: halation rimossa dai rullini C-41 consumer, bloom solo su luci speculari
-   - Motore Lift / Gamma / Gain reale per ogni decade (1940s -> Y2K)
-   - Huji '98 fedele: ombre verde-petrolio/blu, rossi e incarnati caldi, verdi smeraldo,
-     luci crema, centro nitido, leggera CA periferica e light leaks ai bordi
+   VINTAGE-PRESETS.JS — USA & GETTA v1.0.4 (HUJI '98 ENGINE)
+   - Scatto istantaneo (< 20ms) senza blocco AF di ImageCapture
+   - Lente fissa iperfocale 30mm f/10 (1m - infinito) ove supportato dall'hardware
+   - Calibrazione reale delle 7 decadi: 1970s a colori reali (non B&N!),
+     1990s Huji fedele alle foto di riferimento (luci protette, legni caldi,
+     ombre ardesia-malva, zero sbavature CA, perforazioni light leak)
    ========================================================= */
 
 const VINTAGE_DECADES = [
     {
         id: "1940s",
         name: "Anni '40",
-        subtitle: "Nitrate Noir • Orto B&N profondo",
+        subtitle: "Nitrate Noir • Orto B&N nitido",
         tag: "'40 NOIR",
         yearStamp: "'46",
         color: "#b8b2a6",
         textColor: "#14120e",
-        paperId: "ilford-fb-warm",
-        grade: 3.1,
-        burn: 0.28,
+        paperId: "ilford-fb-classic",
+        grade: 3.0,
+        burn: 0.22,
+        evBase: -0.10,
         stampColor: "#e6c79c",
-        optics: { ca: 0.0, barrel: 0.024, softness: 0.14, fadeBlack: 0.015, orthoBW: true },
+        optics: { ca: 0.0, barrel: 0.014, softness: 0.04, fadeBlack: 0.012, orthoBW: true },
         colorGrade: {
-            shadowLift: [0.014, 0.012, 0.008],
-            midGain: [1.02, 1.00, 0.96],
-            highGain: [1.03, 0.99, 0.91]
+            shadowLift: [0.010, 0.009, 0.006],
+            midGain: [1.01, 1.00, 0.98],
+            highGain: [1.02, 0.99, 0.94]
         },
         film: {
             id: "vintage-40s", name: "1940s Nitrate Noir", iso: 100, mode: "bw",
-            toe: 0.010, shoulder: 0.30, contrast: 0.62, temp: 0.0, tint: 0.0,
-            saturation: 0.0, shadowTemp: 0.06, highTemp: 0.04,
-            halation: 0.08, halThreshold: 0.86, bloom: 0.06, grain: 0.052, grainSize: 1.38,
+            toe: 0.010, shoulder: 0.34, contrast: 0.56, temp: 0.0, tint: 0.0,
+            saturation: 0.0, shadowTemp: 0.04, highTemp: 0.03,
+            halation: 0.04, halThreshold: 0.90, bloom: 0.03, grain: 0.046, grainSize: 1.30,
             matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1]
         },
-        exceptions: { leakProb: 0.14, chemProb: 0.14, agedProb: 0.35, scratchProb: 0.28 }
+        exceptions: { leakProb: 0.14, chemProb: 0.10, agedProb: 0.28, scratchProb: 0.22 }
     },
     {
         id: "1950s",
@@ -43,77 +45,80 @@ const VINTAGE_DECADES = [
         color: "#d94e3f",
         textColor: "#ffffff",
         paperId: "kodak-endura",
-        grade: 2.7,
-        burn: 0.14,
+        grade: 2.6,
+        burn: 0.12,
+        evBase: -0.12,
         stampColor: "#ff9b54",
-        optics: { ca: 0.10, barrel: 0.016, softness: 0.02, fadeBlack: 0.0, orthoBW: false },
+        optics: { ca: 0.06, barrel: 0.010, softness: 0.0, fadeBlack: 0.0, orthoBW: false },
         colorGrade: {
-            shadowLift: [-0.008, -0.002, 0.008],
-            midGain: [1.04, 0.99, 0.95],
-            highGain: [1.04, 1.01, 0.91]
+            shadowLift: [-0.005, -0.002, 0.008],
+            midGain: [1.03, 0.99, 0.96],
+            highGain: [1.02, 1.00, 0.94]
         },
         film: {
             id: "vintage-50s", name: "1950s Kodachrome", iso: 64, mode: "slide",
-            toe: 0.008, shoulder: 0.38, contrast: 0.54, temp: 0.11, tint: 0.02,
-            saturation: 1.22, shadowTemp: -0.06, highTemp: 0.10,
-            halation: 0.0, halThreshold: 0.92, bloom: 0.03, grain: 0.020, grainSize: 1.00,
-            matrix: [1.14, -0.08, -0.06, 0.02, 0.99, -0.01, -0.06, 0.06, 1.00]
+            toe: 0.008, shoulder: 0.42, contrast: 0.48, temp: 0.08, tint: 0.02,
+            saturation: 1.16, shadowTemp: -0.04, highTemp: 0.06,
+            halation: 0.0, halThreshold: 0.94, bloom: 0.0, grain: 0.018, grainSize: 1.00,
+            matrix: [1.10, -0.06, -0.04, 0.01, 0.99, 0.00, -0.05, 0.04, 1.01]
         },
-        exceptions: { leakProb: 0.14, chemProb: 0.04, agedProb: 0.18, scratchProb: 0.15 }
+        exceptions: { leakProb: 0.14, chemProb: 0.03, agedProb: 0.12, scratchProb: 0.10 }
     },
     {
         id: "1960s",
         name: "Anni '60",
-        subtitle: "Agfacolor • Sole caldo & ombre menta",
+        subtitle: "Agfacolor • Sole caldo & toni pastello",
         tag: "'60 MOD",
         yearStamp: "'68",
         color: "#e08a28",
         textColor: "#141004",
         paperId: "kodak-endura",
         grade: 2.5,
-        burn: 0.18,
+        burn: 0.14,
+        evBase: -0.14,
         stampColor: "#ff8c3a",
-        optics: { ca: 0.18, barrel: 0.022, softness: 0.06, fadeBlack: 0.008, orthoBW: false },
+        optics: { ca: 0.10, barrel: 0.014, softness: 0.0, fadeBlack: 0.008, orthoBW: false },
         colorGrade: {
-            shadowLift: [-0.010, 0.016, 0.020],
-            midGain: [1.04, 1.00, 0.93],
-            highGain: [1.05, 1.01, 0.89]
+            shadowLift: [-0.004, 0.010, 0.014],
+            midGain: [1.03, 1.00, 0.95],
+            highGain: [1.02, 1.00, 0.92]
         },
         film: {
             id: "vintage-60s", name: "1960s Agfa Ekta", iso: 160, mode: "color",
-            toe: 0.014, shoulder: 0.44, contrast: 0.40, temp: 0.13, tint: -0.04,
-            saturation: 1.18, shadowTemp: -0.08, highTemp: 0.10,
-            halation: 0.0, halThreshold: 0.92, bloom: 0.05, grain: 0.026, grainSize: 1.12,
-            matrix: [1.08, -0.05, -0.03, -0.02, 1.04, -0.02, -0.05, 0.05, 1.00]
+            toe: 0.012, shoulder: 0.46, contrast: 0.36, temp: 0.09, tint: -0.02,
+            saturation: 1.12, shadowTemp: -0.05, highTemp: 0.06,
+            halation: 0.0, halThreshold: 0.94, bloom: 0.02, grain: 0.024, grainSize: 1.10,
+            matrix: [1.06, -0.04, -0.02, -0.01, 1.02, -0.01, -0.04, 0.04, 1.00]
         },
-        exceptions: { leakProb: 0.24, chemProb: 0.06, agedProb: 0.24, scratchProb: 0.18 }
+        exceptions: { leakProb: 0.22, chemProb: 0.04, agedProb: 0.16, scratchProb: 0.12 }
     },
     {
         id: "1970s",
         name: "Anni '70",
-        subtitle: "Stampa Ambra • Neri cioccolato caldi",
+        subtitle: "Kodacolor II • Ambra calda a colori",
         tag: "'70 AMBER",
         yearStamp: "'77",
         color: "#c97b2b",
         textColor: "#ffffff",
-        paperId: "ilford-fb-warm",
-        grade: 2.1,
-        burn: 0.22,
+        paperId: "fuji-crystal-matte",
+        grade: 2.2,
+        burn: 0.18,
+        evBase: -0.14,
         stampColor: "#ff7828",
-        optics: { ca: 0.24, barrel: 0.026, softness: 0.10, fadeBlack: 0.024, orthoBW: false },
+        optics: { ca: 0.12, barrel: 0.016, softness: 0.03, fadeBlack: 0.018, orthoBW: false },
         colorGrade: {
-            shadowLift: [0.038, 0.024, 0.008],
-            midGain: [1.06, 0.98, 0.88],
-            highGain: [1.06, 1.00, 0.86]
+            shadowLift: [0.030, 0.020, 0.006],
+            midGain: [1.04, 0.99, 0.90],
+            highGain: [1.03, 0.99, 0.88]
         },
         film: {
             id: "vintage-70s", name: "1970s Amber Fade", iso: 200, mode: "color",
-            toe: 0.022, shoulder: 0.56, contrast: 0.26, temp: 0.16, tint: 0.03,
-            saturation: 0.86, shadowTemp: 0.08, highTemp: 0.10,
-            halation: 0.06, halThreshold: 0.90, bloom: 0.06, grain: 0.032, grainSize: 1.28,
-            matrix: [1.06, 0.01, -0.07, 0.03, 0.99, -0.02, -0.08, 0.04, 1.04]
+            toe: 0.018, shoulder: 0.54, contrast: 0.28, temp: 0.12, tint: 0.02,
+            saturation: 0.90, shadowTemp: 0.05, highTemp: 0.07,
+            halation: 0.02, halThreshold: 0.92, bloom: 0.02, grain: 0.030, grainSize: 1.24,
+            matrix: [1.05, 0.01, -0.06, 0.02, 0.99, -0.01, -0.06, 0.03, 1.03]
         },
-        exceptions: { leakProb: 0.28, chemProb: 0.08, agedProb: 0.36, scratchProb: 0.22 }
+        exceptions: { leakProb: 0.26, chemProb: 0.06, agedProb: 0.24, scratchProb: 0.16 }
     },
     {
         id: "1980s",
@@ -124,77 +129,80 @@ const VINTAGE_DECADES = [
         color: "#d9488b",
         textColor: "#ffffff",
         paperId: "fuji-crystal-glossy",
-        grade: 2.8,
-        burn: 0.18,
+        grade: 2.6,
+        burn: 0.14,
+        evBase: -0.15,
         stampColor: "#ff661a",
-        optics: { ca: 0.28, barrel: 0.028, softness: 0.05, fadeBlack: 0.004, orthoBW: false },
+        optics: { ca: 0.14, barrel: 0.016, softness: 0.0, fadeBlack: 0.004, orthoBW: false },
         colorGrade: {
-            shadowLift: [0.006, -0.004, 0.012],
-            midGain: [1.03, 0.97, 1.02],
-            highGain: [1.03, 0.98, 0.99]
+            shadowLift: [0.008, -0.002, 0.014],
+            midGain: [1.02, 0.98, 1.01],
+            highGain: [1.01, 0.99, 0.99]
         },
         film: {
             id: "vintage-80s", name: "1980s Minilab Pop", iso: 400, mode: "color",
-            toe: 0.012, shoulder: 0.38, contrast: 0.44, temp: 0.06, tint: 0.08,
-            saturation: 1.18, shadowTemp: 0.04, highTemp: 0.04,
-            halation: 0.0, halThreshold: 0.92, bloom: 0.03, grain: 0.032, grainSize: 1.18,
-            matrix: [1.07, -0.06, -0.01, -0.03, 0.98, 0.05, 0.01, 0.02, 0.97]
+            toe: 0.010, shoulder: 0.42, contrast: 0.38, temp: 0.04, tint: 0.06,
+            saturation: 1.14, shadowTemp: 0.03, highTemp: 0.03,
+            halation: 0.0, halThreshold: 0.94, bloom: 0.0, grain: 0.028, grainSize: 1.15,
+            matrix: [1.05, -0.04, -0.01, -0.02, 0.98, 0.04, 0.01, 0.01, 0.98]
         },
-        exceptions: { leakProb: 0.26, chemProb: 0.04, agedProb: 0.08, scratchProb: 0.10 }
+        exceptions: { leakProb: 0.24, chemProb: 0.02, agedProb: 0.04, scratchProb: 0.08 }
     },
     {
         id: "1990s",
         name: "Anni '90 (Huji)",
-        subtitle: "Huji '98 • Ombre verde-blu, colori vivi",
+        subtitle: "Huji '98 • 30mm f/10 • Ombre malva-ardesia",
         tag: "'98 HUJI",
         yearStamp: "'98",
         color: "#1fa35b",
         textColor: "#ffffff",
         paperId: "fuji-crystal-glossy",
-        grade: 2.8,
-        burn: 0.26,
-        stampColor: "#ff5e0e",
-        optics: { ca: 0.45, barrel: 0.038, softness: 0.08, fadeBlack: 0.004, orthoBW: false },
+        grade: 2.5,
+        burn: 0.16,
+        evBase: -0.20,
+        stampColor: "#ff5a14",
+        optics: { ca: 0.16, barrel: 0.020, softness: 0.0, fadeBlack: 0.006, orthoBW: false },
         colorGrade: {
-            shadowLift: [-0.014, 0.024, 0.028],
-            midGain: [1.03, 1.00, 0.95],
-            highGain: [1.04, 0.99, 0.90]
+            shadowLift: [0.010, 0.004, 0.016],
+            midGain: [1.02, 0.99, 0.99],
+            highGain: [1.00, 0.98, 0.96]
         },
         film: {
             id: "vintage-90s", name: "1998 Huji Usa & Getta", iso: 800, mode: "color",
-            toe: 0.008, shoulder: 0.34, contrast: 0.48, temp: 0.02, tint: -0.05,
-            saturation: 1.20, shadowTemp: -0.10, highTemp: 0.06,
-            halation: 0.0, halThreshold: 0.92, bloom: 0.03, grain: 0.034, grainSize: 1.20,
-            matrix: [1.08, -0.05, -0.03, -0.03, 1.06, -0.03, -0.04, 0.06, 0.98]
+            toe: 0.010, shoulder: 0.48, contrast: 0.40, temp: 0.03, tint: 0.02,
+            saturation: 1.12, shadowTemp: -0.03, highTemp: 0.03,
+            halation: 0.0, halThreshold: 0.94, bloom: 0.0, grain: 0.028, grainSize: 1.15,
+            matrix: [1.06, -0.03, -0.03, -0.02, 1.00, 0.02, -0.03, 0.02, 1.01]
         },
-        exceptions: { leakProb: 0.38, chemProb: 0.03, agedProb: 0.04, scratchProb: 0.07 }
+        exceptions: { leakProb: 0.36, chemProb: 0.0, agedProb: 0.0, scratchProb: 0.05 }
     },
     {
         id: "y2k",
         name: "Y2K (2000s)",
-        subtitle: "Compatta '02 • Luci ciano & flash",
+        subtitle: "Compatta '02 • Freddo nitido & ciano",
         tag: "'02 Y2K",
         yearStamp: "'02",
         color: "#3ea3d8",
         textColor: "#0d141a",
         paperId: "fuji-crystal-glossy",
-        grade: 2.9,
-        burn: 0.16,
+        grade: 2.6,
+        burn: 0.14,
+        evBase: -0.14,
         stampColor: "#ff3d1f",
-        optics: { ca: 0.32, barrel: 0.026, softness: 0.03, fadeBlack: 0.0, orthoBW: false },
+        optics: { ca: 0.14, barrel: 0.014, softness: 0.0, fadeBlack: 0.0, orthoBW: false },
         colorGrade: {
-            shadowLift: [-0.006, 0.004, 0.016],
-            midGain: [1.00, 1.01, 1.02],
-            highGain: [0.96, 1.00, 1.06]
+            shadowLift: [-0.004, 0.004, 0.014],
+            midGain: [0.99, 1.00, 1.02],
+            highGain: [0.96, 0.99, 1.04]
         },
         film: {
             id: "vintage-y2k", name: "Y2K Early Compact", iso: 400, mode: "color",
-            toe: 0.008, shoulder: 0.32, contrast: 0.50, temp: -0.10, tint: 0.03,
-            saturation: 1.15, shadowTemp: -0.05, highTemp: -0.08,
-            halation: 0.0, halThreshold: 0.92, bloom: 0.04, grain: 0.024, grainSize: 1.05,
-            matrix: [1.00, -0.02, 0.02, -0.01, 1.02, -0.01, 0.02, 0.02, 1.05]
+            toe: 0.008, shoulder: 0.40, contrast: 0.44, temp: -0.07, tint: 0.02,
+            saturation: 1.12, shadowTemp: -0.04, highTemp: -0.05,
+            halation: 0.0, halThreshold: 0.94, bloom: 0.0, grain: 0.020, grainSize: 1.05,
+            matrix: [1.00, -0.02, 0.02, -0.01, 1.01, 0.00, 0.02, 0.01, 1.04]
         },
-        exceptions: { leakProb: 0.22, chemProb: 0.02, agedProb: 0.03, scratchProb: 0.06 }
+        exceptions: { leakProb: 0.20, chemProb: 0.0, agedProb: 0.0, scratchProb: 0.04 }
     }
 ];
 
@@ -519,7 +527,7 @@ function updateVintageCameraHUD() {
     if (!currentVintageRoll) return;
     const d = getActiveVintageDecade(currentVintageRoll.decadeId);
     document.getElementById("vintageTopEraBadge").textContent = d.tag;
-    document.getElementById("vintageVfEraLabel").textContent = `${d.name.toUpperCase()} • ${d.tag}`;
+    document.getElementById("vintageVfEraLabel").textContent = `${d.tag} • 30mm f/10 • 1m–∞`;
 
     const cur = String(currentVintageRoll.frames.length).padStart(2, "0");
     const tot = String(currentVintageRoll.capacity).padStart(2, "0");
@@ -568,6 +576,23 @@ function updateVintageCameraHUD() {
     document.getElementById("vintageFinishedOverlay").classList.toggle("open", isFull && !vintageDeveloping);
 }
 
+// Blocca messa a fuoco iperfocale fissa (1m - infinito) ove supportato dal sensore Android/Chrome
+async function applyFixedHyperfocalFocus(track) {
+    if (!track || !track.getCapabilities || !track.applyConstraints) return;
+    try {
+        const caps = track.getCapabilities();
+        if (caps && Array.isArray(caps.focusMode) && caps.focusMode.includes("manual") && caps.focusDistance) {
+            const minD = typeof caps.focusDistance.min === "number" ? caps.focusDistance.min : 0;
+            const maxD = typeof caps.focusDistance.max === "number" ? caps.focusDistance.max : 10;
+            // Iperfocale ~2m (se in metri è ~2.0, se in diottrie 1/m è ~0.5)
+            const targetDist = maxD <= 2.5 ? Math.min(maxD, Math.max(minD, 0.45)) : Math.min(maxD, Math.max(minD, 2.2));
+            await track.applyConstraints({
+                advanced: [{ focusMode: "manual", focusDistance: targetDist }]
+            });
+        }
+    } catch (e) { }
+}
+
 async function startVintageCameraStream() {
     stopCamera();
     const video = document.getElementById("vintageVideo");
@@ -580,6 +605,8 @@ async function startVintageCameraStream() {
         video.style.display = "block";
         fallback.style.display = "none";
         detectFlashCapabilities();
+        const track = mediaStream.getVideoTracks()[0];
+        if (track) applyFixedHyperfocalFocus(track);
     } catch (err) {
         video.style.display = "none";
         fallback.style.display = "flex";
@@ -598,30 +625,15 @@ function enterVintageCameraMode() {
     startVintageCameraStream();
 }
 
-async function recordVintageLatentFrame(sourceCanvas, usedFlash = false, hardwareFlashFired = false) {
+// Scatto istantaneo dal flusso video con feedback immediato al tap
+async function recordVintageLatentFrameInstant(sourceCanvas, usedFlash = false, hardwareFlashFired = false) {
     if (!currentVintageRoll || currentVintageRoll.frames.length >= currentVintageRoll.capacity) return;
 
-    playShutterSound(1 / 125, usedFlash);
-    const curtain = document.getElementById("vintageCurtain");
-    curtain.classList.add("blink");
-    setTimeout(() => curtain.classList.remove("blink"), 110);
+    const frameNumber = currentVintageRoll.frames.length + 1;
+    const decadeId = currentVintageRoll.decadeId;
+    const stamp = getVintageDateStampString(getActiveVintageDecade(decadeId));
 
-    const rawBlob = await canvasToBlob(sourceCanvas, "image/jpeg", 0.96);
-
-    currentVintageRoll.frames.push({
-        number: currentVintageRoll.frames.length + 1,
-        decadeId: currentVintageRoll.decadeId,
-        flash: usedFlash,
-        hardwareFlashFired,
-        starred: false,
-        savedLocally: false,
-        rawBlob,
-        developedBlob: null,
-        thumbBlob: null,
-        stamp: getVintageDateStampString(getActiveVintageDecade(currentVintageRoll.decadeId)),
-        vintageEdit: null
-    });
-
+    // Sblocca subito rotella e UI prima del salvataggio Blob su DB
     setVintageWheelArmedState(false);
     if (usedFlash && vintageFlashState === "ready") {
         vintageFlashState = "charging";
@@ -635,6 +647,22 @@ async function recordVintageLatentFrame(sourceCanvas, usedFlash = false, hardwar
         }, 700);
     }
 
+    const rawBlob = await canvasToBlob(sourceCanvas, "image/jpeg", 0.94);
+
+    currentVintageRoll.frames.push({
+        number: frameNumber,
+        decadeId,
+        flash: usedFlash,
+        hardwareFlashFired,
+        starred: false,
+        savedLocally: false,
+        rawBlob,
+        developedBlob: null,
+        thumbBlob: null,
+        stamp,
+        vintageEdit: null
+    });
+
     updateVintageCameraHUD();
     await saveVintageRollToDB(currentVintageRoll);
     if (typeof refreshHomeStatus === "function") refreshHomeStatus();
@@ -642,7 +670,7 @@ async function recordVintageLatentFrame(sourceCanvas, usedFlash = false, hardwar
 
 function buildInitialVintageEdit(decade, applyRandom) {
     const ex = decade.exceptions;
-    const rollVal = (prob) => (applyRandom && Math.random() < prob) ? +(0.22 + Math.random() * 0.45).toFixed(2) : 0;
+    const rollVal = (prob) => (applyRandom && Math.random() < prob) ? +(0.24 + Math.random() * 0.42).toFixed(2) : 0;
 
     return {
         enabled: true,
@@ -653,9 +681,9 @@ function buildInitialVintageEdit(decade, applyRandom) {
         chemStain: rollVal(ex.chemProb),
         agedPaper: rollVal(ex.agedProb),
         scratches: rollVal(ex.scratchProb),
-        ca: decade.optics ? decade.optics.ca : 0.35,
-        vignette: decade.burn || 0.24,
-        ev: applyRandom ? +((Math.random() - 0.48) * 0.24).toFixed(2) : 0
+        ca: decade.optics ? decade.optics.ca : 0.14,
+        vignette: decade.burn || 0.16,
+        ev: decade.evBase || -0.14
     };
 }
 
@@ -674,7 +702,7 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
 
     if (!edit.enabled) {
         const cleanStub = {
-            exposureEV: edit.ev || 0,
+            exposureEV: 0,
             aperture: 4.0,
             defectSeed: edit.seed,
             defects: createDefaultFrameDefects(edit.seed),
@@ -697,7 +725,7 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             scratches: { active: edit.scratches > 0, intensity: edit.scratches }
         };
         const flashBoost = (frame.flash && !frame.hardwareFlashFired) ? 0.25 : 0.0;
-        const flashFalloff = (frame.flash && !frame.hardwareFlashFired) ? 0.80 : (frame.flash ? 0.30 : 0.0);
+        const flashFalloff = (frame.flash && !frame.hardwareFlashFired) ? 0.78 : (frame.flash ? 0.28 : 0.0);
 
         const frameStub = {
             exposureEV: (edit.ev || 0) + flashBoost,
@@ -707,8 +735,8 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             grade: decade.colorGrade || null,
             optics: {
                 ca: edit.ca,
-                barrel: decade.optics ? decade.optics.barrel : 0.025,
-                softness: decade.optics ? decade.optics.softness : 0.06,
+                barrel: decade.optics ? decade.optics.barrel : 0.016,
+                softness: decade.optics ? decade.optics.softness : 0.0,
                 fadeBlack: decade.optics ? decade.optics.fadeBlack : 0.005,
                 orthoBW: decade.optics ? !!decade.optics.orthoBW : false,
                 flashFalloff
@@ -723,7 +751,7 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             yel: 0,
             burn: edit.vignette,
             grainScale: 1.0,
-            paperTexScale: 0.35,
+            paperTexScale: 0.25,
             enlargerApIdx: 3,
             tonerType: 0,
             tonerAmount: 0,
@@ -752,13 +780,13 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
         const padX = Math.round(outCanvas.width * 0.045);
         const padY = Math.round(outCanvas.height * 0.038);
 
-        oCtx.shadowColor = "rgba(255, 72, 12, 0.92)";
+        oCtx.shadowColor = "rgba(255, 56, 8, 0.95)";
         oCtx.shadowBlur = Math.round(fontSize * 0.45);
-        oCtx.fillStyle = decade.stampColor || "#ff5e0e";
+        oCtx.fillStyle = decade.stampColor || "#ff5a14";
         oCtx.fillText(frame.stamp, outCanvas.width - padX, outCanvas.height - padY);
 
         oCtx.shadowBlur = 0;
-        oCtx.fillStyle = "rgba(255, 224, 166, 0.72)";
+        oCtx.fillStyle = "rgba(255, 224, 166, 0.85)";
         oCtx.fillText(frame.stamp, outCanvas.width - padX, outCanvas.height - padY);
         oCtx.restore();
     }
@@ -971,8 +999,9 @@ function syncVintageEditorUI(frame) {
         b.addEventListener("click", () => {
             edit.decadeId = item.id;
             edit.enabled = true;
-            edit.ca = item.optics ? item.optics.ca : 0.35;
-            edit.vignette = item.burn || 0.24;
+            edit.ca = item.optics ? item.optics.ca : 0.14;
+            edit.vignette = item.burn || 0.16;
+            edit.ev = item.evBase || -0.14;
             syncVintageEditorUI(frame);
             refreshVintageDetailPreview(frame);
             scheduleSaveVintageEditedFrame(frame);
@@ -1246,18 +1275,28 @@ function initVintageEventListeners() {
             return;
         }
         const video = document.getElementById("vintageVideo");
-        if (!mediaStream || video.videoWidth === 0) {
+        if (!mediaStream || !video || video.videoWidth === 0) {
             alert("Fotocamera live non attiva: tocca '📷 Carica' qui a sinistra per caricare foto sul rullino Usa & Getta!");
             return;
         }
 
         const useFlash = vintageFlashState === "ready";
         vintageCapturing = true;
+
+        // Feedback otturatore IMMEDIATO al tap (zero attesa!)
+        playShutterSound(1 / 125, useFlash);
+        const curtain = document.getElementById("vintageCurtain");
+        if (curtain) {
+            curtain.classList.add("blink");
+            setTimeout(() => curtain.classList.remove("blink"), 110);
+        }
+
         const prevFlashActive = flashActive;
         flashActive = useFlash;
         try {
-            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameFullRes(video, 3 / 4, useFlash);
-            await recordVintageLatentFrame(capCanvas, useFlash, hardwareFlashFired);
+            // Scatto istantaneo dal flusso video ad alta risoluzione (nessun ritardo di ImageCapture AF)
+            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, useFlash);
+            await recordVintageLatentFrameInstant(capCanvas, useFlash, hardwareFlashFired);
             capCanvas.width = 0; capCanvas.height = 0;
         } finally {
             flashActive = prevFlashActive;
@@ -1289,7 +1328,8 @@ function initVintageEventListeners() {
             const c = document.createElement("canvas");
             c.width = img.width; c.height = img.height;
             c.getContext("2d").drawImage(img, 0, 0);
-            await recordVintageLatentFrame(c, useFlash, false);
+            playShutterSound(1 / 125, useFlash);
+            await recordVintageLatentFrameInstant(c, useFlash, false);
             c.width = 0; c.height = 0;
         }
     });
@@ -1438,4 +1478,16 @@ function initVintageEventListeners() {
             layoutVintageDetailCanvas(document.getElementById("vintageDetailCanvas"));
         }
     });
+}
+
+```
+E nel listener `onId("shutterBtn", "click", ...)` di `app.js`, sostituisci la chiamata `captureFrameFullRes` con `captureFrameInstant`:
+```javascript
+isCapturing = true;
+try {
+    const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, flashActive);
+    await recordLatentFrame(capCanvas, flashActive, hardwareFlashFired);
+    capCanvas.width = 0; capCanvas.height = 0;
+} finally {
+    isCapturing = false;
 }
