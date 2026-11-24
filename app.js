@@ -1,11 +1,15 @@
 /* =========================================================
-   ANALOG PHOTOLAB v1.0.4 — APP.JS
+   ANALOG PHOTOLAB v1.0.5 — APP.JS
    ========================================================= */
 
 function onId(id, event, handler) {
     const el = document.getElementById(id);
     if (el) el.addEventListener(event, handler);
     return el;
+}
+
+function appWaitPaint() {
+    return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 }
 
 /* =========================================================
@@ -888,60 +892,86 @@ function playFilmRewindSound(durationSec = 4.0) {
 }
 
 /* =========================================================
-   4. MOTORE WEBGL (FULL-RES + PRE-SCALE ANTI-BLACK-TEXTURE)
+   4. MOTORE WEBGL (FULL-RES + PRE-SCALE + SICUREZZA GPU)
    ========================================================= */
 const glCanvas = document.getElementById("printCanvas");
-const gl = glCanvas ? (glCanvas.getContext("webgl", { preserveDrawingBuffer: true }) || glCanvas.getContext("experimental-webgl")) : null;
-const MAX_GL_TEX = gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096) : 2048;
+const gl = glCanvas
+    ? (glCanvas.getContext("webgl", { preserveDrawingBuffer: true, alpha: false, antialias: false })
+        || glCanvas.getContext("experimental-webgl", { preserveDrawingBuffer: true, alpha: false }))
+    : null;
+const RAW_MAX_GL_TEX = gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096) : 2048;
+const MAX_GL_TEX = Math.min(4096, RAW_MAX_GL_TEX);
 
 let program = null;
 let glTex = null;
 
-if (gl) {
+function initWebGLPipeline() {
+    if (!gl) return false;
     function compileShader(type, src) {
         const s = gl.createShader(type);
         gl.shaderSource(s, src);
         gl.compileShader(s);
         if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
             console.error("Shader compile error:", gl.getShaderInfoLog(s));
+            return null;
         }
         return s;
     }
     const vsEl = document.getElementById("vs");
     const fsEl = document.getElementById("fs");
-    if (vsEl && fsEl) {
-        program = gl.createProgram();
-        gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vsEl.text));
-        gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fsEl.text));
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error("Program link error:", gl.getProgramInfoLog(program));
-        }
-        gl.useProgram(program);
+    if (!vsEl || !fsEl) return false;
 
-        const posBuf = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-        const posLoc = gl.getAttribLocation(program, "a_position");
-        gl.enableVertexAttribArray(posLoc);
-        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    const vShader = compileShader(gl.VERTEX_SHADER, vsEl.text);
+    const fShader = compileShader(gl.FRAGMENT_SHADER, fsEl.text);
+    if (!vShader || !fShader) return false;
 
-        const texBuf = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, texBuf);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]), gl.STATIC_DRAW);
-        const texLoc = gl.getAttribLocation(program, "a_texCoord");
-        gl.enableVertexAttribArray(texLoc);
-        gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
-
-        glTex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, glTex);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    program = gl.createProgram();
+    gl.attachShader(program, vShader);
+    gl.attachShader(program, fShader);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error("Program link error:", gl.getProgramInfoLog(program));
+        program = null;
+        return false;
     }
+    gl.useProgram(program);
+
+    const posBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+    const posLoc = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    const texBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, texBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]), gl.STATIC_DRAW);
+    const texLoc = gl.getAttribLocation(program, "a_texCoord");
+    gl.enableVertexAttribArray(texLoc);
+    gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+
+    glTex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, glTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.uniform1i(gl.getUniformLocation(program, "u_image"), 0);
+    return true;
 }
+
+if (glCanvas) {
+    glCanvas.addEventListener("webglcontextlost", (e) => {
+        e.preventDefault();
+        console.warn("WebGL context lost");
+    });
+    glCanvas.addEventListener("webglcontextrestored", () => {
+        initWebGLPipeline();
+    });
+}
+initWebGLPipeline();
 
 function getDefaultPaperIdForFilm(film) {
     if (!film) return "kodak-endura";
@@ -953,10 +983,15 @@ function getDefaultPaperIdForFilm(film) {
 function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printOpts = null, showOrig = false, customMaxDim = null, negativeMode = 0) {
     let srcW = imgElement.naturalWidth || imgElement.width;
     let srcH = imgElement.naturalHeight || imgElement.height;
-    if (!gl || !program || !srcW || !srcH) {
-        if (glCanvas && srcW && srcH) { glCanvas.width = srcW; glCanvas.height = srcH; }
+    if (!gl || !program || gl.isContextLost() || !srcW || !srcH) {
+        if (glCanvas && srcW && srcH) {
+            glCanvas.width = srcW;
+            glCanvas.height = srcH;
+        }
         return;
     }
+
+    gl.useProgram(program);
 
     let uploadSource = imgElement;
     let tempPreScale = null;
@@ -973,7 +1008,7 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
         srcH = nh;
     }
 
-    const targetMaxDim = customMaxDim || Math.min(MAX_GL_TEX, Math.max(srcW, srcH));
+    const targetMaxDim = Math.min(MAX_GL_TEX, customMaxDim || Math.max(srcW, srcH));
     const zoom = printOpts ? (printOpts.zoom || 1.0) : 1.0;
     const rotDeg = printOpts ? (printOpts.rotation || 0) : 0;
     const rotRad = (rotDeg * Math.PI) / 180.0;
@@ -999,8 +1034,11 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     glCanvas.width = outW;
     glCanvas.height = outH;
     gl.viewport(0, 0, outW, outH);
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, glTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, uploadSource);
+    gl.uniform1i(gl.getUniformLocation(program, "u_image"), 0);
     if (tempPreScale) { tempPreScale.width = 0; tempPreScale.height = 0; }
 
     const isBW = film.mode === "bw";
@@ -1117,6 +1155,8 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     gl.uniform1f(gl.getUniformLocation(program, "u_grain"), effectiveGrain);
     gl.uniform1f(gl.getUniformLocation(program, "u_grainSize"), effectiveGrainSize);
 
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
@@ -1142,13 +1182,15 @@ let camMode = "AUTO";
 let selectedApertureIdx = 3;
 let selectedShutterIdx = 3;
 let camCompEV = 0.0;
-let measuredSceneEV100 = 10.5;
+let measuredSceneEV100 = 9.0;
 let meterInterval = null;
 
 let isShutterArmed = false;
 let flashActive = false;
 let isCapturing = false;
 let isRewinding = false;
+let rollPendingCount = 0;
+let rollSaveQueue = Promise.resolve();
 let hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false, canTakePhoto: false };
 
 let thirdsVisible = localStorage.getItem("analog_lab_thirds_v7") === "1";
@@ -1187,6 +1229,11 @@ function detectFlashCapabilities() {
     }
 }
 
+function getEffectiveRollCount() {
+    if (!currentRoll) return 0;
+    return currentRoll.frames.length + rollPendingCount;
+}
+
 function setShutterArmedState(armed) {
     isShutterArmed = armed;
     const leverBtn = document.getElementById("advanceLeverBtn");
@@ -1196,7 +1243,7 @@ function setShutterArmedState(armed) {
     const shutterLbl = document.getElementById("shutterMechLabel");
     const leverTxt = document.getElementById("leverStatusTxt");
 
-    const rollFull = currentRoll && currentRoll.frames.length >= currentRoll.capacity;
+    const rollFull = currentRoll && getEffectiveRollCount() >= currentRoll.capacity;
     if (rollFull) {
         if (leverBtn) leverBtn.classList.remove("armed", "needs-cock");
         if (shutterBtn) shutterBtn.classList.add("locked");
@@ -1225,7 +1272,7 @@ function setShutterArmedState(armed) {
 }
 
 onId("advanceLeverBtn", "click", () => {
-    if (isRewinding || (currentRoll && currentRoll.frames.length >= currentRoll.capacity)) {
+    if (isRewinding || (currentRoll && getEffectiveRollCount() >= currentRoll.capacity)) {
         playLockedShutterTick();
         return;
     }
@@ -1259,15 +1306,17 @@ const meterCtx = meterCanvas.getContext("2d", { willReadFrequently: true });
 
 function sampleLiveSceneEV() {
     const video = document.getElementById("camVideo");
-    if (mediaStream && video && video.videoWidth > 0) {
+    if (mediaStream && video && video.readyState >= 2 && video.videoWidth > 0) {
         meterCtx.drawImage(video, 0, 0, 16, 16);
         const data = meterCtx.getImageData(0, 0, 16, 16).data;
         let sum = 0;
         for (let i = 0; i < data.length; i += 4) sum += (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
-        const avgLuma = Math.max(0.02, sum / 256);
-        measuredSceneEV100 = 7.5 + Math.log2(avgLuma / 0.18) * 1.9;
+        const avg = sum / 256;
+        if (avg > 0.005) {
+            measuredSceneEV100 = 9.0 + Math.log2(avg / 0.18) * 1.6;
+        }
     } else {
-        measuredSceneEV100 = 10.5;
+        measuredSceneEV100 = 9.0;
     }
     recalculateExposureTriangle();
 }
@@ -1529,6 +1578,7 @@ async function refreshHomeStatus() {
 }
 
 async function enterRollsSection() {
+    await rollSaveQueue.catch(() => { });
     const rolls = await getAllRollsFromDB();
     const activeShooting = rolls.find(r => r.status === "shooting");
     const activeRewound = rolls.find(r => r.status === "rewound");
@@ -1696,6 +1746,7 @@ async function startCamera() {
         mediaStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
         video.srcObject = mediaStream;
         video.style.display = "block";
+        try { await video.play(); } catch (e) { }
         fallback.style.display = "none";
         detectFlashCapabilities();
         recalculateExposureTriangle();
@@ -1713,6 +1764,7 @@ function stopCamera() {
 }
 
 function updateCameraHUD() {
+    if (!currentRoll) return;
     const theme = resolveFilmBrandTheme(currentRoll.film);
     const canister = document.getElementById("camFilmCanister");
     canister.style.background = theme.bg;
@@ -1720,17 +1772,18 @@ function updateCameraHUD() {
     document.getElementById("camFilmBrand").textContent = `${theme.brand} • ${currentRoll.film.iso}`;
     document.getElementById("camFilmBadge").textContent = currentRoll.film.name;
 
-    const cur = String(currentRoll.frames.length).padStart(2, "0");
+    const cur = String(Math.min(currentRoll.capacity, getEffectiveRollCount())).padStart(2, "0");
     const tot = String(currentRoll.capacity).padStart(2, "0");
     document.getElementById("camCounter").textContent = `${cur} / ${tot}`;
 
-    const isFull = currentRoll.frames.length >= currentRoll.capacity;
+    const isFull = getEffectiveRollCount() >= currentRoll.capacity;
     document.getElementById("rewindEarlyBtn").classList.toggle("pulse-finish", isFull);
     document.getElementById("rollFinishedOverlay").classList.toggle("open", isFull && !isRewinding);
 }
 
 function enterCameraMode() {
     isRewinding = false;
+    rollPendingCount = 0;
     camCompEV = 0.0;
     document.getElementById("camExpSlider").value = 0;
     document.getElementById("camExpVal").textContent = "0.0";
@@ -1748,8 +1801,9 @@ function enterCameraMode() {
     meterInterval = setInterval(sampleLiveSceneEV, 350);
 }
 
-onId("camHomeBtn", "click", () => {
+onId("camHomeBtn", "click", async () => {
     if (isRewinding) return;
+    await rollSaveQueue.catch(() => { });
     refreshHomeStatus();
     switchView("view-home");
 });
@@ -1791,7 +1845,7 @@ async function captureFrameInstant(video, targetRatio, useFlash = false) {
         if (hardwareFlashSupport.hasTorch) {
             try {
                 await track.applyConstraints({ advanced: [{ torch: true }] });
-                await new Promise(r => setTimeout(r, 260));
+                await new Promise(r => setTimeout(r, 240));
                 const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
                 return { canvas: c, hardwareFlashFired: true };
             } catch (err) {
@@ -1802,7 +1856,7 @@ async function captureFrameInstant(video, targetRatio, useFlash = false) {
         if (facingMode === "user") {
             const frontFlash = document.getElementById("frontScreenFlash");
             if (frontFlash) frontFlash.classList.add("lit");
-            await new Promise(r => setTimeout(r, 220));
+            await new Promise(r => setTimeout(r, 200));
             const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
             if (frontFlash) frontFlash.classList.remove("lit");
             return { canvas: c, hardwareFlashFired: true };
@@ -1813,74 +1867,92 @@ async function captureFrameInstant(video, targetRatio, useFlash = false) {
     return { canvas: c, hardwareFlashFired: false };
 }
 
-async function recordLatentFrame(sourceCanvasOrImg, usedFlash = false, hardwareFlashFired = false) {
-    if (!currentRoll || currentRoll.frames.length >= currentRoll.capacity) return;
-
-    const expInfo = recalculateExposureTriangle();
-    playShutterSound(expInfo.shutter.sec, usedFlash);
-
-    const curtain = document.getElementById("shutterCurtain");
-    curtain.classList.add("blink");
-    const blinkDuration = Math.min(700, Math.max(100, expInfo.shutter.sec * 1000));
-    setTimeout(() => curtain.classList.remove("blink"), blinkDuration);
-
-    const finalCanvas = document.createElement("canvas");
-    finalCanvas.width = sourceCanvasOrImg.width;
-    finalCanvas.height = sourceCanvasOrImg.height;
-    const ctx = finalCanvas.getContext("2d");
-    ctx.drawImage(sourceCanvasOrImg, 0, 0);
-
-    if (usedFlash && !hardwareFlashFired) {
-        const w = finalCanvas.width, h = finalCanvas.height;
-        const grad = ctx.createRadialGradient(w * 0.5, h * 0.5, w * 0.08, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
-        grad.addColorStop(0, "rgba(255, 252, 245, 0.24)");
-        grad.addColorStop(0.55, "rgba(255, 250, 240, 0.08)");
-        grad.addColorStop(1, "rgba(0, 0, 0, 0.22)");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
+function enqueueLatentFrame(sourceCanvas, expInfo, usedFlash = false, hardwareFlashFired = false) {
+    if (!currentRoll || getEffectiveRollCount() >= currentRoll.capacity) {
+        sourceCanvas.width = 0; sourceCanvas.height = 0;
+        return Promise.resolve();
     }
 
-    if (!usedFlash && expInfo.shutter.sec >= 1 / 15) {
-        const shakePx = Math.min(22, Math.round(expInfo.shutter.sec * 28));
-        ctx.globalAlpha = 0.35;
-        ctx.drawImage(sourceCanvasOrImg, shakePx, Math.round(shakePx * 0.4));
-        ctx.globalAlpha = 0.20;
-        ctx.drawImage(sourceCanvasOrImg, -Math.round(shakePx * 0.5), -Math.round(shakePx * 0.3));
-        ctx.globalAlpha = 1.0;
-    }
+    const rollRef = currentRoll;
+    const compSnap = camCompEV;
+    const modeSnap = camMode;
 
-    const flashFillBoost = (usedFlash && !hardwareFlashFired) ? Math.max(0.45, -expInfo.exposureErrorEV * 0.65) : 0.0;
-    const effectiveFrameEV = (camMode === "M" ? 0 : camCompEV) + expInfo.exposureErrorEV + flashFillBoost;
-    const seed = Math.random();
-    const rawBlob = await canvasToBlob(finalCanvas, "image/jpeg", 0.96);
-
-    currentRoll.frames.push({
-        number: currentRoll.frames.length + 1,
-        exposureEV: effectiveFrameEV,
-        aperture: expInfo.aperture,
-        shutterLabel: expInfo.shutter.label,
-        mode: camMode,
-        flash: usedFlash,
-        starred: false,
-        savedLocally: false,
-        defectSeed: seed,
-        defects: createDefaultFrameDefects(seed),
-        rawBlob,
-        negThumbBlob: null,
-        thumbBlob: null
-    });
-
-    finalCanvas.width = 0; finalCanvas.height = 0;
+    rollPendingCount++;
     setShutterArmedState(false);
     updateCameraHUD();
-    await saveRollToDB(currentRoll);
-    await refreshHomeStatus();
-    await refreshStorageSummary();
+
+    const job = rollSaveQueue.then(async () => {
+        try {
+            let encodeCanvas = sourceCanvas;
+            const needsPostOverlay = (usedFlash && !hardwareFlashFired) || (!usedFlash && expInfo.shutter.sec >= 1 / 15);
+
+            if (needsPostOverlay) {
+                const ctx = encodeCanvas.getContext("2d");
+                if (usedFlash && !hardwareFlashFired) {
+                    const w = encodeCanvas.width, h = encodeCanvas.height;
+                    const grad = ctx.createRadialGradient(w * 0.5, h * 0.5, w * 0.08, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+                    grad.addColorStop(0, "rgba(255, 252, 245, 0.24)");
+                    grad.addColorStop(0.55, "rgba(255, 250, 240, 0.08)");
+                    grad.addColorStop(1, "rgba(0, 0, 0, 0.22)");
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, w, h);
+                }
+
+                if (!usedFlash && expInfo.shutter.sec >= 1 / 15) {
+                    const snapCanvas = document.createElement("canvas");
+                    snapCanvas.width = encodeCanvas.width;
+                    snapCanvas.height = encodeCanvas.height;
+                    snapCanvas.getContext("2d").drawImage(encodeCanvas, 0, 0);
+                    const shakePx = Math.min(22, Math.round(expInfo.shutter.sec * 28));
+                    ctx.globalAlpha = 0.35;
+                    ctx.drawImage(snapCanvas, shakePx, Math.round(shakePx * 0.4));
+                    ctx.globalAlpha = 0.20;
+                    ctx.drawImage(snapCanvas, -Math.round(shakePx * 0.5), -Math.round(shakePx * 0.3));
+                    ctx.globalAlpha = 1.0;
+                    snapCanvas.width = 0; snapCanvas.height = 0;
+                }
+            }
+
+            const clampedErrEV = Math.max(-2.5, Math.min(2.5, expInfo.exposureErrorEV));
+            const flashFillBoost = (usedFlash && !hardwareFlashFired) ? Math.max(0.45, -clampedErrEV * 0.65) : 0.0;
+            const effectiveFrameEV = Math.max(-2.5, Math.min(2.5, (modeSnap === "M" ? 0 : compSnap) + clampedErrEV + flashFillBoost));
+            const seed = Math.random();
+
+            const rawBlob = await canvasToBlob(encodeCanvas, "image/jpeg", 0.95);
+            encodeCanvas.width = 0; encodeCanvas.height = 0;
+
+            rollRef.frames.push({
+                number: rollRef.frames.length + 1,
+                exposureEV: effectiveFrameEV,
+                aperture: expInfo.aperture,
+                shutterLabel: expInfo.shutter.label,
+                mode: modeSnap,
+                flash: usedFlash,
+                starred: false,
+                savedLocally: false,
+                defectSeed: seed,
+                defects: createDefaultFrameDefects(seed),
+                rawBlob,
+                negThumbBlob: null,
+                thumbBlob: null
+            });
+
+            await saveRollToDB(rollRef);
+            refreshHomeStatus().catch(() => { });
+            refreshStorageSummary().catch(() => { });
+        } finally {
+            rollPendingCount = Math.max(0, rollPendingCount - 1);
+            if (currentRoll === rollRef) updateCameraHUD();
+        }
+    });
+
+    rollSaveQueue = job.catch(() => { });
+    return job;
 }
 
 onId("shutterBtn", "click", async () => {
     if (isCapturing || isRewinding) return;
-    if (!currentRoll || currentRoll.frames.length >= currentRoll.capacity) {
+    if (!currentRoll || getEffectiveRollCount() >= currentRoll.capacity) {
         playLockedShutterTick();
         return;
     }
@@ -1895,48 +1967,76 @@ onId("shutterBtn", "click", async () => {
     }
 
     const video = document.getElementById("camVideo");
-    if (!mediaStream || !video || video.videoWidth === 0) {
-        alert("Fotocamera live non attiva in locale (file://): tocca '+ GALLERIA' in basso a sinistra per esporre una foto sul rullino!");
+    if (!mediaStream || !video || video.readyState < 2 || video.videoWidth === 0) {
+        alert("Fotocamera live non ancora pronta: attendi un istante o tocca '+ GALLERIA' in basso a sinistra per esporre una foto sul rullino!");
         return;
     }
 
+    const expInfo = recalculateExposureTriangle();
+    const useFlash = flashActive;
+    const curtain = document.getElementById("shutterCurtain");
+    const blinkDuration = Math.min(700, Math.max(100, expInfo.shutter.sec * 1000));
+
     isCapturing = true;
     try {
-        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, flashActive);
-        await recordLatentFrame(capCanvas, flashActive, hardwareFlashFired);
-        capCanvas.width = 0; capCanvas.height = 0;
+        const useHardwareWait = useFlash && (
+            (hardwareFlashSupport && hardwareFlashSupport.hasTorch) || facingMode === "user"
+        );
+
+        if (!useHardwareWait) {
+            playShutterSound(expInfo.shutter.sec, useFlash);
+            if (curtain) {
+                curtain.classList.add("blink");
+                setTimeout(() => curtain.classList.remove("blink"), blinkDuration);
+            }
+            const mirror = facingMode === "user";
+            const capCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, 3 / 4, mirror);
+            setShutterArmedState(false);
+            await appWaitPaint();
+            enqueueLatentFrame(capCanvas, expInfo, useFlash, false);
+        } else {
+            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, useFlash);
+            playShutterSound(expInfo.shutter.sec, useFlash);
+            if (curtain) {
+                curtain.classList.add("blink");
+                setTimeout(() => curtain.classList.remove("blink"), blinkDuration);
+            }
+            setShutterArmedState(false);
+            await appWaitPaint();
+            enqueueLatentFrame(capCanvas, expInfo, useFlash, hardwareFlashFired);
+        }
     } finally {
         isCapturing = false;
     }
 });
 
-onId("camGalleryInput", "change", (e) => {
-    if (isRewinding || (currentRoll && currentRoll.frames.length >= currentRoll.capacity)) {
+onId("camGalleryInput", "change", async (e) => {
+    if (isRewinding || (currentRoll && getEffectiveRollCount() >= currentRoll.capacity)) {
         e.target.value = "";
         return;
     }
     const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => {
-            const c = document.createElement("canvas");
-            c.width = img.width;
-            c.height = img.height;
-            c.getContext("2d").drawImage(img, 0, 0);
-            recordLatentFrame(c, flashActive, false).then(() => { c.width = 0; c.height = 0; });
-        };
-        img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
     e.target.value = "";
+    if (!file) return;
+    try {
+        const img = await loadImageFromSource(file);
+        const expInfo = recalculateExposureTriangle();
+        playShutterSound(expInfo.shutter.sec, flashActive);
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth || img.width;
+        c.height = img.naturalHeight || img.height;
+        c.getContext("2d").drawImage(img, 0, 0);
+        await enqueueLatentFrame(c, expInfo, flashActive, false);
+    } catch (err) {
+        alert("Impossibile caricare l'immagine selezionata.");
+    }
 });
 
 async function executeRewindSequence() {
     if (isRewinding || !currentRoll) return;
     getAudioCtx();
     isRewinding = true;
+    await rollSaveQueue.catch(() => { });
     document.getElementById("rollFinishedOverlay").classList.remove("open");
     const animOverlay = document.getElementById("rewindAnimOverlay");
     const fill = document.getElementById("rewindProgressFill");
@@ -1970,6 +2070,7 @@ async function executeRewindSequence() {
 onId("finishRewindBtn", "click", executeRewindSequence);
 onId("rewindEarlyBtn", "click", async () => {
     if (isRewinding || !currentRoll) return;
+    await rollSaveQueue.catch(() => { });
     if (currentRoll.frames.length === 0) {
         if (confirm("Nessuna foto scattata. Estrarre il rullino vuoto?")) {
             await deleteRollFromDB(currentRoll.id);
@@ -3286,29 +3387,25 @@ if (labPrevWrap) {
 window.addEventListener("pointerup", () => { if (labShowOriginal) { labShowOriginal = false; renderLabPreview(); } });
 window.addEventListener("pointercancel", () => { if (labShowOriginal) { labShowOriginal = false; renderLabPreview(); } });
 
-onId("labSampleUpload", "change", (e) => {
+onId("labSampleUpload", "change", async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => {
-            const maxD = 800;
-            let w = img.width, h = img.height;
-            if (w > maxD || h > maxD) {
-                const r = Math.min(maxD / w, maxD / h);
-                w = Math.round(w * r); h = Math.round(h * r);
-            }
-            const c = document.createElement("canvas");
-            c.width = w; c.height = h;
-            c.getContext("2d").drawImage(img, 0, 0, w, h);
-            labSampleImg = c;
-            renderLabPreview();
-        };
-        img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
     e.target.value = "";
+    if (!file) return;
+    try {
+        const img = await loadImageFromSource(file);
+        const maxD = 800;
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (w > maxD || h > maxD) {
+            const r = Math.min(maxD / w, maxD / h);
+            w = Math.round(w * r); h = Math.round(h * r);
+        }
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        labSampleImg = c;
+        renderLabPreview();
+    } catch (err) { }
 });
 
 onId("labResetSampleBtn", "click", () => {

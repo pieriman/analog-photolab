@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
   <title>Analog PhotoLab v1.0 — Pellicole, Polaroid &amp; Usa &amp; Getta</title>
-  <link rel="stylesheet" href="style.css?v=1.0.3" />
+  <link rel="stylesheet" href="style.css?v=1.0.5" />
 </head>
 
 <body>
@@ -1372,7 +1372,6 @@
   </script>
 
   <script id="fs" type="x-shader/x-fragment">
-  <script id="fs" type="x-shader/x-fragment">
     precision highp float;
 
     uniform sampler2D u_image;
@@ -1447,7 +1446,6 @@
       if (u_barrelDistort > 0.0005) {
         vec2 d = uv - 0.5;
         float r2 = dot(d, d);
-        // Compensa verso l'interno per non creare mai bordi neri storti
         float zoomComp = 1.0 - u_barrelDistort * 0.55;
         uv = 0.5 + d * zoomComp * (1.0 + u_barrelDistort * r2);
       }
@@ -1497,7 +1495,6 @@
       if (u_chromaticAberration <= 0.001) {
         return texture2D(u_image, uv).rgb;
       }
-      // Aberrazione cromatica delicata e reale: max 1-3 px agli angoli estremi, centro nitidissimo
       float edgeCA = smoothstep(0.32, 1.0, distSqSrc);
       vec2 dir = (uv - 0.5) * edgeCA * (u_chromaticAberration * 0.0032);
       float r = texture2D(u_image, clamp(uv + dir, 0.001, 0.999)).r;
@@ -1532,8 +1529,8 @@
         bloomAccum += sB * (bBright * bBright) * wB;
         wBloomTotal += wB;
       }
-      halationOut = halAccum / wHalTotal;
-      bloomOut = bloomAccum / wBloomTotal;
+      halationOut = halAccum / max(wHalTotal, 0.0001);
+      bloomOut = bloomAccum / max(wBloomTotal, 0.0001);
     }
 
     void main() {
@@ -1544,7 +1541,7 @@
       }
 
       if (u_showOriginal) {
-        gl_FragColor = texture2D(u_image, srcUV);
+        gl_FragColor = vec4(texture2D(u_image, srcUV).rgb, 1.0);
         return;
       }
 
@@ -1554,7 +1551,7 @@
       vec2 centeredOut = v_texCoord - 0.5;
       float distSqOut = dot(centeredOut, centeredOut) * 2.0;
 
-      vec2 srcTexel = 1.0 / u_srcResolution;
+      vec2 srcTexel = 1.0 / max(u_srcResolution, vec2(1.0));
       vec3 baseRgb = sampleWithCA(srcUV, distSqSrc);
 
       if (u_lensSoftness > 0.001) {
@@ -1580,8 +1577,8 @@
         if (band > 0.0 && fBand < 0.012) stripDivider = 1.0;
       }
 
-      vec3 col = pow(baseRgb, vec3(2.2));
-      col *= pow(2.0, u_exposure + stripEV);
+      vec3 col = pow(max(baseRgb, vec3(0.0001)), vec3(2.2));
+      col *= pow(2.0, clamp(u_exposure + stripEV, -6.0, 6.0));
       col *= u_wbGain;
 
       if (u_flashFalloff > 0.001) {
@@ -1624,7 +1621,7 @@
         col = col * (1.0 - spotRing * amt * 0.50) + vec3(0.24, 0.17, 0.08) * spotCore * amt;
       }
 
-      col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+      col = pow(max(col, vec3(0.0001)), vec3(1.0 / 2.2));
       float effectiveToe = max(0.0, u_toe + u_fadeBlack);
       if (u_agedPaperAmount > 0.001) {
         effectiveToe += 0.085 * clamp(u_agedPaperAmount, 0.0, 1.0);
@@ -1643,17 +1640,15 @@
         col = mix(col * u_shadowTint, col * u_highlightTint, clamp(luma, 0.0, 1.0));
       }
 
-      // Color Grading Lift / Gamma / Gain
       float gLuma = clamp(dot(col, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
-      float shadowW = pow(1.0 - gLuma, 2.2);
+      float shadowW = pow(max(1.0 - gLuma, 0.0001), 2.2);
       float midW = 4.0 * gLuma * (1.0 - gLuma);
-      float highW = pow(gLuma, 1.8);
+      float highW = pow(max(gLuma, 0.0001), 1.8);
       col += u_shadowLift * shadowW;
       col = mix(col, col * u_midGain, midW);
       col = mix(col, col * u_highGain, highW);
       col = clamp(col, 0.0, 1.0);
 
-      // Light Leaks realistici in Screen blend (fiammate d'angolo + perforazioni 35mm stile Huji)
       if (u_lightLeakAmount > 0.001) {
         float amt = clamp(u_lightLeakAmount, 0.0, 1.0);
         float leakType = fract(u_defectSeed * 17.31);
@@ -1662,9 +1657,9 @@
         vec3 leakRGB = vec3(0.0);
 
         if (leakType < 0.45) {
-          // Perforazioni 35mm traslucide lungo il bordo superiore/inferiore (stile Huji!)
           float yTop = leakType < 0.25 ? (1.0 - v_texCoord.y) : v_texCoord.y;
-          float bandY = exp(-pow((yTop - 0.11) * 16.0, 2.0));
+          float tBand = (yTop - 0.11) * 16.0;
+          float bandY = exp(-(tBand * tBand));
           float cellX = fract(v_texCoord.x * 7.5 + fract(u_defectSeed * 9.1));
           float sprocketBox = smoothstep(0.18, 0.28, cellX) * (1.0 - smoothstep(0.58, 0.68, cellX));
           float fadeSide = smoothstep(0.05, 0.85, v_texCoord.x + 0.15 * nLeak);
@@ -1672,22 +1667,22 @@
           vec3 spCol = mix(vec3(0.35, 0.85, 0.82), vec3(1.00, 0.55, 0.18), smoothstep(0.25, 0.85, v_texCoord.x));
           leakRGB += spCol * spMask;
 
-          // Morbida velatura caldo-rosa d'angolo
           float cornerD = length(vec2(v_texCoord.x, yTop));
-          float cornerGlow = exp(-pow(cornerD * 2.2, 2.0)) * amt * 0.42;
+          float tCorner = cornerD * 2.2;
+          float cornerGlow = exp(-(tCorner * tCorner)) * amt * 0.42;
           leakRGB += vec3(0.95, 0.35, 0.42) * cornerGlow;
         } else {
-          // Fiammata d'angolo/bordo calda rosso-ambra traslucida
           float edgeCoord = leakType < 0.65 ? v_texCoord.x : (leakType < 0.85 ? (1.0 - v_texCoord.x) : (1.0 - v_texCoord.y));
           float alongCoord = leakType < 0.85 ? v_texCoord.y : v_texCoord.x;
           float spread = mix(8.0, 3.6, amt);
-          float edgeBand = exp(-pow((edgeCoord - 0.01) * (spread + nLeak * 2.0), 2.0));
-          float focalSpot = exp(-pow((alongCoord - leakPos) * 1.8, 2.0));
+          float tEdge = (edgeCoord - 0.01) * (spread + nLeak * 2.0);
+          float edgeBand = exp(-(tEdge * tEdge));
+          float tFocal = (alongCoord - leakPos) * 1.8;
+          float focalSpot = exp(-(tFocal * tFocal));
           float lMask = clamp(edgeBand * (0.40 + 0.75 * focalSpot) * (0.75 + 0.45 * nLeak) * (amt * 1.15), 0.0, 1.3);
-          leakRGB += vec3(0.98, 0.18, 0.04) * lMask + vec3(0.95, 0.60, 0.12) * pow(lMask, 1.7);
+          leakRGB += vec3(0.98, 0.18, 0.04) * lMask + vec3(0.95, 0.60, 0.12) * pow(max(lMask, 0.0001), 1.7);
         }
 
-        // Screen blend: illumina in modo organico senza bruciare o impastare i neri
         col = 1.0 - (1.0 - col) * (1.0 - clamp(leakRGB, 0.0, 0.92));
       }
 
@@ -1697,7 +1692,7 @@
         if (u_tonerType > 0.5 && u_tonerAmount > 0.001) {
           float tAmt = clamp(u_tonerAmount, 0.0, 1.0);
           if (u_tonerType < 1.5) {
-            float deepened = pow(silverLuma, mix(1.0, 1.16, tAmt));
+            float deepened = pow(max(silverLuma, 0.0001), mix(1.0, 1.16, tAmt));
             vec3 selShadow = vec3(0.95, 0.88, 1.04);
             col = mix(vec3(silverLuma), vec3(deepened) * mix(selShadow, vec3(1.0), smoothstep(0.1, 0.7, silverLuma)), tAmt);
           } else if (u_tonerType < 2.5) {
@@ -1768,8 +1763,10 @@
         float creasePos1 = 0.11 + fract(u_defectSeed * 53.1) * 0.08;
         float creaseJitter1 = (fbm(v_texCoord * 28.0 + u_defectSeed * 9.0) - 0.5) * 0.010;
         float diagDist1 = dc1.x * 0.78 + dc1.y * 0.62 + creaseJitter1;
-        float creaseLine1 = exp(-pow((diagDist1 - creasePos1) / 0.0045, 2.0));
-        float creaseShadow1 = exp(-pow((diagDist1 - (creasePos1 + 0.006)) / 0.007, 2.0));
+        float tc1 = (diagDist1 - creasePos1) / 0.0045;
+        float creaseLine1 = exp(-(tc1 * tc1));
+        float tc1s = (diagDist1 - (creasePos1 + 0.006)) / 0.007;
+        float creaseShadow1 = exp(-(tc1s * tc1s));
         float cornerTip1 = smoothstep(creasePos1 + 0.01, creasePos1 - 0.02, diagDist1);
 
         vec2 corner2 = vec2(1.0 - corner1.x, 1.0 - corner1.y);
@@ -1777,7 +1774,8 @@
         float creasePos2 = 0.07 + fract(u_defectSeed * 71.9) * 0.05;
         float diagDist2 = dc2.x * 0.65 + dc2.y * 0.76 + creaseJitter1 * 0.8;
         float creaseEnable2 = step(0.42, fract(u_defectSeed * 11.3));
-        float creaseLine2 = exp(-pow((diagDist2 - creasePos2) / 0.0040, 2.0)) * creaseEnable2;
+        float tc2 = (diagDist2 - creasePos2) / 0.0040;
+        float creaseLine2 = exp(-(tc2 * tc2)) * creaseEnable2;
 
         col = mix(col, col * 0.90 + vec3(0.05, 0.045, 0.04), cornerTip1 * amt * 0.30);
         col *= (1.0 - creaseShadow1 * amt * 0.18);
@@ -1843,7 +1841,7 @@
       col = clamp(col, 0.0, 1.0);
 
       if (u_negativeMode == 1) {
-        vec3 inv = pow(clamp(1.0 - col, 0.0, 1.0), vec3(0.88));
+        vec3 inv = pow(max(clamp(1.0 - col, 0.0, 1.0), vec3(0.0001)), vec3(0.88));
         vec3 orangeMask = vec3(0.95, 0.55, 0.27);
         col = clamp(inv * orangeMask + vec3(0.04, 0.015, 0.0), 0.0, 1.0);
       } else if (u_negativeMode == 2) {
@@ -1859,9 +1857,9 @@
     }
   </script>
 
-  <script src="polaroid.js?v=1.0.4"></script>
-  <script src="vintage-presets.js?v=1.0.4"></script>
-  <script src="app.js?v=1.0.4"></script>
+  <script src="polaroid.js?v=1.0.5"></script>
+  <script src="vintage-presets.js?v=1.0.5"></script>
+  <script src="app.js?v=1.0.5"></script>
 
 </body>
 

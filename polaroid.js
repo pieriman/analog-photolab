@@ -1,5 +1,5 @@
 /* =========================================================
-   POLAROID.JS — v1.0.4
+   POLAROID.JS — v1.0.5 (ISTANTANEO + FULL-RES ASINCRONO)
    ========================================================= */
 
 const POLAROID_STOCKS = [
@@ -185,6 +185,11 @@ let activePolaroidDetailId = null;
 let livePolAnimId = null;
 let livePolActiveShot = null;
 let livePolForceFinish = null;
+let polSaveQueue = Promise.resolve();
+
+function polWaitPaint() {
+    return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
 
 function getPolaroidStock(id = selectedPolaroidStockId) {
     return POLAROID_STOCKS.find(s => s.id === id) || POLAROID_STOCKS[0];
@@ -199,8 +204,8 @@ function computePolaroidSheetGeometry(srcImgW, srcImgH, stock) {
     let totalW = Math.round(srcImgW / imgFracW);
     let totalH = Math.round(totalW / stock.totalRatio);
 
-    const MAX_SIDE = 4096;
-    const MAX_AREA = 15500000;
+    const MAX_SIDE = 3600;
+    const MAX_AREA = 11000000;
     if (totalH > MAX_SIDE) {
         totalH = MAX_SIDE;
         totalW = Math.round(totalH * stock.totalRatio);
@@ -323,7 +328,7 @@ async function renderPolaroidFinalSheetBlob(innerImgOrCanvas, stock, frameStyle,
 
     if (frameStyle.id === "matte-ivory" || frameStyle.id === "classic-white") {
         ctx.fillStyle = frameStyle.id === "matte-ivory" ? "rgba(120, 95, 50, 0.025)" : "rgba(0,0,0,0.012)";
-        for (let i = 0; i < 1400; i++) {
+        for (let i = 0; i < 1200; i++) {
             ctx.fillRect(Math.random() * geo.totalW, Math.random() * geo.totalH, 2, 2);
         }
     } else if (frameStyle.id === "gold-frame") {
@@ -401,7 +406,7 @@ async function renderPolaroidFinalSheetBlob(innerImgOrCanvas, stock, frameStyle,
         ctx.restore();
     }
 
-    const outBlob = await canvasToBlob(outCanvas, "image/jpeg", 0.95);
+    const outBlob = await canvasToBlob(outCanvas, "image/jpeg", 0.94);
     const finalW = outCanvas.width;
     const finalH = outCanvas.height;
     outCanvas.width = 0; outCanvas.height = 0;
@@ -486,6 +491,7 @@ async function startPolaroidCameraStream() {
         if (video) {
             video.srcObject = mediaStream;
             video.style.display = "block";
+            try { await video.play(); } catch (e) { }
         }
         if (fallback) fallback.style.display = "none";
         detectFlashCapabilities();
@@ -506,9 +512,22 @@ function enterPolaroidMode() {
     startPolaroidCameraStream();
 }
 
-function startLivePolaroidDevelopment(shot, innerImg, stock, frameStyle) {
+function buildPolaroidFastPreview(sourceCanvas, stock) {
+    const pCanvas = document.createElement("canvas");
+    const w = 240;
+    const h = Math.round(w / stock.imgRatio);
+    pCanvas.width = w;
+    pCanvas.height = h;
+    const pCtx = pCanvas.getContext("2d");
+    pCtx.drawImage(sourceCanvas, 0, 0, w, h);
+    return pCanvas;
+}
+
+function startLivePolaroidDevelopment(initialShot, previewImgOrCanvas, stock, frameStyle, pendingShotPromise = null) {
     if (livePolAnimId) cancelAnimationFrame(livePolAnimId);
-    livePolActiveShot = shot;
+    livePolActiveShot = initialShot;
+    let activePreview = previewImgOrCanvas;
+    let devFinished = false;
 
     const tray = document.getElementById("polaroidDevTray");
     const card = document.getElementById("polaroidEjectCard");
@@ -535,6 +554,25 @@ function startLivePolaroidDevelopment(shot, innerImg, stock, frameStyle) {
         requestAnimationFrame(() => card.classList.add("ejected"));
     });
 
+    if (pendingShotPromise) {
+        pendingShotPromise.then(async (savedShot) => {
+            if (!savedShot) return;
+            livePolActiveShot = savedShot;
+            if (savedShot.innerBlob) {
+                try {
+                    const developedImg = await loadImageFromSource(savedShot.innerBlob);
+                    activePreview = developedImg;
+                    if (devFinished) {
+                        drawStage(1);
+                        const resTxt = savedShot.width && savedShot.height ? `${savedShot.width}×${savedShot.height}px` : "Piena Ris.";
+                        statusTxt.textContent = `Pronta • ${resTxt}`;
+                        openBtn.style.display = "inline-flex";
+                    }
+                } catch (e) { }
+            }
+        });
+    }
+
     const ctx = canvas.getContext("2d");
     const totalMs = (stock.devSeconds || 10) * 1000;
     const startTime = performance.now();
@@ -551,7 +589,7 @@ function startLivePolaroidDevelopment(shot, innerImg, stock, frameStyle) {
         ctx.fillStyle = `rgb(${baseR},${baseG},${baseB})`;
         ctx.fillRect(0, 0, w, h);
 
-        if (p > 0.08) {
+        if (p > 0.08 && activePreview) {
             const imgAlpha = Math.pow(Math.min(1, (p - 0.08) / 0.84), 1.45);
             const contrastPct = Math.round(35 + p * 65);
             const brightPct = Math.round(140 - p * 40);
@@ -560,7 +598,7 @@ function startLivePolaroidDevelopment(shot, innerImg, stock, frameStyle) {
             ctx.save();
             ctx.globalAlpha = imgAlpha;
             ctx.filter = `contrast(${contrastPct}%) brightness(${brightPct}%) saturate(${satPct}%)`;
-            ctx.drawImage(innerImg, 0, 0, w, h);
+            ctx.drawImage(activePreview, 0, 0, w, h);
             ctx.restore();
         }
 
@@ -581,15 +619,23 @@ function startLivePolaroidDevelopment(shot, innerImg, stock, frameStyle) {
         }
     }
 
-    function finishNow() {
+    async function finishNow() {
         if (livePolAnimId) cancelAnimationFrame(livePolAnimId);
         livePolAnimId = null;
+        devFinished = true;
         drawStage(1);
-        const resTxt = shot.width && shot.height ? `${shot.width}×${shot.height}px` : "Piena Ris.";
-        statusTxt.textContent = `Pronta • ${resTxt}`;
         chin.textContent = stock.name.toUpperCase();
         skipBtn.style.display = "none";
-        openBtn.style.display = "inline-flex";
+
+        if (!livePolActiveShot && pendingShotPromise) {
+            statusTxt.textContent = "Finalizzazione HD...";
+            await pendingShotPromise;
+        }
+        drawStage(1);
+        const s = livePolActiveShot;
+        const resTxt = s && s.width && s.height ? `${s.width}×${s.height}px` : "Piena Ris.";
+        statusTxt.textContent = `Pronta • ${resTxt}`;
+        openBtn.style.display = s ? "inline-flex" : "none";
     }
 
     livePolForceFinish = finishNow;
@@ -607,15 +653,10 @@ function startLivePolaroidDevelopment(shot, innerImg, stock, frameStyle) {
     livePolAnimId = requestAnimationFrame(tick);
 }
 
-async function captureAndDevelopPolaroid(sourceCanvas, usedFlash = false, hardwareFlashFired = false) {
-    const stock = getPolaroidStock();
-    const frameStyle = getPolaroidFrameStyle();
-
-    const croppedCanvas = drawCroppedToCanvas(sourceCanvas, sourceCanvas.width, sourceCanvas.height, stock.imgRatio, false);
-
+async function processPolaroidInQueue(croppedCanvas, stock, frameStyle, ldEV, usedFlash, hardwareFlashFired) {
     const flashBoost = (usedFlash && !hardwareFlashFired) ? 0.22 : 0.0;
     const frameStub = {
-        exposureEV: polaroidLdEV + flashBoost - 0.10,
+        exposureEV: ldEV + flashBoost - 0.10,
         aperture: 4.0,
         defectSeed: Math.random(),
         defects: createDefaultFrameDefects(Math.random()),
@@ -650,7 +691,7 @@ async function captureAndDevelopPolaroid(sourceCanvas, usedFlash = false, hardwa
         defects: frameStub.defects
     };
 
-    const fullTargetDim = Math.min(MAX_GL_TEX, Math.max(croppedCanvas.width, croppedCanvas.height));
+    const fullTargetDim = Math.min(MAX_GL_TEX, 3072, Math.max(croppedCanvas.width, croppedCanvas.height));
     renderFrameWithWebGL(croppedCanvas, stock.film, frameStub, 0, printOptsStub, false, fullTargetDim, 0);
     croppedCanvas.width = 0; croppedCanvas.height = 0;
 
@@ -661,8 +702,9 @@ async function captureAndDevelopPolaroid(sourceCanvas, usedFlash = false, hardwa
     innerCanvas.height = innerH;
     innerCanvas.getContext("2d").drawImage(glCanvas, 0, 0, innerW, innerH);
 
-    const innerBlob = await canvasToBlob(innerCanvas, "image/jpeg", 0.95);
+    const innerBlob = await canvasToBlob(innerCanvas, "image/jpeg", 0.94);
     const sheetResult = await renderPolaroidFinalSheetBlob(innerCanvas, stock, frameStyle, "");
+    innerCanvas.width = 0; innerCanvas.height = 0;
 
     const sheetImg = await loadImageFromSource(sheetResult.blob);
     const tCanvas = document.createElement("canvas");
@@ -673,7 +715,7 @@ async function captureAndDevelopPolaroid(sourceCanvas, usedFlash = false, hardwa
     tCanvas.width = 0; tCanvas.height = 0;
 
     const shot = {
-        id: "pol-" + Date.now(),
+        id: "pol-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
         createdAt: Date.now(),
         stockId: stock.id,
         frameId: frameStyle.id,
@@ -690,11 +732,25 @@ async function captureAndDevelopPolaroid(sourceCanvas, usedFlash = false, hardwa
 
     await savePolaroidShotToDB(shot);
     await refreshPolaroidGalleryBadge();
-    await refreshStorageSummary();
+    refreshStorageSummary().catch(() => { });
+    return shot;
+}
 
-    const liveImg = await loadImageFromSource(innerBlob);
-    innerCanvas.width = 0; innerCanvas.height = 0;
-    startLivePolaroidDevelopment(shot, liveImg, stock, frameStyle);
+function captureAndDevelopPolaroidInstant(sourceCanvas, usedFlash = false, hardwareFlashFired = false) {
+    const stock = getPolaroidStock();
+    const frameStyle = getPolaroidFrameStyle();
+    const ldSnapshot = polaroidLdEV;
+
+    const croppedCanvas = drawCroppedToCanvas(sourceCanvas, sourceCanvas.width, sourceCanvas.height, stock.imgRatio, false);
+    const previewCanvas = buildPolaroidFastPreview(croppedCanvas, stock);
+
+    const bgJob = polSaveQueue.then(async () => {
+        await new Promise(r => setTimeout(r, 40));
+        return processPolaroidInQueue(croppedCanvas, stock, frameStyle, ldSnapshot, usedFlash, hardwareFlashFired);
+    });
+    polSaveQueue = bgJob.catch(() => null);
+
+    startLivePolaroidDevelopment(null, previewCanvas, stock, frameStyle, bgJob);
 }
 
 async function updatePolaroidSelectionUI() {
@@ -710,6 +766,7 @@ async function updatePolaroidSelectionUI() {
 }
 
 async function openPolaroidGallery() {
+    await polSaveQueue.catch(() => null);
     const shots = (await getAllPolaroidShotsFromDB()).sort((a, b) => b.createdAt - a.createdAt);
     const grid = document.getElementById("polaroidGalleryGrid");
     const empty = document.getElementById("polaroidGalleryEmpty");
@@ -894,8 +951,8 @@ function initPolaroidEventListeners() {
     pOn("polaroidShutterBtn", "click", async () => {
         if (polaroidCapturing) return;
         const video = document.getElementById("polaroidVideo");
-        if (!mediaStream || !video || video.videoWidth === 0) {
-            alert("Fotocamera live non attiva: tocca '📷 Carica Foto' qui a sinistra per sviluppare subito una Polaroid!");
+        if (!mediaStream || !video || video.readyState < 2 || video.videoWidth === 0) {
+            alert("Fotocamera live non ancora pronta: attendi un istante o tocca '📷 Carica Foto' per sviluppare subito una Polaroid!");
             return;
         }
         polaroidCapturing = true;
@@ -910,34 +967,42 @@ function initPolaroidEventListeners() {
         flashActive = polaroidFlashEnabled;
         try {
             const stock = getPolaroidStock();
-            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, stock.imgRatio, polaroidFlashEnabled);
-            await captureAndDevelopPolaroid(capCanvas, polaroidFlashEnabled, hardwareFlashFired);
-            capCanvas.width = 0; capCanvas.height = 0;
+            const useHardwareWait = polaroidFlashEnabled && (
+                (hardwareFlashSupport && hardwareFlashSupport.hasTorch) || facingMode === "user"
+            );
+            if (!useHardwareWait) {
+                const mirror = facingMode === "user";
+                const capCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, stock.imgRatio, mirror);
+                await polWaitPaint();
+                captureAndDevelopPolaroidInstant(capCanvas, polaroidFlashEnabled, false);
+                capCanvas.width = 0; capCanvas.height = 0;
+            } else {
+                const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, stock.imgRatio, polaroidFlashEnabled);
+                captureAndDevelopPolaroidInstant(capCanvas, polaroidFlashEnabled, hardwareFlashFired);
+                capCanvas.width = 0; capCanvas.height = 0;
+            }
         } finally {
             flashActive = prevFlash;
             polaroidCapturing = false;
         }
     });
 
-    pOn("polaroidGalleryInput", "change", (e) => {
+    pOn("polaroidGalleryInput", "change", async (e) => {
         const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const img = new Image();
-            img.onload = async () => {
-                playPolaroidEjectSound();
-                const c = document.createElement("canvas");
-                c.width = img.width;
-                c.height = img.height;
-                c.getContext("2d").drawImage(img, 0, 0);
-                await captureAndDevelopPolaroid(c, polaroidFlashEnabled, false);
-                c.width = 0; c.height = 0;
-            };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
         e.target.value = "";
+        if (!file) return;
+        try {
+            const img = await loadImageFromSource(file);
+            playPolaroidEjectSound();
+            const c = document.createElement("canvas");
+            c.width = img.naturalWidth || img.width;
+            c.height = img.naturalHeight || img.height;
+            c.getContext("2d").drawImage(img, 0, 0);
+            captureAndDevelopPolaroidInstant(c, polaroidFlashEnabled, false);
+            c.width = 0; c.height = 0;
+        } catch (err) {
+            alert("Impossibile caricare l'immagine selezionata.");
+        }
     });
 
     pOn("polaroidSelectAllBtn", "click", async () => {
