@@ -1,13 +1,12 @@
 /* =========================================================
-   ANALOG PHOTOLAB v1.0 — APP.JS
-   - Acquisizione ed esportazione unificata alla MASSIMA RISOLUZIONE NATIVA
-     (ImageCapture.takePhoto() ove supportato + video/galleria full-res)
-   - Tavolo Luminoso Negativi (C-41 maschera arancione / B&N / Diapositive)
-     + Carosello Fullscreen con Swipe, Pinch/Double-Tap Zoom e "Passa alla Stampa"
-   - Ingranditore Didattico: 9 Carte B&N e Colore RA-4/Cibachrome, Provino a Scalare
-     (Test Strip 5 tempi), Testa Dicromatica C/M/Y fisica, Obiettivo Ingranditore,
-     Viraggi Chimici (Selenio/Seppia/Cianotipia), Grana Pellicola vs Fibra Carta
+   ANALOG PHOTOLAB v1.0.2 — APP.JS
    ========================================================= */
+
+function onId(id, event, handler) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, handler);
+    return el;
+}
 
 /* =========================================================
    1. DATABASE EMULSIONI, MARCHE ICONICHE & CARTE FOTOGRAFICHE
@@ -135,11 +134,7 @@ function resolveFilmBrandTheme(film) {
     };
 }
 
-/* =========================================================
-   CARTE FOTOGRAFICHE REALISTICHE (B&N + RA-4 + CIBACHROME)
-   ========================================================= */
 const PAPER_STOCKS = [
-    // --- CARTE BIANCO & NERO ---
     {
         id: "ilford-rc-glossy",
         name: "Ilford MG RC Glossy",
@@ -176,7 +171,6 @@ const PAPER_STOCKS = [
         baseTint: [1.04, 0.97, 0.87], shadowTint: [1.07, 0.95, 0.83], highTint: [1.04, 0.98, 0.89],
         dmax: 0.91, contrastOffset: 0.04, satMult: 1.0, texture: 0.032
     },
-    // --- CARTE COLORE RA-4 & DIAPOSITIVE ---
     {
         id: "kodak-endura",
         name: "Kodak Endura Supra",
@@ -233,12 +227,21 @@ const PRINT_PRESETS = [
 
 const ENLARGER_APERTURES = [2.8, 4.0, 5.6, 8.0, 11, 16];
 
-let rawSavedFilms = JSON.parse(localStorage.getItem("analog_lab_films_v10"))
-    || JSON.parse(localStorage.getItem("analog_lab_films_v9"))
-    || JSON.parse(localStorage.getItem("analog_lab_films_v7"))
-    || JSON.parse(JSON.stringify(DEFAULT_FILMS));
+function loadSavedFilmsSafe() {
+    const keys = ["analog_lab_films_v10", "analog_lab_films_v9", "analog_lab_films_v7"];
+    for (const k of keys) {
+        try {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (e) { }
+    }
+    return JSON.parse(JSON.stringify(DEFAULT_FILMS));
+}
 
-let films = rawSavedFilms.filter(f => f && f.id !== "polaroid-600" && f.mode !== "instant");
+let films = loadSavedFilmsSafe().filter(f => f && f.id !== "polaroid-600" && f.mode !== "instant");
 if (films.length === 0) films = JSON.parse(JSON.stringify(DEFAULT_FILMS));
 function saveFilms() { localStorage.setItem("analog_lab_films_v10", JSON.stringify(films)); }
 
@@ -510,7 +513,7 @@ async function refreshStorageSummary() {
     }
 }
 
-document.getElementById("cleanDiscardsBtn").addEventListener("click", async () => {
+onId("cleanDiscardsBtn", "click", async () => {
     if (!confirm("Eliminare dal browser tutte le foto NON scelte (☆) e NON ancora salvate in locale? Resteranno solo quelle con ★ o ✓ Salvata.")) return;
     const rolls = await getAllRollsFromDB();
     for (const r of rolls) {
@@ -538,7 +541,7 @@ document.getElementById("cleanDiscardsBtn").addEventListener("click", async () =
     alert("Pulizia scarti completata! Restano solo le foto scelte (★) e salvate (✓).");
 });
 
-document.getElementById("cleanSavedBtn").addEventListener("click", async () => {
+onId("cleanSavedBtn", "click", async () => {
     if (!confirm("Rimuovere dal browser i file temporanei delle foto già salvate in locale (✓)? I file .jpg già scaricati sul dispositivo resteranno intatti.")) return;
     const rolls = await getAllRollsFromDB();
     for (const r of rolls) {
@@ -566,7 +569,7 @@ document.getElementById("cleanSavedBtn").addEventListener("click", async () => {
     alert("Spazio liberato! I file .jpg salvati sul dispositivo restano al sicuro.");
 });
 
-document.getElementById("clearAllStorageBtn").addEventListener("click", async () => {
+onId("clearAllStorageBtn", "click", async () => {
     if (!confirm("Svuotare TUTTI i rullini, le Polaroid e le foto temporanee dal browser? I preset pellicole e i .jpg già esportati NON verranno toccati.")) return;
     const rolls = await getAllRollsFromDB();
     for (const r of rolls) await deleteRollFromDB(r.id);
@@ -585,7 +588,7 @@ document.getElementById("clearAllStorageBtn").addEventListener("click", async ()
     alert("Memoria temporanea svuotata completamente!");
 });
 
-document.getElementById("exportBackupBtn").addEventListener("click", async () => {
+onId("exportBackupBtn", "click", async () => {
     const rolls = await getAllRollsFromDB();
     const vRolls = await getAllVintageRollsFromDB();
     const pShots = await getAllPolaroidShotsFromDB();
@@ -628,7 +631,7 @@ document.getElementById("exportBackupBtn").addEventListener("click", async () =>
     downloadSingleBlob(blob, `analog-photolab-backup-${new Date().toISOString().slice(0, 10)}.json`);
 });
 
-document.getElementById("importBackupInput").addEventListener("change", (e) => {
+onId("importBackupInput", "change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -885,11 +888,10 @@ function playFilmRewindSound(durationSec = 4.0) {
 }
 
 /* =========================================================
-   4. MOTORE WEBGL (FULL-RES, OTTICA, CARTA, NEGATIVI)
+   4. MOTORE WEBGL (FULL-RES + PRE-SCALE ANTI-BLACK-TEXTURE)
    ========================================================= */
 const glCanvas = document.getElementById("printCanvas");
-const gl = glCanvas.getContext("webgl", { preserveDrawingBuffer: true })
-    || glCanvas.getContext("experimental-webgl");
+const gl = glCanvas ? (glCanvas.getContext("webgl", { preserveDrawingBuffer: true }) || glCanvas.getContext("experimental-webgl")) : null;
 const MAX_GL_TEX = gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096) : 2048;
 
 let program = null;
@@ -900,12 +902,18 @@ if (gl) {
         const s = gl.createShader(type);
         gl.shaderSource(s, src);
         gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+            console.error("Shader compile error:", gl.getShaderInfoLog(s));
+        }
         return s;
     }
     program = gl.createProgram();
     gl.attachShader(program, compileShader(gl.VERTEX_SHADER, document.getElementById("vs").text));
     gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, document.getElementById("fs").text));
     gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error("Program link error:", gl.getProgramInfoLog(program));
+    }
     gl.useProgram(program);
 
     const posBuf = gl.createBuffer();
@@ -939,15 +947,28 @@ function getDefaultPaperIdForFilm(film) {
 }
 
 function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printOpts = null, showOrig = false, customMaxDim = null, negativeMode = 0) {
-    const srcW = imgElement.naturalWidth || imgElement.width;
-    const srcH = imgElement.naturalHeight || imgElement.height;
-    if (!gl || !program) {
-        glCanvas.width = srcW;
-        glCanvas.height = srcH;
+    let srcW = imgElement.naturalWidth || imgElement.width;
+    let srcH = imgElement.naturalHeight || imgElement.height;
+    if (!gl || !program || !srcW || !srcH) {
+        if (glCanvas && srcW && srcH) { glCanvas.width = srcW; glCanvas.height = srcH; }
         return;
     }
 
-    // Sempre alla massima risoluzione nativa consentita dal sensore/file fino a MAX_GL_TEX (es. 4096/8192)
+    let uploadSource = imgElement;
+    let tempPreScale = null;
+    if (srcW > MAX_GL_TEX || srcH > MAX_GL_TEX) {
+        const sc = Math.min(MAX_GL_TEX / srcW, MAX_GL_TEX / srcH);
+        const nw = Math.round(srcW * sc);
+        const nh = Math.round(srcH * sc);
+        tempPreScale = document.createElement("canvas");
+        tempPreScale.width = nw;
+        tempPreScale.height = nh;
+        tempPreScale.getContext("2d").drawImage(imgElement, 0, 0, nw, nh);
+        uploadSource = tempPreScale;
+        srcW = nw;
+        srcH = nh;
+    }
+
     const targetMaxDim = customMaxDim || Math.min(MAX_GL_TEX, Math.max(srcW, srcH));
     const zoom = printOpts ? (printOpts.zoom || 1.0) : 1.0;
     const rotDeg = printOpts ? (printOpts.rotation || 0) : 0;
@@ -975,7 +996,8 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     glCanvas.height = outH;
     gl.viewport(0, 0, outW, outH);
     gl.bindTexture(gl.TEXTURE_2D, glTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imgElement);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, uploadSource);
+    if (tempPreScale) { tempPreScale.width = 0; tempPreScale.height = 0; }
 
     const isBW = film.mode === "bw";
     const isSlide = film.mode === "slide";
@@ -983,7 +1005,6 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     const ap = frameData.aperture || 4.0;
     const optics = frameData.optics || {};
     const enlargerApIdx = (printOpts && typeof printOpts.enlargerApIdx === "number") ? printOpts.enlargerApIdx : 3;
-    // Obiettivo ingranditore: f/2.8 (+0.6 EV e caduta ai bordi), f/8 (0 EV, nitidezza massima), f/16 (-0.5 EV)
     const enlargerEvShift = printOpts ? (3 - enlargerApIdx) * 0.35 : 0.0;
     const enlargerEdgeVig = enlargerApIdx <= 1 ? (2 - enlargerApIdx) * 0.12 : 0.0;
     const enlargerSoft = enlargerApIdx === 0 ? 0.30 : (enlargerApIdx === 5 ? 0.12 : 0.0);
@@ -999,9 +1020,6 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     const timerEV = printOpts ? Math.log2(printOpts.time / 12.0) : 0.0;
     const gradeDelta = (printOpts && paper.isBW) ? (printOpts.grade - 2.5) * 0.15 : 0.0;
 
-    // Filtrazione dicromatica C / M / Y:
-    // Su negativo (dirSign = -1): +Y blocca blu -> stampa più blu; +M blocca verde -> stampa più verde; +C blocca rosso -> stampa più rossa
-    // Su diapositiva Cibachrome (dirSign = +1): il filtro colora direttamente in positivo
     const dirSign = isSlide ? -1.0 : 1.0;
     const cyanShift = (printOpts && !paper.isBW) ? (printOpts.cyan || 0) * 0.008 * dirSign : 0.0;
     const magShift = (printOpts && !paper.isBW) ? (printOpts.mag || 0) * 0.008 * dirSign : 0.0;
@@ -1128,7 +1146,7 @@ function syncThirdsUI() {
     if (vfGrid) vfGrid.classList.toggle("visible", thirdsVisible);
     if (vfBtn) vfBtn.classList.toggle("active", thirdsVisible);
 }
-document.getElementById("vfThirdsToggleBtn").addEventListener("click", () => {
+onId("vfThirdsToggleBtn", "click", () => {
     thirdsVisible = !thirdsVisible;
     localStorage.setItem("analog_lab_thirds_v7", thirdsVisible ? "1" : "0");
     syncThirdsUI();
@@ -1168,38 +1186,33 @@ function setShutterArmedState(armed) {
 
     const rollFull = currentRoll && currentRoll.frames.length >= currentRoll.capacity;
     if (rollFull) {
-        leverBtn.classList.remove("armed", "needs-cock");
-        shutterBtn.classList.add("locked");
-        cockDot.classList.remove("armed");
-        cockBadge.classList.remove("armed");
-        cockBadge.textContent = "RULLINO FINITO • RIAVVOLGI";
-        shutterLbl.textContent = "FINE";
-        leverTxt.textContent = "FINE";
+        if (leverBtn) leverBtn.classList.remove("armed", "needs-cock");
+        if (shutterBtn) shutterBtn.classList.add("locked");
+        if (cockDot) cockDot.classList.remove("armed");
+        if (cockBadge) { cockBadge.classList.remove("armed"); cockBadge.textContent = "RULLINO FINITO • RIAVVOLGI"; }
+        if (shutterLbl) shutterLbl.textContent = "FINE";
+        if (leverTxt) leverTxt.textContent = "FINE";
         return;
     }
 
     if (armed) {
-        leverBtn.classList.remove("needs-cock");
-        leverBtn.classList.add("armed");
-        shutterBtn.classList.remove("locked");
-        cockDot.classList.add("armed");
-        cockBadge.classList.add("armed");
-        cockBadge.textContent = "OTTURATORE ARMATO";
-        shutterLbl.textContent = "SCATTA";
-        leverTxt.textContent = "CARICO";
+        if (leverBtn) { leverBtn.classList.remove("needs-cock"); leverBtn.classList.add("armed"); }
+        if (shutterBtn) shutterBtn.classList.remove("locked");
+        if (cockDot) cockDot.classList.add("armed");
+        if (cockBadge) { cockBadge.classList.add("armed"); cockBadge.textContent = "OTTURATORE ARMATO"; }
+        if (shutterLbl) shutterLbl.textContent = "SCATTA";
+        if (leverTxt) leverTxt.textContent = "CARICO";
     } else {
-        leverBtn.classList.remove("armed");
-        leverBtn.classList.add("needs-cock");
-        shutterBtn.classList.add("locked");
-        cockDot.classList.remove("armed");
-        cockBadge.classList.remove("armed");
-        cockBadge.textContent = "TIRA LEVA PER CARICARE";
-        shutterLbl.textContent = "BLOCCATO";
-        leverTxt.textContent = "CARICA";
+        if (leverBtn) { leverBtn.classList.remove("armed"); leverBtn.classList.add("needs-cock"); }
+        if (shutterBtn) shutterBtn.classList.add("locked");
+        if (cockDot) cockDot.classList.remove("armed");
+        if (cockBadge) { cockBadge.classList.remove("armed"); cockBadge.textContent = "TIRA LEVA PER CARICARE"; }
+        if (shutterLbl) shutterLbl.textContent = "BLOCCATO";
+        if (leverTxt) leverTxt.textContent = "CARICA";
     }
 }
 
-document.getElementById("advanceLeverBtn").addEventListener("click", () => {
+onId("advanceLeverBtn", "click", () => {
     if (isRewinding || (currentRoll && currentRoll.frames.length >= currentRoll.capacity)) {
         playLockedShutterTick();
         return;
@@ -1209,19 +1222,20 @@ document.getElementById("advanceLeverBtn").addEventListener("click", () => {
         return;
     }
     const leverBtn = document.getElementById("advanceLeverBtn");
-    leverBtn.classList.add("cocking");
+    if (leverBtn) leverBtn.classList.add("cocking");
     playAdvanceLeverSound();
     setTimeout(() => {
-        leverBtn.classList.remove("cocking");
+        if (leverBtn) leverBtn.classList.remove("cocking");
         setShutterArmedState(true);
     }, 240);
 });
 
-document.getElementById("flashToggleBtn").addEventListener("click", () => {
+onId("flashToggleBtn", "click", () => {
     flashActive = !flashActive;
     const btn = document.getElementById("flashToggleBtn");
-    btn.classList.toggle("active", flashActive);
-    document.getElementById("flashBtnLabel").textContent = flashActive ? "FLASH: ON" : "FLASH: OFF";
+    if (btn) btn.classList.toggle("active", flashActive);
+    const lbl = document.getElementById("flashBtnLabel");
+    if (lbl) lbl.textContent = flashActive ? "FLASH: ON" : "FLASH: OFF";
     playLockedShutterTick();
     recalculateExposureTriangle();
 });
@@ -1233,7 +1247,7 @@ const meterCtx = meterCanvas.getContext("2d", { willReadFrequently: true });
 
 function sampleLiveSceneEV() {
     const video = document.getElementById("camVideo");
-    if (mediaStream && video.videoWidth > 0) {
+    if (mediaStream && video && video.videoWidth > 0) {
         meterCtx.drawImage(video, 0, 0, 16, 16);
         const data = meterCtx.getImageData(0, 0, 16, 16).data;
         let sum = 0;
@@ -1380,31 +1394,31 @@ function buildSteppedCameraSliders() {
     });
 }
 
-document.getElementById("apertureSteppedSlider").addEventListener("input", (e) => {
+onId("apertureSteppedSlider", "input", (e) => {
     selectedApertureIdx = parseInt(e.target.value);
     buildSteppedCameraSliders();
     recalculateExposureTriangle();
 });
 
-document.getElementById("shutterSteppedSlider").addEventListener("input", (e) => {
+onId("shutterSteppedSlider", "input", (e) => {
     selectedShutterIdx = parseInt(e.target.value);
     buildSteppedCameraSliders();
     recalculateExposureTriangle();
 });
 
-document.getElementById("resetApertureBtn").addEventListener("click", () => {
+onId("resetApertureBtn", "click", () => {
     selectedApertureIdx = 3;
     buildSteppedCameraSliders();
     recalculateExposureTriangle();
 });
 
-document.getElementById("resetShutterBtn").addEventListener("click", () => {
+onId("resetShutterBtn", "click", () => {
     selectedShutterIdx = 3;
     buildSteppedCameraSliders();
     recalculateExposureTriangle();
 });
 
-document.getElementById("resetCamEvBtn").addEventListener("click", () => {
+onId("resetCamEvBtn", "click", () => {
     camCompEV = 0.0;
     document.getElementById("camExpSlider").value = 0;
     document.getElementById("camExpVal").textContent = "0.0";
@@ -1436,7 +1450,8 @@ let facingMode = "environment";
 
 function switchView(viewId) {
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-    document.getElementById(viewId).classList.add("active");
+    const target = document.getElementById(viewId);
+    if (target) target.classList.add("active");
     if (viewId !== "view-camera" && viewId !== "view-vintage-camera" && viewId !== "view-polaroid") {
         stopCamera();
         if (meterInterval) { clearInterval(meterInterval); meterInterval = null; }
@@ -1520,48 +1535,49 @@ async function enterRollsSection() {
     switchView("view-load");
 }
 
-document.getElementById("pathRollsBtn").addEventListener("click", () => {
+onId("pathRollsBtn", "click", () => {
     getAudioCtx();
     enterRollsSection();
 });
 
-document.getElementById("homeRollsArchiveBtn").addEventListener("click", async (e) => {
+onId("homeRollsArchiveBtn", "click", async (e) => {
     e.stopPropagation();
     await refreshArchiveList();
     renderLoadView();
     switchView("view-load");
 });
 
-document.getElementById("pathPolaroidBtn").addEventListener("click", () => {
+onId("pathPolaroidBtn", "click", () => {
     getAudioCtx();
     if (typeof enterPolaroidMode === "function") enterPolaroidMode();
 });
 
-document.getElementById("homePolaroidGalleryBtn").addEventListener("click", (e) => {
+onId("homePolaroidGalleryBtn", "click", (e) => {
     e.stopPropagation();
     if (typeof openPolaroidGallery === "function") openPolaroidGallery();
 });
 
-document.getElementById("pathDisposableBtn").addEventListener("click", () => {
+onId("pathDisposableBtn", "click", () => {
     getAudioCtx();
     if (typeof enterDisposableSection === "function") enterDisposableSection();
 });
 
-document.getElementById("homeDisposableArchiveBtn").addEventListener("click", async (e) => {
+onId("homeDisposableArchiveBtn", "click", async (e) => {
     e.stopPropagation();
     if (typeof refreshVintageArchiveList === "function") await refreshVintageArchiveList();
     switchView("view-disposable-load");
 });
 
-document.getElementById("backHomeFromLoadBtn").addEventListener("click", () => {
+onId("backHomeFromLoadBtn", "click", () => {
     refreshHomeStatus();
     switchView("view-home");
 });
 
-document.getElementById("openLabFromRollsBtn").addEventListener("click", openLabModal);
+onId("openLabFromRollsBtn", "click", openLabModal);
 
 function renderLoadView() {
     const grid = document.getElementById("loadFilmGrid");
+    if (!grid) return;
     grid.innerHTML = "";
     films.forEach(f => {
         const theme = resolveFilmBrandTheme(f);
@@ -1606,7 +1622,10 @@ async function refreshArchiveList() {
     const developed = rolls.filter(r => r.status === "developed").sort((a, b) => b.createdAt - a.createdAt);
     const list = document.getElementById("archiveList");
     const emptyMsg = document.getElementById("archiveEmptyMsg");
-    document.getElementById("archiveCount").textContent = `${developed.length} ${developed.length === 1 ? "rullino" : "rullini"}`;
+    const countEl = document.getElementById("archiveCount");
+    if (!list || !emptyMsg || !countEl) return;
+
+    countEl.textContent = `${developed.length} ${developed.length === 1 ? "rullino" : "rullini"}`;
     list.innerHTML = "";
 
     if (developed.length === 0) {
@@ -1635,7 +1654,7 @@ async function refreshArchiveList() {
     });
 }
 
-document.getElementById("loadRollBtn").addEventListener("click", async () => {
+onId("loadRollBtn", "click", async () => {
     getAudioCtx();
     const filmCopy = JSON.parse(JSON.stringify(films.find(f => f.id === selectedLoadFilmId) || films[0]));
     currentRoll = {
@@ -1717,19 +1736,19 @@ function enterCameraMode() {
     meterInterval = setInterval(sampleLiveSceneEV, 350);
 }
 
-document.getElementById("camHomeBtn").addEventListener("click", () => {
+onId("camHomeBtn", "click", () => {
     if (isRewinding) return;
     refreshHomeStatus();
     switchView("view-home");
 });
 
-document.getElementById("camExpSlider").addEventListener("input", (e) => {
+onId("camExpSlider", "input", (e) => {
     camCompEV = parseFloat(e.target.value);
     document.getElementById("camExpVal").textContent = (camCompEV > 0 ? "+" : "") + camCompEV.toFixed(1);
     recalculateExposureTriangle();
 });
 
-document.getElementById("switchCamBtn").addEventListener("click", () => {
+onId("switchCamBtn", "click", () => {
     facingMode = facingMode === "environment" ? "user" : "environment";
     startCamera();
 });
@@ -1752,7 +1771,6 @@ function drawCroppedToCanvas(sourceObj, srcW, srcH, targetRatio, mirror = false)
     return c;
 }
 
-// Funzione unificata di acquisizione alla MASSIMA RISOLUZIONE NATIVA del sensore
 async function captureFrameFullRes(video, targetRatio, useFlash = false) {
     const track = mediaStream ? mediaStream.getVideoTracks()[0] : null;
     const mirror = facingMode === "user";
@@ -1789,7 +1807,6 @@ async function captureFrameFullRes(video, targetRatio, useFlash = false) {
         }
     }
 
-    // Anche senza flash, tenta ImageCapture.takePhoto() per sbloccare i veri Megapixel (es. 3000×4000)
     if (track && typeof ImageCapture !== "undefined") {
         try {
             const ic = new ImageCapture(track);
@@ -1873,7 +1890,7 @@ async function recordLatentFrame(sourceCanvasOrImg, usedFlash = false, hardwareF
     await refreshStorageSummary();
 }
 
-document.getElementById("shutterBtn").addEventListener("click", async () => {
+onId("shutterBtn", "click", async () => {
     if (isCapturing || isRewinding) return;
     if (!currentRoll || currentRoll.frames.length >= currentRoll.capacity) {
         playLockedShutterTick();
@@ -1882,13 +1899,15 @@ document.getElementById("shutterBtn").addEventListener("click", async () => {
     if (!isShutterArmed) {
         playLockedShutterTick();
         const badge = document.getElementById("vfCockBadge");
-        badge.style.transform = "scale(1.08)";
-        setTimeout(() => { badge.style.transform = "scale(1)"; }, 160);
+        if (badge) {
+            badge.style.transform = "scale(1.08)";
+            setTimeout(() => { badge.style.transform = "scale(1)"; }, 160);
+        }
         return;
     }
 
     const video = document.getElementById("camVideo");
-    if (!mediaStream || video.videoWidth === 0) {
+    if (!mediaStream || !video || video.videoWidth === 0) {
         alert("Fotocamera live non attiva in locale (file://): tocca '+ GALLERIA' in basso a sinistra per esporre una foto sul rullino!");
         return;
     }
@@ -1903,7 +1922,7 @@ document.getElementById("shutterBtn").addEventListener("click", async () => {
     }
 });
 
-document.getElementById("camGalleryInput").addEventListener("change", (e) => {
+onId("camGalleryInput", "change", (e) => {
     if (isRewinding || (currentRoll && currentRoll.frames.length >= currentRoll.capacity)) {
         e.target.value = "";
         return;
@@ -1960,8 +1979,8 @@ async function executeRewindSequence() {
     await goToDarkroom();
 }
 
-document.getElementById("finishRewindBtn").addEventListener("click", executeRewindSequence);
-document.getElementById("rewindEarlyBtn").addEventListener("click", async () => {
+onId("finishRewindBtn", "click", executeRewindSequence);
+onId("rewindEarlyBtn", "click", async () => {
     if (isRewinding || !currentRoll) return;
     if (currentRoll.frames.length === 0) {
         if (confirm("Nessuna foto scattata. Estrarre il rullino vuoto?")) {
@@ -1983,7 +2002,7 @@ document.getElementById("rewindEarlyBtn").addEventListener("click", async () => 
 });
 
 /* =========================================================
-   8. CAMERA OSCURA -> GENERAZIONE NEGATIVI SUL TAVOLO LUMINOSO
+   8. CAMERA OSCURA -> NEGATIVI SUL TAVOLO LUMINOSO
    ========================================================= */
 let selectedPushStops = 0;
 let devLightLeaks = false;
@@ -1992,9 +2011,9 @@ let devAgedPaper = false;
 
 function getRollNegativeMode(roll) {
     if (!roll || !roll.film) return 1;
-    if (roll.film.mode === "slide") return 0; // Diapositiva -> positivo trasparente
-    if (roll.film.mode === "bw") return 2;    // Negativo B&N -> argento invertito
-    return 1;                                 // Negativo Colore C-41 -> maschera arancione
+    if (roll.film.mode === "slide") return 0;
+    if (roll.film.mode === "bw") return 2;
+    return 1;
 }
 
 async function goToDarkroom() {
@@ -2007,7 +2026,8 @@ async function goToDarkroom() {
     devAgedPaper = false;
 
     document.querySelectorAll("#pushGrid .push-btn").forEach(b => b.classList.remove("selected"));
-    document.querySelector('#pushGrid .push-btn[data-push="0"]').classList.add("selected");
+    const stdPush = document.querySelector('#pushGrid .push-btn[data-push="0"]');
+    if (stdPush) stdPush.classList.add("selected");
     document.getElementById("drToggleLeaks").classList.remove("active");
     document.getElementById("drToggleChem").classList.remove("active");
     document.getElementById("drToggleAged").classList.remove("active");
@@ -2019,7 +2039,7 @@ async function goToDarkroom() {
     switchView("view-darkroom");
 }
 
-document.getElementById("darkroomHomeBtn").addEventListener("click", () => {
+onId("darkroomHomeBtn", "click", () => {
     refreshHomeStatus();
     switchView("view-home");
 });
@@ -2032,11 +2052,11 @@ document.querySelectorAll("#pushGrid .push-btn").forEach(btn => {
     });
 });
 
-document.getElementById("drToggleLeaks").addEventListener("click", function () { devLightLeaks = !devLightLeaks; this.classList.toggle("active", devLightLeaks); });
-document.getElementById("drToggleChem").addEventListener("click", function () { devChemStains = !devChemStains; this.classList.toggle("active", devChemStains); });
-document.getElementById("drToggleAged").addEventListener("click", function () { devAgedPaper = !devAgedPaper; this.classList.toggle("active", devAgedPaper); });
+onId("drToggleLeaks", "click", function () { devLightLeaks = !devLightLeaks; this.classList.toggle("active", devLightLeaks); });
+onId("drToggleChem", "click", function () { devChemStains = !devChemStains; this.classList.toggle("active", devChemStains); });
+onId("drToggleAged", "click", function () { devAgedPaper = !devAgedPaper; this.classList.toggle("active", devAgedPaper); });
 
-document.getElementById("startDevelopBtn").addEventListener("click", async () => {
+onId("startDevelopBtn", "click", async () => {
     document.getElementById("startDevelopBtn").style.display = "none";
     const progBox = document.getElementById("devProgressBox");
     const progFill = document.getElementById("devProgressFill");
@@ -2078,7 +2098,6 @@ document.getElementById("startDevelopBtn").addEventListener("click", async () =>
         } else { fDef.agedPaper.active = false; fDef.agedPaper.intensity = 0; }
 
         const img = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
-        // Genera la miniatura in NEGATIVO (o positivo per diapositive) per il Tavolo Luminoso
         renderFrameWithWebGL(img, currentRoll.film, frame, currentRoll.pushStops, null, false, 480, negMode);
         frame.negThumbBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.84);
         frame.thumbBlob = frame.negThumbBlob;
@@ -2259,13 +2278,13 @@ async function openNegativeViewer(idx) {
     await renderNegativeSlideAtIdx(idx);
 }
 
-document.getElementById("negModalCloseBtn").addEventListener("click", () => {
+onId("negModalCloseBtn", "click", () => {
     document.getElementById("negativeModal").classList.remove("open");
 });
 
-document.getElementById("negModalResetZoomBtn").addEventListener("click", resetNegativeZoom);
+onId("negModalResetZoomBtn", "click", resetNegativeZoom);
 
-document.getElementById("negModalStarBtn").addEventListener("click", async () => {
+onId("negModalStarBtn", "click", async () => {
     if (!currentRoll || !currentRoll.frames[activeNegIdx]) return;
     const fr = currentRoll.frames[activeNegIdx];
     fr.starred = !fr.starred;
@@ -2276,22 +2295,21 @@ document.getElementById("negModalStarBtn").addEventListener("click", async () =>
     openContactSheet();
 });
 
-document.getElementById("negPrevBtn").addEventListener("click", () => {
+onId("negPrevBtn", "click", () => {
     if (activeNegIdx > 0) renderNegativeSlideAtIdx(activeNegIdx - 1);
 });
 
-document.getElementById("negNextBtn").addEventListener("click", () => {
+onId("negNextBtn", "click", () => {
     if (currentRoll && activeNegIdx < currentRoll.frames.length - 1) {
         renderNegativeSlideAtIdx(activeNegIdx + 1);
     }
 });
 
-document.getElementById("negPrintBtn").addEventListener("click", () => {
+onId("negPrintBtn", "click", () => {
     document.getElementById("negativeModal").classList.remove("open");
     openPrintEnlarger(activeNegIdx);
 });
 
-// Gesti Swipe Carosello + Pinch Zoom + Double Tap sul Visore Negativi
 const negStage = document.getElementById("negModalStage");
 let negPointers = new Map();
 let negPinchStartDist = 0;
@@ -2299,82 +2317,82 @@ let negPinchStartZoom = 1;
 let negSwipeStart = { x: 0, y: 0, panX: 0, panY: 0, moved: false };
 let negLastTapTime = 0;
 
-negStage.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("button")) return;
-    e.preventDefault();
-    negPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+if (negStage) {
+    negStage.addEventListener("pointerdown", (e) => {
+        if (e.target.closest("button")) return;
+        e.preventDefault();
+        negPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    if (negPointers.size === 1) {
-        negSwipeStart = { x: e.clientX, y: e.clientY, panX: negPanX, panY: negPanY, moved: false };
-    } else if (negPointers.size === 2) {
-        const pts = Array.from(negPointers.values());
-        negPinchStartDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-        negPinchStartZoom = negZoom;
-    }
-});
-
-negStage.addEventListener("pointermove", (e) => {
-    if (!negPointers.has(e.pointerId)) return;
-    negPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    if (negPointers.size === 2) {
-        const pts = Array.from(negPointers.values());
-        const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-        if (negPinchStartDist > 10) {
-            negZoom = Math.max(1.0, Math.min(4.0, negPinchStartZoom * (dist / negPinchStartDist)));
-            if (negZoom <= 1.02) { negZoom = 1.0; negPanX = 0; negPanY = 0; }
-            applyNegativeTransform();
+        if (negPointers.size === 1) {
+            negSwipeStart = { x: e.clientX, y: e.clientY, panX: negPanX, panY: negPanY, moved: false };
+        } else if (negPointers.size === 2) {
+            const pts = Array.from(negPointers.values());
+            negPinchStartDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+            negPinchStartZoom = negZoom;
         }
-        return;
-    }
+    });
 
-    if (negPointers.size === 1) {
-        const dx = e.clientX - negSwipeStart.x;
-        const dy = e.clientY - negSwipeStart.y;
-        if (Math.hypot(dx, dy) > 8) negSwipeStart.moved = true;
+    negStage.addEventListener("pointermove", (e) => {
+        if (!negPointers.has(e.pointerId)) return;
+        negPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (negZoom > 1.05) {
-            const limitX = (negStage.clientWidth * (negZoom - 1)) * 0.5;
-            const limitY = (negStage.clientHeight * (negZoom - 1)) * 0.5;
-            negPanX = Math.max(-limitX, Math.min(limitX, negSwipeStart.panX + dx));
-            negPanY = Math.max(-limitY, Math.min(limitY, negSwipeStart.panY + dy));
-            applyNegativeTransform();
-        }
-    }
-});
-
-function handleNegPointerEnd(e) {
-    if (!negPointers.has(e.pointerId)) return;
-    const endPos = negPointers.get(e.pointerId);
-    negPointers.delete(e.pointerId);
-
-    if (negPointers.size === 0) {
-        const dx = endPos.x - negSwipeStart.x;
-        const dy = endPos.y - negSwipeStart.y;
-
-        if (!negSwipeStart.moved) {
-            const now = Date.now();
-            if (now - negLastTapTime < 280) {
-                if (negZoom > 1.1) resetNegativeZoom();
-                else { negZoom = 2.5; negPanX = 0; negPanY = 0; applyNegativeTransform(); }
-                negLastTapTime = 0;
-            } else {
-                negLastTapTime = now;
+        if (negPointers.size === 2) {
+            const pts = Array.from(negPointers.values());
+            const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+            if (negPinchStartDist > 10) {
+                negZoom = Math.max(1.0, Math.min(4.0, negPinchStartZoom * (dist / negPinchStartDist)));
+                if (negZoom <= 1.02) { negZoom = 1.0; negPanX = 0; negPanY = 0; }
+                applyNegativeTransform();
             }
-        } else if (negZoom <= 1.05 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-            // Swipe orizzontale carosello tra i negativi
-            if (dx < 0 && currentRoll && activeNegIdx < currentRoll.frames.length - 1) {
-                renderNegativeSlideAtIdx(activeNegIdx + 1);
-            } else if (dx > 0 && activeNegIdx > 0) {
-                renderNegativeSlideAtIdx(activeNegIdx - 1);
+            return;
+        }
+
+        if (negPointers.size === 1) {
+            const dx = e.clientX - negSwipeStart.x;
+            const dy = e.clientY - negSwipeStart.y;
+            if (Math.hypot(dx, dy) > 8) negSwipeStart.moved = true;
+
+            if (negZoom > 1.05) {
+                const limitX = (negStage.clientWidth * (negZoom - 1)) * 0.5;
+                const limitY = (negStage.clientHeight * (negZoom - 1)) * 0.5;
+                negPanX = Math.max(-limitX, Math.min(limitX, negSwipeStart.panX + dx));
+                negPanY = Math.max(-limitY, Math.min(limitY, negSwipeStart.panY + dy));
+                applyNegativeTransform();
             }
         }
-    }
+    });
+
+    const handleNegPointerEnd = (e) => {
+        if (!negPointers.has(e.pointerId)) return;
+        const endPos = negPointers.get(e.pointerId);
+        negPointers.delete(e.pointerId);
+
+        if (negPointers.size === 0) {
+            const dx = endPos.x - negSwipeStart.x;
+            const dy = endPos.y - negSwipeStart.y;
+
+            if (!negSwipeStart.moved) {
+                const now = Date.now();
+                if (now - negLastTapTime < 280) {
+                    if (negZoom > 1.1) resetNegativeZoom();
+                    else { negZoom = 2.5; negPanX = 0; negPanY = 0; applyNegativeTransform(); }
+                    negLastTapTime = 0;
+                } else {
+                    negLastTapTime = now;
+                }
+            } else if (negZoom <= 1.05 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                if (dx < 0 && currentRoll && activeNegIdx < currentRoll.frames.length - 1) {
+                    renderNegativeSlideAtIdx(activeNegIdx + 1);
+                } else if (dx > 0 && activeNegIdx > 0) {
+                    renderNegativeSlideAtIdx(activeNegIdx - 1);
+                }
+            }
+        }
+    };
+    negStage.addEventListener("pointerup", handleNegPointerEnd);
+    negStage.addEventListener("pointercancel", handleNegPointerEnd);
 }
-negStage.addEventListener("pointerup", handleNegPointerEnd);
-negStage.addEventListener("pointercancel", handleNegPointerEnd);
 
-// Esportazione rapida dal Tavolo Luminoso -> Esporta SEMPRE stampe positive alla massima risoluzione
 async function exportContactFrames(framesToExport, labelSlug) {
     if (!framesToExport.length) {
         alert("Metti prima la stellina (★) su almeno una foto oppure clicca 'Stampa Tutte (+)'.");
@@ -2405,7 +2423,7 @@ async function exportContactFrames(framesToExport, labelSlug) {
     openContactSheet();
 }
 
-document.getElementById("csSelectAllBtn").addEventListener("click", async () => {
+onId("csSelectAllBtn", "click", async () => {
     if (!currentRoll) return;
     const allStarred = currentRoll.frames.every(f => f.starred);
     currentRoll.frames.forEach(f => { f.starred = !allStarred; });
@@ -2413,18 +2431,18 @@ document.getElementById("csSelectAllBtn").addEventListener("click", async () => 
     openContactSheet();
 });
 
-document.getElementById("csSaveSelectedBtn").addEventListener("click", async () => {
+onId("csSaveSelectedBtn", "click", async () => {
     if (!currentRoll) return;
     const selected = currentRoll.frames.filter(f => f.starred);
     await exportContactFrames(selected, "scelte");
 });
 
-document.getElementById("csSaveAllBtn").addEventListener("click", async () => {
+onId("csSaveAllBtn", "click", async () => {
     if (!currentRoll) return;
     await exportContactFrames(currentRoll.frames, "tutte");
 });
 
-document.getElementById("newRollFromCsBtn").addEventListener("click", () => {
+onId("newRollFromCsBtn", "click", () => {
     currentRoll = null;
     refreshArchiveList();
     refreshHomeStatus();
@@ -2473,7 +2491,7 @@ let printState = {
 function layoutPrintPreview() {
     const stage = document.getElementById("printStage");
     const wrap = document.getElementById("printWrapper");
-    if (!stage || !wrap || !glCanvas.width || !glCanvas.height) return;
+    if (!stage || !wrap || !glCanvas || !glCanvas.width || !glCanvas.height) return;
 
     const availW = Math.max(80, stage.clientWidth - 24);
     const availH = Math.max(80, stage.clientHeight - 24);
@@ -2496,7 +2514,8 @@ function layoutPrintPreview() {
 }
 
 window.addEventListener("resize", () => {
-    if (document.getElementById("printModal").classList.contains("open")) layoutPrintPreview();
+    const pm = document.getElementById("printModal");
+    if (pm && pm.classList.contains("open")) layoutPrintPreview();
 });
 
 function renderTestStripOverlay() {
@@ -2516,6 +2535,7 @@ function renderTestStripOverlay() {
 
 function renderPrintPresetsAndPapers() {
     const pStrip = document.getElementById("printPresetStrip");
+    if (!pStrip) return;
     pStrip.innerHTML = "";
     PRINT_PRESETS.forEach(pr => {
         const chip = document.createElement("div");
@@ -2549,6 +2569,7 @@ function renderPrintPresetsAndPapers() {
 
     const bwGroup = document.getElementById("paperGroupBW");
     const colGroup = document.getElementById("paperGroupColor");
+    if (!bwGroup || !colGroup) return;
     bwGroup.innerHTML = "";
     colGroup.innerHTML = "";
 
@@ -2621,7 +2642,6 @@ function syncPrintControlsUI() {
     document.getElementById("prBorderThickVal").textContent = Math.round(printState.borderThickness * 100) + "%";
     document.getElementById("borderThicknessRow").style.display = printState.border === "white" ? "flex" : "none";
 
-    // Visibilità didattica blocchi Ingranditore in base al tipo di carta
     document.getElementById("bwGradeBlock").style.display = paper.isBW ? "flex" : "none";
     document.getElementById("bwTonerBlock").style.display = paper.isBW ? "flex" : "none";
     document.getElementById("ra4HeadBlock").style.display = paper.isBW ? "none" : "flex";
@@ -2760,11 +2780,12 @@ document.querySelectorAll("#printTabs .print-tab").forEach(tab => {
         document.querySelectorAll("#printTabs .print-tab").forEach(t => t.classList.remove("active"));
         document.querySelectorAll(".print-tab-body").forEach(b => b.classList.remove("active"));
         tab.classList.add("active");
-        document.getElementById(tab.dataset.tab).classList.add("active");
+        const target = document.getElementById(tab.dataset.tab);
+        if (target) target.classList.add("active");
     });
 });
 
-document.getElementById("prTestStripBtn").addEventListener("click", () => {
+onId("prTestStripBtn", "click", () => {
     printState.testStrip = !printState.testStrip;
     syncPrintControlsUI();
     updatePrintPreview();
@@ -2778,10 +2799,10 @@ function rotatePrint90() {
     syncPrintControlsUI();
 }
 
-document.getElementById("prRotate90Btn").addEventListener("click", rotatePrint90);
-document.getElementById("headerRotate90Btn").addEventListener("click", rotatePrint90);
+onId("prRotate90Btn", "click", rotatePrint90);
+onId("headerRotate90Btn", "click", rotatePrint90);
 
-document.getElementById("prResetGeomBtn").addEventListener("click", () => {
+onId("prResetGeomBtn", "click", () => {
     printState.zoom = 1.0;
     printState.rotation = 0;
     printState.panX = 0;
@@ -2790,7 +2811,7 @@ document.getElementById("prResetGeomBtn").addEventListener("click", () => {
     syncPrintControlsUI();
 });
 
-document.getElementById("prZoomSlider").addEventListener("input", (e) => {
+onId("prZoomSlider", "input", (e) => {
     printState.zoom = parseFloat(e.target.value);
     const maxPan = Math.max(0, 0.5 * (1 - 1 / printState.zoom));
     printState.panX = Math.max(-maxPan, Math.min(maxPan, printState.panX));
@@ -2799,32 +2820,32 @@ document.getElementById("prZoomSlider").addEventListener("input", (e) => {
     updatePrintPreview();
 });
 
-document.getElementById("prRotSlider").addEventListener("input", (e) => {
+onId("prRotSlider", "input", (e) => {
     printState.rotation = parseFloat(e.target.value) % 360;
     document.getElementById("prRotVal").textContent = Math.round(printState.rotation) + "°";
     updatePrintPreview();
 });
 
-document.getElementById("prLensApSlider").addEventListener("input", (e) => {
+onId("prLensApSlider", "input", (e) => {
     printState.enlargerApIdx = parseInt(e.target.value);
     syncPrintControlsUI();
     updatePrintPreview();
 });
 
-document.getElementById("prTonerSelect").addEventListener("change", (e) => {
+onId("prTonerSelect", "change", (e) => {
     printState.tonerType = parseInt(e.target.value);
     if (printState.tonerType > 0 && printState.tonerAmount === 0) printState.tonerAmount = 0.6;
     syncPrintControlsUI();
     updatePrintPreview();
 });
 
-document.getElementById("prTonerIntSlider").addEventListener("input", (e) => {
+onId("prTonerIntSlider", "input", (e) => {
     printState.tonerAmount = parseFloat(e.target.value);
     syncPrintControlsUI();
     updatePrintPreview();
 });
 
-document.getElementById("prBorderThickSlider").addEventListener("input", (e) => {
+onId("prBorderThickSlider", "input", (e) => {
     printState.borderThickness = parseFloat(e.target.value);
     document.getElementById("prBorderThickVal").textContent = Math.round(printState.borderThickness * 100) + "%";
     layoutPrintPreview();
@@ -2862,7 +2883,7 @@ document.querySelectorAll("[data-reset-defect]").forEach(btn => {
     ["prGrainSlider", "grainScale"],
     ["prPaperTexSlider", "paperTexScale"]
 ].forEach(([id, prop]) => {
-    document.getElementById(id).addEventListener("input", (e) => {
+    onId(id, "input", (e) => {
         printState.presetId = "custom";
         printState[prop] = parseFloat(e.target.value);
         syncPrintControlsUI();
@@ -2876,7 +2897,7 @@ document.querySelectorAll("[data-reset-defect]").forEach(btn => {
     ["prToggleAgedPaper", "agedPaper"],
     ["prToggleScratches", "scratches"]
 ].forEach(([id, key]) => {
-    document.getElementById(id).addEventListener("click", async () => {
+    onId(id, "click", async () => {
         printState.defects[key].active = !printState.defects[key].active;
         await persistCurrentFrameDefects();
         syncPrintControlsUI();
@@ -2890,7 +2911,7 @@ document.querySelectorAll("[data-reset-defect]").forEach(btn => {
     ["prAgedInt", "agedPaper"],
     ["prScratchInt", "scratches"]
 ].forEach(([id, key]) => {
-    document.getElementById(id).addEventListener("input", async (e) => {
+    onId(id, "input", async (e) => {
         const val = parseFloat(e.target.value);
         printState.defects[key].intensity = val;
         if (val > 0) printState.defects[key].active = true;
@@ -2900,14 +2921,14 @@ document.querySelectorAll("[data-reset-defect]").forEach(btn => {
     });
 });
 
-document.getElementById("rerollDefectsBtn").addEventListener("click", async () => {
+onId("rerollDefectsBtn", "click", async () => {
     printState.defects.seed = Math.random();
     await persistCurrentFrameDefects();
     syncPrintControlsUI();
     updatePrintPreview();
 });
 
-document.getElementById("clearFrameDefectsBtn").addEventListener("click", async () => {
+onId("clearFrameDefectsBtn", "click", async () => {
     const d = printState.defects;
     d.lightLeak = { active: false, intensity: 0 };
     d.chemStain = { active: false, intensity: 0 };
@@ -2930,23 +2951,25 @@ document.querySelectorAll("#borderSelector button").forEach(btn => {
 const pStage = document.getElementById("printStage");
 let stageDrag = { active: false, moved: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0, holdTimer: null, rafPending: false };
 
-pStage.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    stageDrag.active = true;
-    stageDrag.moved = false;
-    stageDrag.startX = e.clientX;
-    stageDrag.startY = e.clientY;
-    stageDrag.startPanX = printState.panX;
-    stageDrag.startPanY = printState.panY;
+if (pStage) {
+    pStage.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        stageDrag.active = true;
+        stageDrag.moved = false;
+        stageDrag.startX = e.clientX;
+        stageDrag.startY = e.clientY;
+        stageDrag.startPanX = printState.panX;
+        stageDrag.startPanY = printState.panY;
 
-    clearTimeout(stageDrag.holdTimer);
-    stageDrag.holdTimer = setTimeout(() => {
-        if (stageDrag.active && !stageDrag.moved) {
-            printShowOriginal = true;
-            updatePrintPreview();
-        }
-    }, 180);
-});
+        clearTimeout(stageDrag.holdTimer);
+        stageDrag.holdTimer = setTimeout(() => {
+            if (stageDrag.active && !stageDrag.moved) {
+                printShowOriginal = true;
+                updatePrintPreview();
+            }
+        }, 180);
+    });
+}
 
 window.addEventListener("pointermove", (e) => {
     if (!stageDrag.active) return;
@@ -2987,7 +3010,7 @@ function endStagePointer() {
 window.addEventListener("pointerup", endStagePointer);
 window.addEventListener("pointercancel", endStagePointer);
 
-document.getElementById("closePrintBtn").addEventListener("click", async () => {
+onId("closePrintBtn", "click", async () => {
     document.getElementById("printModal").classList.remove("open");
     if (activeFrameDirty && currentRoll && currentRoll.frames[activePrintIdx] && activePrintImg) {
         const frame = currentRoll.frames[activePrintIdx];
@@ -3000,10 +3023,9 @@ document.getElementById("closePrintBtn").addEventListener("click", async () => {
     }
 });
 
-document.getElementById("downloadPrintBtn").addEventListener("click", async () => {
+onId("downloadPrintBtn", "click", async () => {
     printShowOriginal = false;
     const prevStrip = printState.testStrip;
-    // Esportazione stampa pulita (senza strisce di test a meno che l'utente non voglia salvare)
     printState.testStrip = false;
     updatePrintPreview();
 
@@ -3158,7 +3180,8 @@ function ensureLabSampleImage() {
 }
 
 function renderLabPreview() {
-    if (!document.getElementById("labModal").classList.contains("open")) return;
+    const lm = document.getElementById("labModal");
+    if (!lm || !lm.classList.contains("open")) return;
     const f = films.find(x => x.id === labEditingId) || films[0];
     const sample = ensureLabSampleImage();
     const previewCanvas = document.getElementById("labPreviewCanvas");
@@ -3221,6 +3244,7 @@ function openLabModal() {
 
 function populateLabSelect() {
     const sel = document.getElementById("labFilmSelect");
+    if (!sel) return;
     sel.innerHTML = "";
     films.forEach(f => {
         const opt = document.createElement("option");
@@ -3268,11 +3292,13 @@ function syncLabForm() {
 }
 
 const labPrevWrap = document.getElementById("labPreviewWrap");
-labPrevWrap.addEventListener("pointerdown", (e) => { e.preventDefault(); labShowOriginal = true; renderLabPreview(); });
+if (labPrevWrap) {
+    labPrevWrap.addEventListener("pointerdown", (e) => { e.preventDefault(); labShowOriginal = true; renderLabPreview(); });
+}
 window.addEventListener("pointerup", () => { if (labShowOriginal) { labShowOriginal = false; renderLabPreview(); } });
 window.addEventListener("pointercancel", () => { if (labShowOriginal) { labShowOriginal = false; renderLabPreview(); } });
 
-document.getElementById("labSampleUpload").addEventListener("change", (e) => {
+onId("labSampleUpload", "change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -3297,12 +3323,12 @@ document.getElementById("labSampleUpload").addEventListener("change", (e) => {
     e.target.value = "";
 });
 
-document.getElementById("labResetSampleBtn").addEventListener("click", () => {
+onId("labResetSampleBtn", "click", () => {
     labSampleImg = buildDefaultLabSampleCanvas();
     renderLabPreview();
 });
 
-document.getElementById("labFilmSelect").addEventListener("change", (e) => {
+onId("labFilmSelect", "change", (e) => {
     labEditingId = e.target.value;
     syncLabForm();
     renderLabPreview();
@@ -3326,7 +3352,7 @@ document.querySelectorAll("[data-reset-lab]").forEach(btn => {
     ["edTemp", "temp"], ["edTint", "tint"], ["edSat", "saturation"],
     ["edHalation", "halation"], ["edBloom", "bloom"], ["edGrain", "grain"], ["edGrainSize", "grainSize"]
 ].forEach(([id, prop]) => {
-    document.getElementById(id).addEventListener("input", (e) => {
+    onId(id, "input", (e) => {
         const f = films.find(x => x.id === labEditingId);
         f[prop] = parseFloat(e.target.value);
         markFilmAsModifiedInLab(f);
@@ -3335,7 +3361,7 @@ document.querySelectorAll("[data-reset-lab]").forEach(btn => {
     });
 });
 
-document.getElementById("edName").addEventListener("input", (e) => {
+onId("edName", "input", (e) => {
     const f = films.find(x => x.id === labEditingId);
     f._nameEditedManually = true;
     f.name = e.target.value || "Custom Film";
@@ -3356,11 +3382,11 @@ function handleIsoChange(newVal) {
     renderLabPreview();
 }
 
-document.getElementById("edIso").addEventListener("input", (e) => {
+onId("edIso", "input", (e) => {
     clearTimeout(isoDebounceTimer);
     isoDebounceTimer = setTimeout(() => handleIsoChange(e.target.value), 500);
 });
-document.getElementById("edIso").addEventListener("change", (e) => {
+onId("edIso", "change", (e) => {
     clearTimeout(isoDebounceTimer);
     handleIsoChange(e.target.value);
 });
@@ -3372,20 +3398,20 @@ document.querySelectorAll("#labIsoPresets .iso-chip").forEach(btn => {
     });
 });
 
-document.getElementById("edCustomColor").addEventListener("input", (e) => {
+onId("edCustomColor", "input", (e) => {
     const f = films.find(x => x.id === labEditingId);
     f.customColor = e.target.value;
     markFilmAsModifiedInLab(f);
     syncLabForm();
 });
 
-document.getElementById("labResetColorBtn").addEventListener("click", () => {
+onId("labResetColorBtn", "click", () => {
     const f = films.find(x => x.id === labEditingId);
     delete f.customColor;
     syncLabForm();
 });
 
-document.getElementById("edMode").addEventListener("change", (e) => {
+onId("edMode", "change", (e) => {
     const f = films.find(x => x.id === labEditingId);
     f.mode = e.target.value;
     if (f.mode !== "bw" && f.saturation === 0) f.saturation = 1.0;
@@ -3394,7 +3420,7 @@ document.getElementById("edMode").addEventListener("change", (e) => {
     renderLabPreview();
 });
 
-document.getElementById("labNewBtn").addEventListener("click", () => {
+onId("labNewBtn", "click", () => {
     const base = JSON.parse(JSON.stringify(films.find(x => x.id === labEditingId)));
     base.id = "custom-" + Date.now();
     if (!/\bcustom\b/i.test(base.name)) base.name = base.name + " Custom";
@@ -3412,7 +3438,7 @@ document.getElementById("labNewBtn").addEventListener("click", () => {
     renderLabPreview();
 });
 
-document.getElementById("copyJsonTemplateBtn").addEventListener("click", async () => {
+onId("copyJsonTemplateBtn", "click", async () => {
     try {
         await navigator.clipboard.writeText(document.getElementById("jsonArea").value);
         alert("Ricetta JSON copiata negli appunti!");
@@ -3422,7 +3448,7 @@ document.getElementById("copyJsonTemplateBtn").addEventListener("click", async (
     }
 });
 
-document.getElementById("importJsonBtn").addEventListener("click", () => {
+onId("importJsonBtn", "click", () => {
     try {
         const parsed = JSON.parse(document.getElementById("jsonArea").value);
         if (!parsed.name || typeof parsed.shoulder !== "number") throw new Error();
@@ -3444,7 +3470,7 @@ document.getElementById("importJsonBtn").addEventListener("click", () => {
     }
 });
 
-document.getElementById("deleteFilmBtn").addEventListener("click", () => {
+onId("deleteFilmBtn", "click", () => {
     if (films.length <= 1) return alert("Deve restare almeno una pellicola.");
     const target = films.find(x => x.id === labEditingId);
     const label = target ? target.name : "questa pellicola";
@@ -3452,15 +3478,15 @@ document.getElementById("deleteFilmBtn").addEventListener("click", () => {
 
     films = films.filter(x => x.id !== labEditingId);
     labEditingId = films[0].id;
-    if (selectedLoadFilmId === target?.id) selectedLoadFilmId = films[0].id;
+    if (target && selectedLoadFilmId === target.id) selectedLoadFilmId = films[0].id;
     populateLabSelect();
     syncLabForm();
     renderLabPreview();
 });
 
-document.getElementById("openLabFromLoadBtn").addEventListener("click", openLabModal);
+onId("openLabFromLoadBtn", "click", openLabModal);
 
-document.getElementById("cancelLabModalBtn").addEventListener("click", () => {
+onId("cancelLabModalBtn", "click", () => {
     if (labSnapshotFilms) {
         films = JSON.parse(JSON.stringify(labSnapshotFilms));
         selectedLoadFilmId = labSnapshotSelectedId || films[0].id;
@@ -3469,7 +3495,7 @@ document.getElementById("cancelLabModalBtn").addEventListener("click", () => {
     renderLoadView();
 });
 
-document.getElementById("closeLabModalBtn").addEventListener("click", () => {
+onId("closeLabModalBtn", "click", () => {
     films.forEach(f => delete f._nameEditedManually);
     saveFilms();
     document.getElementById("labModal").classList.remove("open");
@@ -3515,16 +3541,16 @@ async function refreshDiagSummary() {
     }
 }
 
-document.getElementById("openDiagBtn").addEventListener("click", async () => {
+onId("openDiagBtn", "click", async () => {
     await refreshDiagSummary();
     document.getElementById("diagModal").classList.add("open");
 });
 
-document.getElementById("closeDiagBtn").addEventListener("click", () => {
+onId("closeDiagBtn", "click", () => {
     document.getElementById("diagModal").classList.remove("open");
 });
 
-document.getElementById("runDiagTestBtn").addEventListener("click", async () => {
+onId("runDiagTestBtn", "click", async () => {
     const log = document.getElementById("diagLog");
     log.textContent = "1/2 Verifica apertura sensore fotocamera ad alta risoluzione...";
 
@@ -3585,12 +3611,13 @@ document.getElementById("runDiagTestBtn").addEventListener("click", async () => 
 syncThirdsUI();
 renderLoadView();
 
-if (typeof initPolaroidEventListeners === "function") {
-    initPolaroidEventListeners();
-}
-if (typeof initVintageEventListeners === "function") {
-    initVintageEventListeners();
-}
+try {
+    if (typeof initPolaroidEventListeners === "function") initPolaroidEventListeners();
+} catch (e) { console.error("Errore init Polaroid:", e); }
+
+try {
+    if (typeof initVintageEventListeners === "function") initVintageEventListeners();
+} catch (e) { console.error("Errore init Usa & Getta:", e); }
 
 (async function boot() {
     try {

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
   <title>Analog PhotoLab v1.0 — Pellicole, Polaroid &amp; Usa &amp; Getta</title>
-  <link rel="stylesheet" href="style.css?v=1.0.0" />
+  <link rel="stylesheet" href="style.css?v=1.0.2" />
 </head>
 
 <body>
@@ -39,7 +39,8 @@
           </div>
           <div class="path-card-body">
             <strong>Simulazione Pellicole (Didattica)</strong>
-            <small>Rullini 35mm meccanici, leva caricamento, esposimetro M, Camera Oscura con negativi sul tavolo luminoso e Ingranditore con Provino a Scalare.</small>
+            <small>Rullini 35mm meccanici, leva caricamento, esposimetro M, Camera Oscura con negativi sul tavolo
+              luminoso e Ingranditore con Provino a Scalare.</small>
           </div>
           <div class="path-card-foot">
             <span class="path-cta" id="homeRollsCta">Apri Simulazione →</span>
@@ -56,7 +57,8 @@
           </div>
           <div class="path-card-body">
             <strong>Polaroid Istantanea</strong>
-            <small>Scatto singolo a piena risoluzione nativa del sensore con sviluppo chimico dal vivo e 6 pellicole istantanee fedeli.</small>
+            <small>Scatto singolo a piena risoluzione nativa del sensore con sviluppo chimico dal vivo e 6 pellicole
+              istantanee fedeli.</small>
           </div>
           <div class="path-card-foot">
             <span class="path-cta">Scatta Polaroid →</span>
@@ -72,7 +74,8 @@
           </div>
           <div class="path-card-body">
             <strong>Usa &amp; Getta (Stile Huji)</strong>
-            <small>Rotella zigrinata da girare, condensatore flash, rullini automatici per decadi con aberrazioni e light leaks modificabili anche dopo lo scatto.</small>
+            <small>Rotella zigrinata da girare, condensatore flash, rullini automatici per decadi con aberrazioni e
+              light leaks modificabili anche dopo lo scatto.</small>
           </div>
           <div class="path-card-foot">
             <span class="path-cta" id="homeDisposableCta">Apri Usa &amp; Getta →</span>
@@ -136,7 +139,9 @@
           <span id="selectedFilmIso" style="color:#fff;">ISO 400</span>
         </div>
         <div class="helper-tip">
-          Le pellicole <b>Negativo Colore (C-41)</b> e <b>Bianco &amp; Nero</b> dopo lo sviluppo appariranno come veri negativi sul tavolo luminoso. Le <b>Diapositive</b> mostrano subito il positivo trasparente. Acquisizione ed esportazione lavorano sempre alla <b>massima risoluzione nativa</b>.
+          Le pellicole <b>Negativo Colore (C-41)</b> e <b>Bianco &amp; Nero</b> dopo lo sviluppo appariranno come veri
+          negativi sul tavolo luminoso. Le <b>Diapositive</b> mostrano subito il positivo trasparente. Acquisizione ed
+          esportazione lavorano sempre alla <b>massima risoluzione nativa</b>.
         </div>
         <div class="film-grid" id="loadFilmGrid"></div>
 
@@ -173,7 +178,8 @@
   <div id="view-camera" class="view">
     <div class="wa-top-plate">
       <div class="wa-left-cluster">
-        <button type="button" class="wa-home-btn" id="camHomeBtn" title="Torna alla Home (il rullino resta attivo)">← Home</button>
+        <button type="button" class="wa-home-btn" id="camHomeBtn" title="Torna alla Home (il rullino resta attivo)">←
+          Home</button>
         <div class="wa-film-slot" title="Finestrella pellicola caricata">
           <div class="wa-film-slot-glass">
             <div class="wa-film-canister" id="camFilmCanister">
@@ -262,7 +268,8 @@
         <div id="rollFinishedOverlay" class="vf-modal-overlay">
           <div class="vf-modal-box">
             <strong>Rullino Completo!</strong>
-            <span id="rollFinishedSub">Tutte le pose sono state esposte. Riavvolgi la pellicola prima di aprire il dorso.</span>
+            <span id="rollFinishedSub">Tutte le pose sono state esposte. Riavvolgi la pellicola prima di aprire il
+              dorso.</span>
             <button type="button" class="btn btn-gold" id="finishRewindBtn">↺ Riavvolgi Rullino</button>
           </div>
         </div>
@@ -280,7 +287,8 @@
 
         <div id="camFallbackMsg">
           <strong style="color:#fff;">Mirino Live non attivo (file://)</strong>
-          <span>I browser bloccano la camera se apri un file locale senza HTTPS. Usa <b>+ Galleria</b> in basso a sinistra per caricare foto sul rullino!</span>
+          <span>I browser bloccano la camera se apri un file locale senza HTTPS. Usa <b>+ Galleria</b> in basso a
+            sinistra per caricare foto sul rullino!</span>
         </div>
       </div>
     </div>
@@ -353,7 +361,8 @@
         </div>
 
         <div class="advance-assembly">
-          <button class="advance-lever-btn needs-cock" id="advanceLeverBtn" type="button" aria-label="Leva Caricamento Rullino">
+          <button class="advance-lever-btn needs-cock" id="advanceLeverBtn" type="button"
+            aria-label="Leva Caricamento Rullino">
             <div class="lever-hub"></div>
             <div class="lever-arm"></div>
             <span class="lever-status-txt" id="leverStatusTxt">CARICA</span>
@@ -371,7 +380,8 @@
     <div class="pol-top-bar">
       <button type="button" class="btn pol-btn-light" id="polaroidExitBtn">← Home</button>
       <div class="pol-spec-pill" id="polaroidSpecBadge">88.5×107.5mm • FULL RES</div>
-      <button type="button" class="btn btn-gold" id="polaroidOpenGalleryBtn" style="padding:6px 10px;">Galleria (0)</button>
+      <button type="button" class="btn btn-gold" id="polaroidOpenGalleryBtn" style="padding:6px 10px;">Galleria
+        (0)</button>
     </div>
     <div class="polaroid-rainbow-bar thick"></div>
 
@@ -392,7 +402,8 @@
             <div id="polaroidCurtain"></div>
             <div id="polaroidFallbackMsg" class="pol-fallback-msg">
               <strong style="color:#fff;">Mirino Live non attivo</strong>
-              <span>Tocca <b>📷 Carica Foto</b> in basso per sviluppare subito una Polaroid alla massima risoluzione!</span>
+              <span>Tocca <b>📷 Carica Foto</b> in basso per sviluppare subito una Polaroid alla massima
+                risoluzione!</span>
             </div>
           </div>
         </div>
@@ -408,8 +419,10 @@
               <div class="pol-dev-bar-row">
                 <span id="polaroidDevStatusTxt">Sviluppo in corso... 0%</span>
                 <div style="display:flex; gap:5px;">
-                  <button type="button" class="btn" id="polaroidSkipDevBtn" style="padding:4px 8px; font-size:10px;">Completa</button>
-                  <button type="button" class="btn btn-gold" id="polaroidOpenEjectedBtn" style="padding:4px 8px; font-size:10px; display:none;">Apri HD</button>
+                  <button type="button" class="btn" id="polaroidSkipDevBtn"
+                    style="padding:4px 8px; font-size:10px;">Completa</button>
+                  <button type="button" class="btn btn-gold" id="polaroidOpenEjectedBtn"
+                    style="padding:4px 8px; font-size:10px; display:none;">Apri HD</button>
                 </div>
               </div>
             </div>
@@ -490,10 +503,12 @@
       </div>
     </header>
     <div class="print-stage" style="background:#08080a; flex-direction:column; gap:10px;">
-      <img id="polaroidDetailImg" alt="Polaroid print" style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 14px 36px rgba(0,0,0,0.85);" />
+      <img id="polaroidDetailImg" alt="Polaroid print"
+        style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 14px 36px rgba(0,0,0,0.85);" />
     </div>
     <div class="pol-detail-caption-bar">
-      <input type="text" id="polaroidCaptionInput" maxlength="42" placeholder="Scrivi una dedica o data sul bordo inferiore..." />
+      <input type="text" id="polaroidCaptionInput" maxlength="42"
+        placeholder="Scrivi una dedica o data sul bordo inferiore..." />
       <button type="button" class="btn btn-gold-outline" id="polaroidApplyCaptionBtn">Applica</button>
       <button type="button" class="btn btn-red" id="polaroidDeleteShotBtn" title="Elimina Polaroid">🗑</button>
     </div>
@@ -520,7 +535,9 @@
           <span>1. Scegli la Decade Iconica</span>
         </div>
         <div class="helper-tip">
-          Carica un rullino Usa &amp; Getta stile Huji con rotella meccanica da girare e condensatore flash: a fine rullino vedrai tutte le pose sviluppate, e potrai sempre <b>attivare, disattivare o modificare gli effetti vintage</b> su ogni singolo scatto anche dopo lo sviluppo!
+          Carica un rullino Usa &amp; Getta stile Huji con rotella meccanica da girare e condensatore flash: a fine
+          rullino vedrai tutte le pose sviluppate, e potrai sempre <b>attivare, disattivare o modificare gli effetti
+            vintage</b> su ogni singolo scatto anche dopo lo sviluppo!
         </div>
 
         <div class="vintage-decade-grid" id="vintageDecadeGrid"></div>
@@ -603,9 +620,11 @@
           </div>
         </div>
 
-        <div id="vintageFallbackMsg" style="display:none; position:absolute; inset:20px; text-align:center; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:11px;">
+        <div id="vintageFallbackMsg"
+          style="display:none; position:absolute; inset:20px; text-align:center; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:11px;">
           <strong style="color:#fff;">Mirino Live non attivo</strong>
-          <span>Gira la rotella e usa <b>📷 Carica Foto</b> qui sotto per caricare foto sul rullino Usa &amp; Getta!</span>
+          <span>Gira la rotella e usa <b>📷 Carica Foto</b> qui sotto per caricare foto sul rullino Usa &amp;
+            Getta!</span>
         </div>
       </div>
     </div>
@@ -628,19 +647,22 @@
             📷 Carica
             <input type="file" id="vintageGalleryInput" accept="image/*" multiple />
           </label>
-          <button type="button" class="btn" id="vintageSwitchCamBtn" style="padding:7px 10px; font-size:10.5px; width:92px;">
+          <button type="button" class="btn" id="vintageSwitchCamBtn"
+            style="padding:7px 10px; font-size:10.5px; width:92px;">
             ↻ Gira Cam
           </button>
         </div>
 
         <div class="shutter-assembly">
-          <button type="button" class="vintage-shutter-btn locked" id="vintageShutterBtn" aria-label="Scatta Usa e Getta"></button>
+          <button type="button" class="vintage-shutter-btn locked" id="vintageShutterBtn"
+            aria-label="Scatta Usa e Getta"></button>
           <span class="mech-label" id="vintageShutterLabel">BLOCCATO</span>
         </div>
 
         <!-- ROTELLA ZIGRINATA DA TRASCINARE / GIRARE CON IL DITO -->
         <div class="disp-wheel-assembly">
-          <div class="disp-wheel-housing" id="vintageWheelControl" title="Trascina con il dito per caricare la pellicola">
+          <div class="disp-wheel-housing" id="vintageWheelControl"
+            title="Trascina con il dito per caricare la pellicola">
             <div class="disp-wheel-disc" id="vintageWheelDisc">
               <div class="disp-wheel-knurls"></div>
               <div class="disp-wheel-marker"></div>
@@ -685,7 +707,8 @@
   <div id="vintageDetailModal" class="full-modal">
     <header>
       <div class="brand" style="min-width:0;">
-        <h1 id="vintageDetailTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Scatto Usa &amp; Getta</h1>
+        <h1 id="vintageDetailTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Scatto Usa
+          &amp; Getta</h1>
         <span id="vintageDetailMeta">1990s</span>
       </div>
       <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
@@ -696,27 +719,38 @@
     </header>
 
     <div class="print-stage" id="vintageDetailStage" style="background:#050506;">
-      <canvas id="vintageDetailCanvas" style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 12px 35px rgba(0,0,0,0.85);"></canvas>
+      <canvas id="vintageDetailCanvas"
+        style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 12px 35px rgba(0,0,0,0.85);"></canvas>
     </div>
 
     <div class="vintage-editor-panel">
       <div class="vintage-editor-top">
-        <button type="button" class="btn btn-gold-outline" id="vEditEffectsToggle" style="padding:6px 10px; font-size:11px;">✨ Effetti Vintage: ON</button>
-        <button type="button" class="btn" id="vEditDateToggle" style="padding:6px 9px; font-size:11px;">📅 Data: ON</button>
-        <button type="button" class="btn" id="vEditRerollBtn" style="padding:6px 9px; font-size:11px;">🎲 Rimescola</button>
+        <button type="button" class="btn btn-gold-outline" id="vEditEffectsToggle"
+          style="padding:6px 10px; font-size:11px;">✨ Effetti Vintage: ON</button>
+        <button type="button" class="btn" id="vEditDateToggle" style="padding:6px 9px; font-size:11px;">📅 Data:
+          ON</button>
+        <button type="button" class="btn" id="vEditRerollBtn" style="padding:6px 9px; font-size:11px;">🎲
+          Rimescola</button>
         <button type="button" class="btn" id="vEditResetBtn" style="padding:6px 9px; font-size:11px;">↺ Pulita</button>
       </div>
 
       <div class="vintage-decade-strip" id="vEditDecadeStrip"></div>
 
       <div class="vintage-editor-sliders">
-        <div class="slider-row"><label>Light Leaks</label><input type="range" id="vEditLeakSlider" min="0" max="1.0" step="0.05" value="0" /><span id="vEditLeakVal">0%</span></div>
-        <div class="slider-row"><label>Aberr. Crom.</label><input type="range" id="vEditCaSlider" min="0" max="1.0" step="0.05" value="0.5" /><span id="vEditCaVal">50%</span></div>
-        <div class="slider-row"><label>Vignetta Lente</label><input type="range" id="vEditVigSlider" min="0" max="1.0" step="0.05" value="0.35" /><span id="vEditVigVal">35%</span></div>
-        <div class="slider-row"><label>Macchie Chim.</label><input type="range" id="vEditChemSlider" min="0" max="1.0" step="0.05" value="0" /><span id="vEditChemVal">0%</span></div>
-        <div class="slider-row"><label>Patina Arch.</label><input type="range" id="vEditAgedSlider" min="0" max="1.0" step="0.05" value="0" /><span id="vEditAgedVal">0%</span></div>
-        <div class="slider-row"><label>Polvere/Graffi</label><input type="range" id="vEditScratchSlider" min="0" max="1.0" step="0.05" value="0" /><span id="vEditScratchVal">0%</span></div>
-        <div class="slider-row"><label>Esposizione</label><input type="range" id="vEditEvSlider" min="-1.5" max="1.5" step="0.1" value="0" /><span id="vEditEvVal">0.0</span></div>
+        <div class="slider-row"><label>Light Leaks</label><input type="range" id="vEditLeakSlider" min="0" max="1.0"
+            step="0.05" value="0" /><span id="vEditLeakVal">0%</span></div>
+        <div class="slider-row"><label>Aberr. Crom.</label><input type="range" id="vEditCaSlider" min="0" max="1.0"
+            step="0.05" value="0.5" /><span id="vEditCaVal">50%</span></div>
+        <div class="slider-row"><label>Vignetta Lente</label><input type="range" id="vEditVigSlider" min="0" max="1.0"
+            step="0.05" value="0.35" /><span id="vEditVigVal">35%</span></div>
+        <div class="slider-row"><label>Macchie Chim.</label><input type="range" id="vEditChemSlider" min="0" max="1.0"
+            step="0.05" value="0" /><span id="vEditChemVal">0%</span></div>
+        <div class="slider-row"><label>Patina Arch.</label><input type="range" id="vEditAgedSlider" min="0" max="1.0"
+            step="0.05" value="0" /><span id="vEditAgedVal">0%</span></div>
+        <div class="slider-row"><label>Polvere/Graffi</label><input type="range" id="vEditScratchSlider" min="0"
+            max="1.0" step="0.05" value="0" /><span id="vEditScratchVal">0%</span></div>
+        <div class="slider-row"><label>Esposizione</label><input type="range" id="vEditEvSlider" min="-1.5" max="1.5"
+            step="0.1" value="0" /><span id="vEditEvVal">0.0</span></div>
       </div>
       <div class="print-footer-hint">
         <span>Tieni premuto sulla foto = scatto originale pulito • Le modifiche si salvano in automatico</span>
@@ -748,13 +782,18 @@
           <span>1. Processo di Sviluppo (Push / Pull)</span>
         </div>
         <div class="helper-tip">
-          <b>Pull (-1)</b> riduce il tempo in vasca per ammorbidire luci e contrasto; <b>Push (+1/+2)</b> prolunga lo sviluppo per recuperare scatti bui aumentando contrasto e grana.
+          <b>Pull (-1)</b> riduce il tempo in vasca per ammorbidire luci e contrasto; <b>Push (+1/+2)</b> prolunga lo
+          sviluppo per recuperare scatti bui aumentando contrasto e grana.
         </div>
         <div class="push-grid" id="pushGrid">
-          <div class="push-btn" data-push="-1"><strong>Pull -1 Stop</strong><small>Tempi ridotti, contrasto morbido</small></div>
-          <div class="push-btn selected" data-push="0"><strong>Standard (0)</strong><small>Sviluppo nominale di laboratorio</small></div>
-          <div class="push-btn" data-push="1"><strong>Push +1 Stop</strong><small>+Contrasto, grana più evidente</small></div>
-          <div class="push-btn" data-push="2"><strong>Push +2 Stop</strong><small>Contrasto spinto, ombre chiuse</small></div>
+          <div class="push-btn" data-push="-1"><strong>Pull -1 Stop</strong><small>Tempi ridotti, contrasto
+              morbido</small></div>
+          <div class="push-btn selected" data-push="0"><strong>Standard (0)</strong><small>Sviluppo nominale di
+              laboratorio</small></div>
+          <div class="push-btn" data-push="1"><strong>Push +1 Stop</strong><small>+Contrasto, grana più evidente</small>
+          </div>
+          <div class="push-btn" data-push="2"><strong>Push +2 Stop</strong><small>Contrasto spinto, ombre chiuse</small>
+          </div>
         </div>
 
         <div class="card-title" style="margin-top:2px;">
@@ -762,21 +801,25 @@
         </div>
 
         <div class="helper-tip">
-          Gli effetti attivati qui vengono applicati <b>alla cieca</b> solo su alcuni fotogrammi casuali del rullino e con intensità variabile. Potrai dosarli o rimuoverli foto per foto nell'Ingranditore.
+          Gli effetti attivati qui vengono applicati <b>alla cieca</b> solo su alcuni fotogrammi casuali del rullino e
+          con intensità variabile. Potrai dosarli o rimuoverli foto per foto nell'Ingranditore.
         </div>
 
         <div class="toggle-row" id="drToggleLeaks">
-          <div class="toggle-info"><strong>Infiltrazioni di Luce (Light Leaks)</strong><small>Bruciature ambrate e rosse casuali da guarnizioni usurate</small></div>
+          <div class="toggle-info"><strong>Infiltrazioni di Luce (Light Leaks)</strong><small>Bruciature ambrate e rosse
+              casuali da guarnizioni usurate</small></div>
           <div class="toggle-pill"></div>
         </div>
 
         <div class="toggle-row" id="drToggleChem">
-          <div class="toggle-info"><strong>Sviluppo Chimico Irregolare</strong><small>Aloni nella tank, colature e macchie d'asciugatura sui negativi</small></div>
+          <div class="toggle-info"><strong>Sviluppo Chimico Irregolare</strong><small>Aloni nella tank, colature e
+              macchie d'asciugatura sui negativi</small></div>
           <div class="toggle-pill"></div>
         </div>
 
         <div class="toggle-row" id="drToggleAged">
-          <div class="toggle-info"><strong>Carta Invecchiata &amp; Ossidazione</strong><small>Patina d'archivio, fioriture (foxing) e sbiadimento su alcuni scatti</small></div>
+          <div class="toggle-info"><strong>Carta Invecchiata &amp; Ossidazione</strong><small>Patina d'archivio,
+              fioriture (foxing) e sbiadimento su alcuni scatti</small></div>
           <div class="toggle-pill"></div>
         </div>
 
@@ -814,7 +857,10 @@
 
     <div class="scroll-body">
       <div class="helper-tip" id="csLightTableHint">
-        <b>Tavolo Luminoso:</b> stai osservando il rullino sviluppato in <b>negativo</b> (con maschera arancione per C-41 o scala di grigi invertita per B&amp;N; positivo per Diapositive). Tocca un fotogramma per aprirlo a tutto schermo, zoomare o passare all'Ingranditore; i pulsanti <b>Stampa</b> in alto salvano invece le stampe già invertite in positivo!
+        <b>Tavolo Luminoso:</b> stai osservando il rullino sviluppato in <b>negativo</b> (con maschera arancione per
+        C-41 o scala di grigi invertita per B&amp;N; positivo per Diapositive). Tocca un fotogramma per aprirlo a tutto
+        schermo, zoomare o passare all'Ingranditore; i pulsanti <b>Stampa</b> in alto salvano invece le stampe già
+        invertite in positivo!
       </div>
       <div class="contact-sheet-paper light-table">
         <div class="sheet-header">
@@ -857,7 +903,8 @@
       </div>
       <div class="neg-footer-actions">
         <span class="neg-swipe-hint">← Scorri per cambiare negativo • Pinch / doppio tap per zoom →</span>
-        <button type="button" class="btn btn-gold" id="negPrintBtn" style="padding:10px 14px; font-size:12.5px; width:100%;">
+        <button type="button" class="btn btn-gold" id="negPrintBtn"
+          style="padding:10px 14px; font-size:12.5px; width:100%;">
           🔬 Passa alla Stampa (Ingranditore) →
         </button>
       </div>
@@ -874,7 +921,8 @@
         <span id="printExifMeta">f/4 • 1/125s</span>
       </div>
       <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
-        <button class="btn btn-gold-outline" id="headerRotate90Btn" title="Ruota 90°" style="padding:7px 8px;">↻ 90°</button>
+        <button class="btn btn-gold-outline" id="headerRotate90Btn" title="Ruota 90°" style="padding:7px 8px;">↻
+          90°</button>
         <button class="btn btn-gold" id="downloadPrintBtn" style="padding:7px 10px;">Salva Stampa</button>
         <button class="btn" id="closePrintBtn" style="padding:7px 9px;">✕</button>
       </div>
@@ -900,7 +948,9 @@
         <div class="preset-strip" id="printPresetStrip"></div>
 
         <div class="helper-tip" id="paperCompatibilityHint">
-          Scegli una carta fotografica reale: le carte <b>B&amp;N</b> stampano sempre in monocromia (anche da negativo colore!) e usano i filtri <b>Grado 00–5</b>. Le carte <b>RA-4 Colore</b> usano la <b>Testa Dicromatica C/M/Y</b>.
+          Scegli una carta fotografica reale: le carte <b>B&amp;N</b> stampano sempre in monocromia (anche da negativo
+          colore!) e usano i filtri <b>Grado 00–5</b>. Le carte <b>RA-4 Colore</b> usano la <b>Testa Dicromatica
+            C/M/Y</b>.
         </div>
 
         <div class="card-title" style="margin-top:2px;"><span>Carte Bianco &amp; Nero (Gelatina d'Argento)</span></div>
@@ -913,10 +963,12 @@
       <div class="print-tab-body" id="tab-enlarger">
         <div class="card-title"><span>Provino a Scalare &amp; Inquadratura</span></div>
         <div class="test-strip-bar">
-          <button type="button" class="btn btn-gold-outline" id="prTestStripBtn" style="flex:1;">📏 Provino a Scalare (5 Tempi): OFF</button>
+          <button type="button" class="btn btn-gold-outline" id="prTestStripBtn" style="flex:1;">📏 Provino a Scalare (5
+            Tempi): OFF</button>
         </div>
         <div class="helper-tip" id="prTestStripInfo">
-          <b>Come funziona l'ingranditore:</b> attiva il <b>Provino a Scalare</b> per dividere la stampa in 5 strisce (-1, -0.5, 0, +0.5, +1 EV) e scegliere il tempo lampada ideale.
+          <b>Come funziona l'ingranditore:</b> attiva il <b>Provino a Scalare</b> per dividere la stampa in 5 strisce
+          (-1, -0.5, 0, +0.5, +1 EV) e scegliere il tempo lampada ideale.
         </div>
 
         <div class="geom-actions-row">
@@ -930,7 +982,8 @@
           <span id="prZoomVal">1.00x</span>
           <button type="button" class="slider-reset-btn" data-reset-print="zoom" title="Reset Zoom">↺</button>
         </div>
-        <div class="param-explain">Alzare la testa dell'ingranditore croppa la foto e ingrandisce fisicamente anche la grana del negativo.</div>
+        <div class="param-explain">Alzare la testa dell'ingranditore croppa la foto e ingrandisce fisicamente anche la
+          grana del negativo.</div>
 
         <div class="slider-row">
           <label>Rotazione 360°</label>
@@ -946,7 +999,8 @@
           <span id="prTimeVal">12.0s</span>
           <button type="button" class="slider-reset-btn" data-reset-print="time" title="Reset Timer">↺</button>
         </div>
-        <div class="param-explain">Più secondi di esposizione = stampa più scura e profonda; meno secondi = stampa più chiara.</div>
+        <div class="param-explain">Più secondi di esposizione = stampa più scura e profonda; meno secondi = stampa più
+          chiara.</div>
 
         <div class="slider-row">
           <label>Diaframma Ob.</label>
@@ -954,7 +1008,8 @@
           <span id="prLensApVal">f/8.0</span>
           <button type="button" class="slider-reset-btn" data-reset-print="enlargerApIdx" title="Reset f/8.0">↺</button>
         </div>
-        <div class="param-explain">L'obiettivo dell'ingranditore rende al massimo a f/8–f/11; a f/2.8 aumenta luminosità e caduta ai bordi.</div>
+        <div class="param-explain">L'obiettivo dell'ingranditore rende al massimo a f/8–f/11; a f/2.8 aumenta luminosità
+          e caduta ai bordi.</div>
 
         <!-- Blocco B&N: Filtro Multigrade -->
         <div id="bwGradeBlock" class="enlarger-subblock">
@@ -965,14 +1020,17 @@
             <span id="prGradeVal">Gr. 2.5</span>
             <button type="button" class="slider-reset-btn" data-reset-print="grade" title="Reset Grado">↺</button>
           </div>
-          <div class="param-explain">Grado 00–1.5 (luce gialla) ammorbidisce i contrasti; Grado 2.5 è neutro; Grado 4–5 (luce magenta) rende neri e bianchi molto incisivi.</div>
+          <div class="param-explain">Grado 00–1.5 (luce gialla) ammorbidisce i contrasti; Grado 2.5 è neutro; Grado 4–5
+            (luce magenta) rende neri e bianchi molto incisivi.</div>
         </div>
 
         <!-- Blocco Colore RA-4: Testa Dicromatica C/M/Y -->
         <div id="ra4HeadBlock" class="enlarger-subblock">
           <div class="card-title"><span>Testa Dicromatica Colore (Filtrazione C/M/Y)</span></div>
           <div class="param-explain" id="ra4PhysicsExplain">
-            Nella stampa da <b>negativo colore</b> i filtri agiscono in modo sottrattivo: aggiungere <b>+Giallo (Y)</b> blocca la luce blu rendendo la stampa più <b>Blu</b>; <b>+Magenta (M)</b> la rende più <b>Verde</b>; <b>+Ciano (C)</b> la rende più <b>Rossa</b>.
+            Nella stampa da <b>negativo colore</b> i filtri agiscono in modo sottrattivo: aggiungere <b>+Giallo (Y)</b>
+            blocca la luce blu rendendo la stampa più <b>Blu</b>; <b>+Magenta (M)</b> la rende più <b>Verde</b>;
+            <b>+Ciano (C)</b> la rende più <b>Rossa</b>.
           </div>
           <div class="slider-row">
             <label>Filtro Ciano (C)</label>
@@ -998,7 +1056,8 @@
         <div id="bwTonerBlock" class="enlarger-subblock">
           <div class="card-title"><span>Viraggio Chimico Post-Stampa (Toner)</span></div>
           <div class="toner-row">
-            <select id="prTonerSelect" style="background:var(--bg); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:6px; padding:6px 8px; font-size:11.5px; flex:1;">
+            <select id="prTonerSelect"
+              style="background:var(--bg); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:6px; padding:6px 8px; font-size:11.5px; flex:1;">
               <option value="0">Nessun viraggio (Argento neutro)</option>
               <option value="1">Selenio (Ombre freddo-prugna &amp; +Dmax)</option>
               <option value="2">Seppia al Solfuro (Toni caldi d'archivio)</option>
@@ -1019,21 +1078,26 @@
           <span id="prBurnVal">10%</span>
           <button type="button" class="slider-reset-btn" data-reset-print="burn" title="Reset Bruciatura">↺</button>
         </div>
-        <div class="param-explain">Simula la mascheratura manuale con cartoncino per esporre di più gli angoli (burning) e guidare l'occhio al centro.</div>
+        <div class="param-explain">Simula la mascheratura manuale con cartoncino per esporre di più gli angoli (burning)
+          e guidare l'occhio al centro.</div>
       </div>
 
       <div class="print-tab-body" id="tab-defects">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-          <span style="font-size:10.5px; color:var(--gold); font-weight:700; text-transform:uppercase;">Errori Luce &amp; Carta</span>
+          <span style="font-size:10.5px; color:var(--gold); font-weight:700; text-transform:uppercase;">Errori Luce
+            &amp; Carta</span>
           <div style="display:flex; gap:5px;">
-            <button class="btn" id="clearFrameDefectsBtn" style="padding:5px 8px; font-size:10.5px;">Rimuovi Tutti</button>
-            <button class="btn btn-gold-outline" id="rerollDefectsBtn" style="padding:5px 8px; font-size:10.5px;">Rimescola</button>
+            <button class="btn" id="clearFrameDefectsBtn" style="padding:5px 8px; font-size:10.5px;">Rimuovi
+              Tutti</button>
+            <button class="btn btn-gold-outline" id="rerollDefectsBtn"
+              style="padding:5px 8px; font-size:10.5px;">Rimescola</button>
           </div>
         </div>
 
         <div class="defect-box" id="boxPrLeaks">
           <div class="toggle-row" id="prToggleLeaks">
-            <div class="toggle-info"><strong>Infiltrazioni di Luce (Light Leaks)</strong><small>Bruciatura rosso-ambrata intensa da infiltrazione nel dorso</small></div>
+            <div class="toggle-info"><strong>Infiltrazioni di Luce (Light Leaks)</strong><small>Bruciatura rosso-ambrata
+                intensa da infiltrazione nel dorso</small></div>
             <div class="toggle-pill"></div>
           </div>
           <div class="defect-intensity-row">
@@ -1046,7 +1110,8 @@
 
         <div class="defect-box" id="boxPrChem">
           <div class="toggle-row" id="prToggleChem">
-            <div class="toggle-info"><strong>Macchie Chimiche &amp; Errori di Sviluppo</strong><small>Aloni della tank, colature chimiche, viraggi e anelli d'asciugatura</small></div>
+            <div class="toggle-info"><strong>Macchie Chimiche &amp; Errori di Sviluppo</strong><small>Aloni della tank,
+                colature chimiche, viraggi e anelli d'asciugatura</small></div>
             <div class="toggle-pill"></div>
           </div>
           <div class="defect-intensity-row">
@@ -1059,7 +1124,8 @@
 
         <div class="defect-box" id="boxPrAged">
           <div class="toggle-row" id="prToggleAgedPaper">
-            <div class="toggle-info"><strong>Carta Invecchiata d'Archivio</strong><small>Patina ossidata irregolare, fioriture foxing e neri sbiaditi</small></div>
+            <div class="toggle-info"><strong>Carta Invecchiata d'Archivio</strong><small>Patina ossidata irregolare,
+                fioriture foxing e neri sbiaditi</small></div>
             <div class="toggle-pill"></div>
           </div>
           <div class="defect-intensity-row">
@@ -1072,7 +1138,8 @@
 
         <div class="defect-box" id="boxPrScratches">
           <div class="toggle-row" id="prToggleScratches">
-            <div class="toggle-info"><strong>Polvere, Pieghe &amp; Usura Carta</strong><small>Pulviscolo leggero, pieghe agli angoli, peli e lieve usura</small></div>
+            <div class="toggle-info"><strong>Polvere, Pieghe &amp; Usura Carta</strong><small>Pulviscolo leggero, pieghe
+                agli angoli, peli e lieve usura</small></div>
             <div class="toggle-pill"></div>
           </div>
           <div class="defect-intensity-row">
@@ -1086,7 +1153,8 @@
 
       <div class="print-tab-body" id="tab-finish">
         <div class="card-title"><span>Marginatore (Easel) &amp; Bordi</span></div>
-        <div class="param-explain">Le lame del marginatore tengono ferma la carta sotto l'ingranditore creando un bordo bianco non esposto alla luce.</div>
+        <div class="param-explain">Le lame del marginatore tengono ferma la carta sotto l'ingranditore creando un bordo
+          bianco non esposto alla luce.</div>
         <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;" id="borderSelector">
           <button class="btn btn-gold-outline" data-border="none">Senza Bordo (Taglio vivo)</button>
           <button class="btn" data-border="white">Margini Carta (Marginatore)</button>
@@ -1096,7 +1164,8 @@
           <label>Spessore Bordo</label>
           <input type="range" id="prBorderThickSlider" min="0.02" max="0.18" step="0.01" value="0.06" />
           <span id="prBorderThickVal">6%</span>
-          <button type="button" class="slider-reset-btn" data-reset-print="borderThickness" title="Reset Spessore">↺</button>
+          <button type="button" class="slider-reset-btn" data-reset-print="borderThickness"
+            title="Reset Spessore">↺</button>
         </div>
 
         <div class="card-title" style="margin-top:4px;"><span>Grana Pellicola vs Fibra Carta</span></div>
@@ -1106,7 +1175,8 @@
           <span id="prGrainVal">100%</span>
           <button type="button" class="slider-reset-btn" data-reset-print="grainScale" title="Reset Grana">↺</button>
         </div>
-        <div class="param-explain">La grana deriva dall'emulsione del negativo (aumenta anche con lo zoom dell'ingranditore).</div>
+        <div class="param-explain">La grana deriva dall'emulsione del negativo (aumenta anche con lo zoom
+          dell'ingranditore).</div>
 
         <div class="slider-row">
           <label>Fibra Carta</label>
@@ -1114,7 +1184,8 @@
           <span id="prPaperTexVal">100%</span>
           <button type="button" class="slider-reset-btn" data-reset-print="paperTexScale" title="Reset Fibra">↺</button>
         </div>
-        <div class="param-explain">La trama micro-fibrosa della superficie cartacea (quasi assente su carte lucide RC, visibile su baritate cotone). L'esportazione avviene sempre alla massima risoluzione nativa.</div>
+        <div class="param-explain">La trama micro-fibrosa della superficie cartacea (quasi assente su carte lucide RC,
+          visibile su baritate cotone). L'esportazione avviene sempre alla massima risoluzione nativa.</div>
       </div>
 
       <div class="print-footer-hint">
@@ -1159,7 +1230,8 @@
 
       <div class="lab-section">
         <h3>Pellicola, ISO &amp; Colore Caricatore</h3>
-        <select id="labFilmSelect" style="background:var(--bg); color:#fff; border:1px solid var(--border); padding:8px; border-radius:6px; font-size:13px;"></select>
+        <select id="labFilmSelect"
+          style="background:var(--bg); color:#fff; border:1px solid var(--border); padding:8px; border-radius:6px; font-size:13px;"></select>
         <div class="input-group">
           <input type="text" id="edName" placeholder="Nome (es. Agfa Vista 200)" />
           <input type="number" id="edIso" placeholder="ISO" min="12" max="12800" />
@@ -1187,7 +1259,8 @@
           <div class="lab-color-preview" id="labBrandColorChip"></div>
           <div style="flex:1; min-width:0;">
             <strong style="font-size:11px; display:block;" id="labBrandDetectedLabel">Marca rilevata: Kodak</strong>
-            <small style="font-size:9.5px; color:var(--muted);">Riconosce automaticamente 25+ marche reali dal nome o usa un colore custom</small>
+            <small style="font-size:9.5px; color:var(--muted);">Riconosce automaticamente 25+ marche reali dal nome o
+              usa un colore custom</small>
           </div>
           <input type="color" id="edCustomColor" title="Scegli colore custom per il rullino" />
           <button type="button" class="btn" id="labResetColorBtn" style="padding:5px 8px; font-size:10px;">Auto</button>
@@ -1196,20 +1269,40 @@
 
       <div class="lab-section">
         <h3>Sensitometria &amp; Colore</h3>
-        <div class="slider-row"><label>Toe (Neri)</label><input type="range" id="edToe" min="0.0" max="0.06" step="0.002" /><span id="vToe"></span><button type="button" class="slider-reset-btn" data-reset-lab="toe" title="Reset Preset">↺</button></div>
-        <div class="slider-row"><label>Roll-off Luci</label><input type="range" id="edShoulder" min="0.05" max="0.90" step="0.02" /><span id="vShoulder"></span><button type="button" class="slider-reset-btn" data-reset-lab="shoulder" title="Reset Preset">↺</button></div>
-        <div class="slider-row"><label>Contrasto</label><input type="range" id="edContrast" min="0.05" max="0.85" step="0.02" /><span id="vContrast"></span><button type="button" class="slider-reset-btn" data-reset-lab="contrast" title="Reset Preset">↺</button></div>
-        <div class="slider-row"><label>Temp. (B↔Y)</label><input type="range" id="edTemp" min="-0.35" max="0.35" step="0.01" /><span id="vTemp"></span><button type="button" class="slider-reset-btn" data-reset-lab="temp" title="Reset Preset">↺</button></div>
-        <div class="slider-row"><label>Tinta (G↔M)</label><input type="range" id="edTint" min="-0.25" max="0.25" step="0.01" /><span id="vTint"></span><button type="button" class="slider-reset-btn" data-reset-lab="tint" title="Reset Preset">↺</button></div>
-        <div class="slider-row"><label>Saturazione</label><input type="range" id="edSat" min="0.50" max="1.45" step="0.02" /><span id="vSat"></span><button type="button" class="slider-reset-btn" data-reset-lab="saturation" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Toe (Neri)</label><input type="range" id="edToe" min="0.0" max="0.06"
+            step="0.002" /><span id="vToe"></span><button type="button" class="slider-reset-btn" data-reset-lab="toe"
+            title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Roll-off Luci</label><input type="range" id="edShoulder" min="0.05" max="0.90"
+            step="0.02" /><span id="vShoulder"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="shoulder" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Contrasto</label><input type="range" id="edContrast" min="0.05" max="0.85"
+            step="0.02" /><span id="vContrast"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="contrast" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Temp. (B↔Y)</label><input type="range" id="edTemp" min="-0.35" max="0.35"
+            step="0.01" /><span id="vTemp"></span><button type="button" class="slider-reset-btn" data-reset-lab="temp"
+            title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Tinta (G↔M)</label><input type="range" id="edTint" min="-0.25" max="0.25"
+            step="0.01" /><span id="vTint"></span><button type="button" class="slider-reset-btn" data-reset-lab="tint"
+            title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Saturazione</label><input type="range" id="edSat" min="0.50" max="1.45"
+            step="0.02" /><span id="vSat"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="saturation" title="Reset Preset">↺</button></div>
       </div>
 
       <div class="lab-section">
         <h3>Ottica, Halation &amp; Grana</h3>
-        <div class="slider-row"><label>Halation</label><input type="range" id="edHalation" min="0.0" max="2.0" step="0.05" /><span id="vHalation"></span><button type="button" class="slider-reset-btn" data-reset-lab="halation" title="Reset Preset">↺</button></div>
-        <div class="slider-row"><label>Bloom Ottico</label><input type="range" id="edBloom" min="0.0" max="0.80" step="0.02" /><span id="vBloom"></span><button type="button" class="slider-reset-btn" data-reset-lab="bloom" title="Reset Preset">↺</button></div>
-        <div class="slider-row"><label>Grana</label><input type="range" id="edGrain" min="0.0" max="0.10" step="0.002" /><span id="vGrain"></span><button type="button" class="slider-reset-btn" data-reset-lab="grain" title="Reset Preset">↺</button></div>
-        <div class="slider-row"><label>Dim. Grana</label><input type="range" id="edGrainSize" min="0.8" max="2.4" step="0.05" /><span id="vGrainSize"></span><button type="button" class="slider-reset-btn" data-reset-lab="grainSize" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Halation</label><input type="range" id="edHalation" min="0.0" max="2.0"
+            step="0.05" /><span id="vHalation"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="halation" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Bloom Ottico</label><input type="range" id="edBloom" min="0.0" max="0.80"
+            step="0.02" /><span id="vBloom"></span><button type="button" class="slider-reset-btn" data-reset-lab="bloom"
+            title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Grana</label><input type="range" id="edGrain" min="0.0" max="0.10"
+            step="0.002" /><span id="vGrain"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="grain" title="Reset Preset">↺</button></div>
+        <div class="slider-row"><label>Dim. Grana</label><input type="range" id="edGrainSize" min="0.8" max="2.4"
+            step="0.05" /><span id="vGrainSize"></span><button type="button" class="slider-reset-btn"
+            data-reset-lab="grainSize" title="Reset Preset">↺</button></div>
       </div>
 
       <div class="lab-section">
@@ -1250,14 +1343,17 @@
       <div class="lab-section">
         <h3>Test Risoluzione Sensore &amp; Benchmark Render</h3>
         <p style="font-size:11px; color:var(--muted); line-height:1.4;">
-          Verifica la risoluzione reale concessa dal sensore (flusso live + ImageCapture full-res se supportato) e misura la velocità di sviluppo WebGL a piena risoluzione.
+          Verifica la risoluzione reale concessa dal sensore (flusso live + ImageCapture full-res se supportato) e
+          misura la velocità di sviluppo WebGL a piena risoluzione.
         </p>
         <div class="diag-grid">
-          <div class="diag-stat"><small>Risoluzione Sensore Live</small><strong id="diagSensorRes">Non testato</strong></div>
+          <div class="diag-stat"><small>Risoluzione Sensore Live</small><strong id="diagSensorRes">Non testato</strong>
+          </div>
           <div class="diag-stat"><small>Tempo Sviluppo GPU</small><strong id="diagGpuTime">Non testato</strong></div>
         </div>
         <button class="btn btn-gold" id="runDiagTestBtn" style="padding:11px;">Avvia Test Fotocamera &amp; GPU</button>
-        <div id="diagLog" style="font-family:monospace; font-size:10.5px; color:#8ee09a; background:var(--bg); padding:8px; border-radius:6px; border:1px solid var(--border); min-height:54px;">
+        <div id="diagLog"
+          style="font-family:monospace; font-size:10.5px; color:#8ee09a; background:var(--bg); padding:8px; border-radius:6px; border:1px solid var(--border); min-height:54px;">
           Pronto per il test diagnostico.
         </div>
       </div>
@@ -1737,9 +1833,10 @@
     }
   </script>
 
-  <script src="polaroid.js"></script>
-  <script src="vintage-presets.js"></script>
-  <script src="app.js"></script>
+  <script src="polaroid.js?v=1.0.2"></script>
+  <script src="vintage-presets.js?v=1.0.2"></script>
+  <script src="app.js?v=1.0.2"></script>
+
 </body>
 
 </html>
