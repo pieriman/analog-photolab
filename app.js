@@ -1,8 +1,12 @@
 /* =========================================================
-   ANALOG PHOTOLAB v0.9 — APP.JS
-   Home a 3 Percorsi (Simulazione Pellicole, Polaroid 300 DPI, Usa & Getta)
-   Motore Blob, ZIP multi-download, Gestione Memoria, WebGL,
-   Modalità Manuale M + Lancetta, Lab Pellicole & Backup
+   ANALOG PHOTOLAB v1.0 — APP.JS
+   - Acquisizione ed esportazione unificata alla MASSIMA RISOLUZIONE NATIVA
+     (ImageCapture.takePhoto() ove supportato + video/galleria full-res)
+   - Tavolo Luminoso Negativi (C-41 maschera arancione / B&N / Diapositive)
+     + Carosello Fullscreen con Swipe, Pinch/Double-Tap Zoom e "Passa alla Stampa"
+   - Ingranditore Didattico: 9 Carte B&N e Colore RA-4/Cibachrome, Provino a Scalare
+     (Test Strip 5 tempi), Testa Dicromatica C/M/Y fisica, Obiettivo Ingranditore,
+     Viraggi Chimici (Selenio/Seppia/Cianotipia), Grana Pellicola vs Fibra Carta
    ========================================================= */
 
 /* =========================================================
@@ -43,6 +47,13 @@ const DEFAULT_FILMS = [
         saturation: 0.0, shadowTemp: 0.01, highTemp: 0.03,
         halation: 0.20, halThreshold: 0.82, bloom: 0.12, grain: 0.054, grainSize: 1.30,
         matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+    },
+    {
+        id: "kodak-ektachrome-100", name: "Kodak Ektachrome E100", iso: 100, mode: "slide",
+        toe: 0.008, shoulder: 0.30, contrast: 0.44, temp: -0.04, tint: 0.01,
+        saturation: 1.16, shadowTemp: -0.04, highTemp: 0.02,
+        halation: 0.16, halThreshold: 0.88, bloom: 0.05, grain: 0.016, grainSize: 0.95,
+        matrix: [1.04, -0.02, -0.02, -0.01, 1.02, -0.01, -0.02, 0.01, 1.01]
     }
 ];
 
@@ -124,59 +135,112 @@ function resolveFilmBrandTheme(film) {
     };
 }
 
+/* =========================================================
+   CARTE FOTOGRAFICHE REALISTICHE (B&N + RA-4 + CIBACHROME)
+   ========================================================= */
 const PAPER_STOCKS = [
+    // --- CARTE BIANCO & NERO ---
     {
-        id: "kodak-endura", name: "Kodak Endura Supra",
-        desc: "RA-4 Satinata • Toni caldi e naturali", swatch: "#f6f1e6",
-        baseTint: [1.01, 0.99, 0.94], shadowTint: [1.03, 0.99, 0.95], highTint: [1.02, 1.00, 0.95],
-        dmax: 0.48, contrastOffset: -0.02, satMult: 0.98, texture: 0.018
+        id: "ilford-rc-glossy",
+        name: "Ilford MG RC Glossy",
+        isBW: true,
+        desc: "B&N Politeneata Lucida • Neri profondi, bianchi freddi",
+        swatch: "#f7f8fa",
+        baseTint: [0.99, 1.00, 1.02], shadowTint: [0.98, 0.99, 1.02], highTint: [1.00, 1.00, 1.01],
+        dmax: 0.96, contrastOffset: 0.08, satMult: 1.0, texture: 0.004
     },
     {
-        id: "fuji-crystal", name: "Fuji Crystal Archive",
-        desc: "RA-4 Lucida • Neri profondi, colori vivi", swatch: "#f0f5fc",
-        baseTint: [0.95, 0.99, 1.05], shadowTint: [0.92, 0.98, 1.08], highTint: [0.97, 1.00, 1.04],
-        dmax: 0.95, contrastOffset: 0.14, satMult: 1.16, texture: 0.004
+        id: "ilford-rc-pearl",
+        name: "Ilford MG RC Pearl",
+        isBW: true,
+        desc: "B&N Satinata/Perlata • Antiriflesso equilibrata",
+        swatch: "#f3f2ef",
+        baseTint: [1.00, 1.00, 0.99], shadowTint: [1.00, 0.99, 0.98], highTint: [1.00, 1.00, 0.99],
+        dmax: 0.90, contrastOffset: 0.02, satMult: 1.0, texture: 0.014
     },
     {
-        id: "ilford-fb-warm", name: "Ilford Multigrade FB",
-        desc: "Baritata Cotone • Avorio caldo e ombre brune", swatch: "#efe2c6",
-        baseTint: [1.04, 0.96, 0.84], shadowTint: [1.08, 0.95, 0.82], highTint: [1.05, 0.97, 0.86],
-        dmax: 0.88, contrastOffset: 0.08, satMult: 0.90, texture: 0.032
+        id: "ilford-fb-classic",
+        name: "Ilford MG FB Classic",
+        isBW: true,
+        desc: "B&N Baritata Fibra • Tono neutro museale, neri vellutati",
+        swatch: "#f4f1ea",
+        baseTint: [1.01, 1.00, 0.96], shadowTint: [1.01, 0.99, 0.96], highTint: [1.02, 1.00, 0.97],
+        dmax: 0.95, contrastOffset: 0.06, satMult: 1.0, texture: 0.026
+    },
+    {
+        id: "ilford-fb-warm",
+        name: "Ilford MG FB Warmtone",
+        isBW: true,
+        desc: "B&N Baritata Calda • Avorio e ombre brune (ottima per viraggi)",
+        swatch: "#efe2c6",
+        baseTint: [1.04, 0.97, 0.87], shadowTint: [1.07, 0.95, 0.83], highTint: [1.04, 0.98, 0.89],
+        dmax: 0.91, contrastOffset: 0.04, satMult: 1.0, texture: 0.032
+    },
+    // --- CARTE COLORE RA-4 & DIAPOSITIVE ---
+    {
+        id: "kodak-endura",
+        name: "Kodak Endura Supra",
+        isBW: false,
+        desc: "RA-4 Satinata • Incarnati naturali e luci morbide",
+        swatch: "#f6f1e6",
+        baseTint: [1.01, 0.99, 0.95], shadowTint: [1.03, 0.99, 0.95], highTint: [1.02, 1.00, 0.96],
+        dmax: 0.90, contrastOffset: -0.02, satMult: 0.98, texture: 0.016
+    },
+    {
+        id: "kodak-metallic",
+        name: "Kodak Endura Metallic",
+        isBW: false,
+        desc: "RA-4 Metallica • Riflessi perlescenti, contrasto e saturazione",
+        swatch: "#eef1f5",
+        baseTint: [1.00, 1.01, 1.03], shadowTint: [0.97, 0.99, 1.04], highTint: [1.03, 1.02, 1.00],
+        dmax: 0.98, contrastOffset: 0.16, satMult: 1.22, texture: 0.006
+    },
+    {
+        id: "fuji-crystal-glossy",
+        name: "Fuji Crystal Archive Glossy",
+        isBW: false,
+        desc: "RA-4 Lucida • Bianchi freddi puri, colori vivi e nitidi",
+        swatch: "#f0f5fc",
+        baseTint: [0.96, 0.99, 1.04], shadowTint: [0.93, 0.98, 1.07], highTint: [0.98, 1.00, 1.03],
+        dmax: 0.96, contrastOffset: 0.10, satMult: 1.14, texture: 0.004
+    },
+    {
+        id: "fuji-crystal-matte",
+        name: "Fuji Crystal Archive Matte",
+        isBW: false,
+        desc: "RA-4 Opaca • Zero riflessi, neri morbidi editoriali",
+        swatch: "#f4f2ed",
+        baseTint: [1.00, 0.99, 0.97], shadowTint: [1.02, 1.00, 0.98], highTint: [1.00, 0.99, 0.97],
+        dmax: 0.78, contrastOffset: -0.06, satMult: 0.92, texture: 0.028
+    },
+    {
+        id: "ilfochrome-classic",
+        name: "Ilfochrome / Cibachrome",
+        isBW: false,
+        desc: "Diapositiva Diretta • Poliestere lucido, contrasto e neri assoluti",
+        swatch: "#f4f6fa",
+        baseTint: [0.99, 1.00, 1.02], shadowTint: [0.95, 0.98, 1.05], highTint: [1.01, 1.01, 1.00],
+        dmax: 0.99, contrastOffset: 0.20, satMult: 1.25, texture: 0.002
     }
 ];
 
 const PRINT_PRESETS = [
-    { id: "lab-std", name: "Laboratorio Standard", sub: "Endura Satinata", paperId: "kodak-endura", time: 12.0, grade: 2.5, mag: 0, yel: 0, burn: 0.10, border: "none" },
-    { id: "portrait-soft", name: "Baritata Cotone Calda", sub: "Ilford FB Avorio", paperId: "ilford-fb-warm", time: 11.5, grade: 2.0, mag: -2, yel: 6, burn: 0.18, border: "white" },
-    { id: "gallery-punch", name: "Crystal Lucida Contrasto", sub: "Fuji DPII • Neri intensi", paperId: "fuji-crystal", time: 13.5, grade: 3.5, mag: 2, yel: -2, burn: 0.32, border: "white" },
-    { id: "full-rebate", name: "Pieno Fotogramma 35mm", sub: "Perforazioni & bordo nero", paperId: "kodak-endura", time: 12.0, grade: 2.5, mag: 0, yel: 0, burn: 0.10, border: "rebate" }
+    { id: "lab-std", name: "Lab RA-4 Neutro", sub: "Endura Satinata • Colore fedele", paperId: "kodak-endura", time: 12.0, grade: 2.5, cyan: 0, mag: 0, yel: 0, burn: 0.10, border: "none", tonerType: 0, tonerAmount: 0 },
+    { id: "bw-portrait", name: "Ritratto Baritata Calda", sub: "Ilford FB Warm • Gr. 2.0 morbida", paperId: "ilford-fb-warm", time: 11.5, grade: 2.0, cyan: 0, mag: 0, yel: 0, burn: 0.18, border: "white", tonerType: 2, tonerAmount: 0.18 },
+    { id: "bw-street", name: "Street B&N Contrasto Duro", sub: "RC Lucida Gr. 3.5 + Selenio", paperId: "ilford-rc-glossy", time: 13.0, grade: 3.5, cyan: 0, mag: 0, yel: 0, burn: 0.30, border: "white", tonerType: 1, tonerAmount: 0.45 },
+    { id: "vivid-gallery", name: "Galleria Alta Brillantezza", sub: "Fuji Crystal Lucida • Marginatore", paperId: "fuji-crystal-glossy", time: 13.0, grade: 2.5, cyan: 0, mag: 0, yel: 0, burn: 0.22, border: "white", tonerType: 0, tonerAmount: 0 }
 ];
 
-let rawSavedFilms = JSON.parse(localStorage.getItem("analog_lab_films_v9"))
+const ENLARGER_APERTURES = [2.8, 4.0, 5.6, 8.0, 11, 16];
+
+let rawSavedFilms = JSON.parse(localStorage.getItem("analog_lab_films_v10"))
+    || JSON.parse(localStorage.getItem("analog_lab_films_v9"))
     || JSON.parse(localStorage.getItem("analog_lab_films_v7"))
-    || JSON.parse(localStorage.getItem("analog_lab_films_v6"))
     || JSON.parse(JSON.stringify(DEFAULT_FILMS));
 
 let films = rawSavedFilms.filter(f => f && f.id !== "polaroid-600" && f.mode !== "instant");
 if (films.length === 0) films = JSON.parse(JSON.stringify(DEFAULT_FILMS));
-function saveFilms() { localStorage.setItem("analog_lab_films_v9", JSON.stringify(films)); }
-
-let qualityMode = localStorage.getItem("analog_lab_quality_v7")
-    || localStorage.getItem("analog_lab_quality_v6")
-    || "standard";
-
-function setQualityMode(mode) {
-    qualityMode = mode;
-    localStorage.setItem("analog_lab_quality_v7", mode);
-    document.querySelectorAll("#qualityRow .exp-pill, #vintageQualityRow .exp-pill, #printQualityRow .exp-pill").forEach(p => {
-        p.classList.toggle("selected", p.dataset.quality === mode);
-    });
-    const camBadge = document.getElementById("camQualityBadge");
-    if (camBadge) {
-        camBadge.textContent = mode === "max" ? "MAX 4K" : "STD";
-        camBadge.classList.toggle("max", mode === "max");
-    }
-}
+function saveFilms() { localStorage.setItem("analog_lab_films_v10", JSON.stringify(films)); }
 
 function createDefaultFrameDefects(seed = Math.random()) {
     return {
@@ -205,7 +269,7 @@ function hasAnyFrameDefect(frame) {
 /* =========================================================
    HELPER BLOB & GENERATORE .ZIP ZERO-DIPENDENZE
    ========================================================= */
-function canvasToBlob(canvas, type = "image/jpeg", quality = 0.92) {
+function canvasToBlob(canvas, type = "image/jpeg", quality = 0.94) {
     return new Promise((resolve) => {
         canvas.toBlob((blob) => resolve(blob), type, quality);
     });
@@ -422,6 +486,7 @@ async function refreshStorageSummary() {
             if (f.starred) starredCount++;
             if (f.savedLocally) savedCount++;
             bytes += measureItemBytes(f.rawBlob) + measureItemBytes(f.rawDataUrl)
+                + measureItemBytes(f.negThumbBlob)
                 + measureItemBytes(f.thumbBlob) + measureItemBytes(f.thumbDataUrl)
                 + measureItemBytes(f.developedBlob) + measureItemBytes(f.dataUrl);
         });
@@ -534,6 +599,7 @@ document.getElementById("exportBackupBtn").addEventListener("click", async () =>
         for (const f of roll.frames) {
             const fc = { ...f };
             if (fc.rawBlob instanceof Blob) { fc.rawDataUrl = await blobToDataUrl(fc.rawBlob); delete fc.rawBlob; }
+            if (fc.negThumbBlob instanceof Blob) { fc.negThumbDataUrl = await blobToDataUrl(fc.negThumbBlob); delete fc.negThumbBlob; }
             if (fc.thumbBlob instanceof Blob) { fc.thumbDataUrl = await blobToDataUrl(fc.thumbBlob); delete fc.thumbBlob; }
             if (fc.developedBlob instanceof Blob) { fc.dataUrl = await blobToDataUrl(fc.developedBlob); delete fc.developedBlob; }
             clone.frames.push(fc);
@@ -555,7 +621,7 @@ document.getElementById("exportBackupBtn").addEventListener("click", async () =>
     }
 
     const backupPayload = {
-        app: "AnalogPhotoLab", version: "0.9", exportedAt: new Date().toISOString(),
+        app: "AnalogPhotoLab", version: "1.0", exportedAt: new Date().toISOString(),
         films, rolls: serRolls, vintageRolls: serVRolls, polaroidShots: serPShots
     };
     const blob = new Blob([JSON.stringify(backupPayload)], { type: "application/json" });
@@ -575,6 +641,7 @@ document.getElementById("importBackupInput").addEventListener("change", (e) => {
             const hydrateRoll = async (r) => {
                 for (const f of r.frames) {
                     if (f.rawDataUrl && !f.rawBlob) { f.rawBlob = await dataUrlToBlob(f.rawDataUrl); delete f.rawDataUrl; }
+                    if (f.negThumbDataUrl && !f.negThumbBlob) { f.negThumbBlob = await dataUrlToBlob(f.negThumbDataUrl); delete f.negThumbDataUrl; }
                     if (f.thumbDataUrl && !f.thumbBlob) { f.thumbBlob = await dataUrlToBlob(f.thumbDataUrl); delete f.thumbDataUrl; }
                     if (f.dataUrl && !f.developedBlob) { f.developedBlob = await dataUrlToBlob(f.dataUrl); delete f.dataUrl; }
                 }
@@ -818,7 +885,7 @@ function playFilmRewindSound(durationSec = 4.0) {
 }
 
 /* =========================================================
-   4. MOTORE WEBGL
+   4. MOTORE WEBGL (FULL-RES, OTTICA, CARTA, NEGATIVI)
    ========================================================= */
 const glCanvas = document.getElementById("printCanvas");
 const gl = glCanvas.getContext("webgl", { preserveDrawingBuffer: true })
@@ -864,7 +931,14 @@ if (gl) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 }
 
-function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printOpts = null, showOrig = false, customMaxDim = null) {
+function getDefaultPaperIdForFilm(film) {
+    if (!film) return "kodak-endura";
+    if (film.mode === "bw") return "ilford-rc-glossy";
+    if (film.mode === "slide") return "ilfochrome-classic";
+    return "kodak-endura";
+}
+
+function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printOpts = null, showOrig = false, customMaxDim = null, negativeMode = 0) {
     const srcW = imgElement.naturalWidth || imgElement.width;
     const srcH = imgElement.naturalHeight || imgElement.height;
     if (!gl || !program) {
@@ -873,7 +947,8 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
         return;
     }
 
-    const targetMaxDim = customMaxDim || (qualityMode === "max" ? Math.min(4096, MAX_GL_TEX) : 1800);
+    // Sempre alla massima risoluzione nativa consentita dal sensore/file fino a MAX_GL_TEX (es. 4096/8192)
+    const targetMaxDim = customMaxDim || Math.min(MAX_GL_TEX, Math.max(srcW, srcH));
     const zoom = printOpts ? (printOpts.zoom || 1.0) : 1.0;
     const rotDeg = printOpts ? (printOpts.rotation || 0) : 0;
     const rotRad = (rotDeg * Math.PI) / 180.0;
@@ -906,16 +981,35 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     const isSlide = film.mode === "slide";
 
     const ap = frameData.aperture || 4.0;
-    const lensVignette = ap <= 2.0 ? 0.34 : (ap <= 2.8 ? 0.18 : 0.05);
-    const lensSoftness = ap <= 1.8 ? 0.85 : (ap <= 2.8 ? 0.35 : 0.0);
+    const optics = frameData.optics || {};
+    const enlargerApIdx = (printOpts && typeof printOpts.enlargerApIdx === "number") ? printOpts.enlargerApIdx : 3;
+    // Obiettivo ingranditore: f/2.8 (+0.6 EV e caduta ai bordi), f/8 (0 EV, nitidezza massima), f/16 (-0.5 EV)
+    const enlargerEvShift = printOpts ? (3 - enlargerApIdx) * 0.35 : 0.0;
+    const enlargerEdgeVig = enlargerApIdx <= 1 ? (2 - enlargerApIdx) * 0.12 : 0.0;
+    const enlargerSoft = enlargerApIdx === 0 ? 0.30 : (enlargerApIdx === 5 ? 0.12 : 0.0);
 
-    const paper = printOpts ? PAPER_STOCKS.find(p => p.id === printOpts.paperId) || PAPER_STOCKS[0] : PAPER_STOCKS[0];
+    const lensVignette = (ap <= 2.0 ? 0.34 : (ap <= 2.8 ? 0.18 : 0.05)) + enlargerEdgeVig;
+    const lensSoftness = (ap <= 1.8 ? 0.75 : (ap <= 2.8 ? 0.30 : 0.0)) + (optics.softness || 0) + enlargerSoft;
+
+    const defaultPid = getDefaultPaperIdForFilm(film);
+    const paper = printOpts
+        ? (PAPER_STOCKS.find(p => p.id === printOpts.paperId) || PAPER_STOCKS.find(p => p.id === defaultPid) || PAPER_STOCKS[0])
+        : (PAPER_STOCKS.find(p => p.id === defaultPid) || PAPER_STOCKS[0]);
+
     const timerEV = printOpts ? Math.log2(printOpts.time / 12.0) : 0.0;
-    const gradeDelta = printOpts ? (printOpts.grade - 2.5) * 0.14 : 0.0;
-    const magShift = printOpts ? printOpts.mag * 0.008 : 0.0;
-    const yelShift = printOpts ? printOpts.yel * 0.008 : 0.0;
+    const gradeDelta = (printOpts && paper.isBW) ? (printOpts.grade - 2.5) * 0.15 : 0.0;
+
+    // Filtrazione dicromatica C / M / Y:
+    // Su negativo (dirSign = -1): +Y blocca blu -> stampa più blu; +M blocca verde -> stampa più verde; +C blocca rosso -> stampa più rossa
+    // Su diapositiva Cibachrome (dirSign = +1): il filtro colora direttamente in positivo
+    const dirSign = isSlide ? -1.0 : 1.0;
+    const cyanShift = (printOpts && !paper.isBW) ? (printOpts.cyan || 0) * 0.008 * dirSign : 0.0;
+    const magShift = (printOpts && !paper.isBW) ? (printOpts.mag || 0) * 0.008 * dirSign : 0.0;
+    const yelShift = (printOpts && !paper.isBW) ? (printOpts.yel || 0) * 0.008 * dirSign : 0.0;
+
     const edgeBurn = printOpts ? printOpts.burn : 0.08;
-    const grainScale = printOpts ? printOpts.grainScale : 1.0;
+    const grainScale = printOpts ? (printOpts.grainScale || 1.0) : 1.0;
+    const paperTexScale = (printOpts && typeof printOpts.paperTexScale === "number") ? printOpts.paperTexScale : 1.0;
 
     const frameDef = ensureFrameDefects(frameData);
     const activeDef = (printOpts && printOpts.defects) ? printOpts.defects : frameDef;
@@ -926,7 +1020,7 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     const agedPaperAmount = activeDef.agedPaper.active ? activeDef.agedPaper.intensity : 0.0;
     const scratchesAmount = activeDef.scratches.active ? activeDef.scratches.intensity : 0.0;
 
-    const effectiveExp = (frameData.exposureEV || 0) + (pushStops * 0.55) + timerEV;
+    const effectiveExp = (frameData.exposureEV || 0) + (pushStops * 0.55) + timerEV + enlargerEvShift;
     const baseContrast = isSlide ? film.contrast + 0.18 : film.contrast;
     const effectiveContrast = Math.min(0.95, Math.max(0.05, baseContrast + pushStops * 0.11 + gradeDelta + paper.contrastOffset));
     const effectiveToe = Math.max(0.0, (isSlide ? film.toe * 0.4 : film.toe) - pushStops * 0.003);
@@ -945,13 +1039,15 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     gl.uniform1f(gl.getUniformLocation(program, "u_toe"), effectiveToe);
     gl.uniform1f(gl.getUniformLocation(program, "u_shoulder"), isSlide ? film.shoulder * 0.5 : film.shoulder);
     gl.uniform1f(gl.getUniformLocation(program, "u_contrast"), effectiveContrast);
+    gl.uniform1f(gl.getUniformLocation(program, "u_fadeBlack"), optics.fadeBlack || 0.0);
 
-    const rGain = 1.0 + film.temp * 0.75 + film.tint * 0.35 + magShift * 0.4 + yelShift * 0.5;
-    const gGain = 1.0 - film.tint * 0.55 - magShift * 0.65 + yelShift * 0.25;
-    const bGain = 1.0 - film.temp * 0.75 + film.tint * 0.35 + magShift * 0.35 - yelShift * 0.75;
-    gl.uniform3f(gl.getUniformLocation(program, "u_wbGain"), rGain, gGain, bGain);
+    const rGain = 1.0 + film.temp * 0.75 + film.tint * 0.35 + cyanShift * 0.75 - magShift * 0.25 - yelShift * 0.25;
+    const gGain = 1.0 - film.tint * 0.55 - cyanShift * 0.25 + magShift * 0.75 - yelShift * 0.25;
+    const bGain = 1.0 - film.temp * 0.75 + film.tint * 0.35 - cyanShift * 0.25 - magShift * 0.25 + yelShift * 0.85;
+    gl.uniform3f(gl.getUniformLocation(program, "u_wbGain"), Math.max(0.25, rGain), Math.max(0.25, gGain), Math.max(0.25, bGain));
 
     gl.uniform1i(gl.getUniformLocation(program, "u_isBW"), isBW ? 1 : 0);
+    gl.uniform1i(gl.getUniformLocation(program, "u_orthoBW"), optics.orthoBW ? 1 : 0);
     gl.uniformMatrix3fv(gl.getUniformLocation(program, "u_colorMatrix"), false, new Float32Array(film.matrix || [1, 0, 0, 0, 1, 0, 0, 0, 1]));
     gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), (isSlide ? film.saturation * 1.12 : film.saturation) * paper.satMult);
 
@@ -966,13 +1062,21 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
 
     gl.uniform1f(gl.getUniformLocation(program, "u_lensVignette"), lensVignette);
     gl.uniform1f(gl.getUniformLocation(program, "u_lensSoftness"), lensSoftness);
+    gl.uniform1f(gl.getUniformLocation(program, "u_chromaticAberration"), optics.ca || 0.0);
+    gl.uniform1f(gl.getUniformLocation(program, "u_barrelDistort"), optics.barrel || 0.0);
+    gl.uniform1f(gl.getUniformLocation(program, "u_flashFalloff"), optics.flashFalloff || 0.0);
 
+    gl.uniform1i(gl.getUniformLocation(program, "u_paperIsBW"), (negativeMode === 0 && paper.isBW) ? 1 : 0);
     gl.uniform1f(gl.getUniformLocation(program, "u_paperDmax"), paper.dmax);
     gl.uniform3fv(gl.getUniformLocation(program, "u_paperBaseTint"), new Float32Array(paper.baseTint));
     gl.uniform3fv(gl.getUniformLocation(program, "u_paperShadowTint"), new Float32Array(paper.shadowTint || [1, 1, 1]));
     gl.uniform3fv(gl.getUniformLocation(program, "u_paperHighTint"), new Float32Array(paper.highTint || [1, 1, 1]));
-    gl.uniform1f(gl.getUniformLocation(program, "u_paperTexture"), paper.texture || 0.01);
+    gl.uniform1f(gl.getUniformLocation(program, "u_paperTexture"), (paper.texture || 0.01) * paperTexScale);
     gl.uniform1f(gl.getUniformLocation(program, "u_edgeBurn"), edgeBurn);
+    gl.uniform1f(gl.getUniformLocation(program, "u_tonerType"), printOpts ? (printOpts.tonerType || 0) : 0);
+    gl.uniform1f(gl.getUniformLocation(program, "u_tonerAmount"), printOpts ? (printOpts.tonerAmount || 0) : 0);
+    gl.uniform1i(gl.getUniformLocation(program, "u_testStrip"), (printOpts && printOpts.testStrip && negativeMode === 0) ? 1 : 0);
+    gl.uniform1i(gl.getUniformLocation(program, "u_negativeMode"), negativeMode || 0);
 
     gl.uniform1f(gl.getUniformLocation(program, "u_defectSeed"), seed);
     gl.uniform1f(gl.getUniformLocation(program, "u_lightLeakAmount"), lightLeakAmount);
@@ -987,7 +1091,7 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
 }
 
 /* =========================================================
-   5. TRIANGOLO ESPOSIZIONE, MODALITÀ M (2 COLONNE) + LANCETTA
+   5. TRIANGOLO ESPOSIZIONE, MODALITÀ M + LANCETTA
    ========================================================= */
 const APERTURES = [1.4, 2.0, 2.8, 4.0, 5.6, 8.0, 11, 16];
 const SHUTTERS = [
@@ -1015,7 +1119,7 @@ let isShutterArmed = false;
 let flashActive = false;
 let isCapturing = false;
 let isRewinding = false;
-let hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false };
+let hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false, canTakePhoto: false };
 
 let thirdsVisible = localStorage.getItem("analog_lab_thirds_v7") === "1";
 function syncThirdsUI() {
@@ -1031,7 +1135,7 @@ document.getElementById("vfThirdsToggleBtn").addEventListener("click", () => {
 });
 
 function detectFlashCapabilities() {
-    hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false };
+    hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false, canTakePhoto: false };
     if (!mediaStream) return;
     const track = mediaStream.getVideoTracks()[0];
     if (!track) return;
@@ -1040,6 +1144,7 @@ function detectFlashCapabilities() {
         if (caps && caps.torch) hardwareFlashSupport.hasTorch = true;
     } catch (e) { }
     if (typeof ImageCapture !== "undefined") {
+        hardwareFlashSupport.canTakePhoto = true;
         try {
             const ic = new ImageCapture(track);
             ic.getPhotoCapabilities().then(pc => {
@@ -1343,7 +1448,6 @@ async function refreshHomeStatus() {
     const vRolls = typeof getAllVintageRollsFromDB === "function" ? await getAllVintageRollsFromDB() : [];
     const pShots = typeof getAllPolaroidShotsFromDB === "function" ? await getAllPolaroidShotsFromDB() : [];
 
-    // 1. Simulazione Pellicole
     const activeRoll = rolls.find(r => r.status === "shooting");
     const rewoundRoll = rolls.find(r => r.status === "rewound");
     const devRolls = rolls.filter(r => r.status === "developed");
@@ -1370,13 +1474,11 @@ async function refreshHomeStatus() {
     }
     if (rArchBtn) rArchBtn.textContent = `Archivio (${devRolls.length})`;
 
-    // 2. Polaroid
     const pBadge = document.getElementById("homePolaroidStatusBadge");
     const pGalBtn = document.getElementById("homePolaroidGalleryBtn");
     if (pBadge) pBadge.textContent = `${pShots.length} ${pShots.length === 1 ? "istantanea" : "istantanee"}`;
     if (pGalBtn) pGalBtn.textContent = `Galleria (${pShots.length})`;
 
-    // 3. Usa & Getta
     const activeV = vRolls.find(r => r.status === "shooting");
     const devVRolls = vRolls.filter(r => r.status === "developed");
     const dCard = document.getElementById("pathDisposableBtn");
@@ -1467,7 +1569,7 @@ function renderLoadView() {
         div.className = "film-option" + (f.id === selectedLoadFilmId ? " selected" : "");
         div.style.setProperty("--brand-color", theme.color);
         const modeTxt = f.mode === "bw" ? "Bianco & Nero"
-            : (f.mode === "slide" ? "Diapositiva" : "Negativo Colore");
+            : (f.mode === "slide" ? "Diapositiva (E-6)" : "Negativo Colore (C-41)");
 
         div.innerHTML = `
       <div class="film-canister-strip">
@@ -1499,15 +1601,6 @@ document.querySelectorAll("#expCountRow .exp-pill").forEach(pill => {
     });
 });
 
-document.querySelectorAll("#qualityRow .exp-pill, #vintageQualityRow .exp-pill, #printQualityRow .exp-pill").forEach(pill => {
-    pill.addEventListener("click", () => setQualityMode(pill.dataset.quality));
-});
-
-document.getElementById("camQualityBadge").addEventListener("click", () => {
-    setQualityMode(qualityMode === "max" ? "standard" : "max");
-    startCamera();
-});
-
 async function refreshArchiveList() {
     const rolls = await getAllRollsFromDB();
     const developed = rolls.filter(r => r.status === "developed").sort((a, b) => b.createdAt - a.createdAt);
@@ -1535,7 +1628,7 @@ async function refreshArchiveList() {
         <strong>${roll.film.name}</strong>
         <small>${roll.frames.length} pose • ${pushStr} • ★ ${starC} • ✓ ${savedC} • ${dateStr}</small>
       </div>
-      <span style="color:var(--gold); font-size:12px; font-weight:700;">Provini →</span>
+      <span style="color:var(--gold); font-size:12px; font-weight:700;">Tavolo Luminoso →</span>
     `;
         item.addEventListener("click", () => { currentRoll = roll; openContactSheet(); });
         list.appendChild(item);
@@ -1561,15 +1654,13 @@ document.getElementById("loadRollBtn").addEventListener("click", async () => {
 });
 
 /* =========================================================
-   7. FOTOCAMERA LIVE & RIAVVOLGIMENTO
+   7. FOTOCAMERA LIVE & ACQUISIZIONE FULL-RES (ImageCapture)
    ========================================================= */
 async function startCamera() {
     stopCamera();
     const video = document.getElementById("camVideo");
     const fallback = document.getElementById("camFallbackMsg");
-    const videoConstraints = qualityMode === "max"
-        ? { facingMode: facingMode, width: { ideal: 4096 }, height: { ideal: 3072 } }
-        : { facingMode: facingMode, width: { ideal: 1920 }, height: { ideal: 1440 } };
+    const videoConstraints = { facingMode: facingMode, width: { ideal: 4096 }, height: { ideal: 3072 } };
     try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
         video.srcObject = mediaStream;
@@ -1615,7 +1706,6 @@ function enterCameraMode() {
     document.getElementById("rollFinishedOverlay").classList.remove("open");
     document.getElementById("rewindAnimOverlay").classList.remove("open");
 
-    setQualityMode(qualityMode);
     syncThirdsUI();
     setShutterArmedState(false);
     buildSteppedCameraSliders();
@@ -1662,11 +1752,12 @@ function drawCroppedToCanvas(sourceObj, srcW, srcH, targetRatio, mirror = false)
     return c;
 }
 
-async function captureFrameWithRealFlash(video, targetRatio) {
+// Funzione unificata di acquisizione alla MASSIMA RISOLUZIONE NATIVA del sensore
+async function captureFrameFullRes(video, targetRatio, useFlash = false) {
     const track = mediaStream ? mediaStream.getVideoTracks()[0] : null;
     const mirror = facingMode === "user";
 
-    if (flashActive && track) {
+    if (useFlash && track) {
         if (hardwareFlashSupport.hasPhotoFlash && typeof ImageCapture !== "undefined") {
             try {
                 const ic = new ImageCapture(track);
@@ -1677,7 +1768,6 @@ async function captureFrameWithRealFlash(video, targetRatio) {
                 return { canvas: c, hardwareFlashFired: true };
             } catch (err) { }
         }
-
         if (hardwareFlashSupport.hasTorch) {
             try {
                 await track.applyConstraints({ advanced: [{ torch: true }] });
@@ -1689,7 +1779,6 @@ async function captureFrameWithRealFlash(video, targetRatio) {
                 try { await track.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) { }
             }
         }
-
         if (facingMode === "user") {
             const frontFlash = document.getElementById("frontScreenFlash");
             frontFlash.classList.add("lit");
@@ -1698,6 +1787,21 @@ async function captureFrameWithRealFlash(video, targetRatio) {
             frontFlash.classList.remove("lit");
             return { canvas: c, hardwareFlashFired: true };
         }
+    }
+
+    // Anche senza flash, tenta ImageCapture.takePhoto() per sbloccare i veri Megapixel (es. 3000×4000)
+    if (track && typeof ImageCapture !== "undefined") {
+        try {
+            const ic = new ImageCapture(track);
+            const blob = await ic.takePhoto({ fillLightMode: "off" });
+            const bitmap = await createImageBitmap(blob);
+            if (bitmap.width >= video.videoWidth && bitmap.height >= video.videoHeight) {
+                const c = drawCroppedToCanvas(bitmap, bitmap.width, bitmap.height, targetRatio, mirror);
+                bitmap.close();
+                return { canvas: c, hardwareFlashFired: false };
+            }
+            bitmap.close();
+        } catch (err) { }
     }
 
     const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
@@ -1742,9 +1846,8 @@ async function recordLatentFrame(sourceCanvasOrImg, usedFlash = false, hardwareF
 
     const flashFillBoost = (usedFlash && !hardwareFlashFired) ? Math.max(0.45, -expInfo.exposureErrorEV * 0.65) : 0.0;
     const effectiveFrameEV = (camMode === "M" ? 0 : camCompEV) + expInfo.exposureErrorEV + flashFillBoost;
-    const jpegQ = qualityMode === "max" ? 0.96 : 0.91;
     const seed = Math.random();
-    const rawBlob = await canvasToBlob(finalCanvas, "image/jpeg", jpegQ);
+    const rawBlob = await canvasToBlob(finalCanvas, "image/jpeg", 0.96);
 
     currentRoll.frames.push({
         number: currentRoll.frames.length + 1,
@@ -1758,6 +1861,7 @@ async function recordLatentFrame(sourceCanvasOrImg, usedFlash = false, hardwareF
         defectSeed: seed,
         defects: createDefaultFrameDefects(seed),
         rawBlob,
+        negThumbBlob: null,
         thumbBlob: null
     });
 
@@ -1791,7 +1895,7 @@ document.getElementById("shutterBtn").addEventListener("click", async () => {
 
     isCapturing = true;
     try {
-        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithRealFlash(video, 3 / 4);
+        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameFullRes(video, 3 / 4, flashActive);
         await recordLatentFrame(capCanvas, flashActive, hardwareFlashFired);
         capCanvas.width = 0; capCanvas.height = 0;
     } finally {
@@ -1810,17 +1914,10 @@ document.getElementById("camGalleryInput").addEventListener("change", (e) => {
     reader.onload = (ev) => {
         const img = new Image();
         img.onload = () => {
-            let w = img.width, h = img.height;
-            if (qualityMode !== "max") {
-                const maxD = 1800;
-                if (w > maxD || h > maxD) {
-                    const r = Math.min(maxD / w, maxD / h);
-                    w = Math.round(w * r); h = Math.round(h * r);
-                }
-            }
             const c = document.createElement("canvas");
-            c.width = w; c.height = h;
-            c.getContext("2d").drawImage(img, 0, 0, w, h);
+            c.width = img.width;
+            c.height = img.height;
+            c.getContext("2d").drawImage(img, 0, 0);
             recordLatentFrame(c, flashActive, false).then(() => { c.width = 0; c.height = 0; });
         };
         img.src = ev.target.result;
@@ -1886,12 +1983,19 @@ document.getElementById("rewindEarlyBtn").addEventListener("click", async () => 
 });
 
 /* =========================================================
-   8. CAMERA OSCURA
+   8. CAMERA OSCURA -> GENERAZIONE NEGATIVI SUL TAVOLO LUMINOSO
    ========================================================= */
 let selectedPushStops = 0;
 let devLightLeaks = false;
 let devChemStains = false;
 let devAgedPaper = false;
+
+function getRollNegativeMode(roll) {
+    if (!roll || !roll.film) return 1;
+    if (roll.film.mode === "slide") return 0; // Diapositiva -> positivo trasparente
+    if (roll.film.mode === "bw") return 2;    // Negativo B&N -> argento invertito
+    return 1;                                 // Negativo Colore C-41 -> maschera arancione
+}
 
 async function goToDarkroom() {
     currentRoll.status = "rewound";
@@ -1942,6 +2046,7 @@ document.getElementById("startDevelopBtn").addEventListener("click", async () =>
     currentRoll.pushStops = selectedPushStops;
     currentRoll.devDefects = { lightLeaks: devLightLeaks, chemStains: devChemStains, agedPaper: devAgedPaper };
     const total = currentRoll.frames.length;
+    const negMode = getRollNegativeMode(currentRoll);
     let prevHadLeak = false;
 
     for (let i = 0; i < total; i++) {
@@ -1973,12 +2078,14 @@ document.getElementById("startDevelopBtn").addEventListener("click", async () =>
         } else { fDef.agedPaper.active = false; fDef.agedPaper.intensity = 0; }
 
         const img = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
-        renderFrameWithWebGL(img, currentRoll.film, frame, currentRoll.pushStops, null, false, 480);
-        frame.thumbBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.82);
+        // Genera la miniatura in NEGATIVO (o positivo per diapositive) per il Tavolo Luminoso
+        renderFrameWithWebGL(img, currentRoll.film, frame, currentRoll.pushStops, null, false, 480, negMode);
+        frame.negThumbBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.84);
+        frame.thumbBlob = frame.negThumbBlob;
     }
 
     progFill.style.width = "100%";
-    statusTxt.textContent = "Lavaggio e asciugatura completati!";
+    statusTxt.textContent = "Lavaggio, fissaggio e asciugatura completati!";
     currentRoll.status = "developed";
     await saveRollToDB(currentRoll);
     await refreshHomeStatus();
@@ -1988,25 +2095,45 @@ document.getElementById("startDevelopBtn").addEventListener("click", async () =>
 });
 
 /* =========================================================
-   9. PROVINO A CONTATTO
+   9. TAVOLO LUMINOSO NEGATIVI & VISORE CAROSELLO FULLSCREEN
    ========================================================= */
+let activeNegIdx = 0;
+let negZoom = 1.0;
+let negPanX = 0;
+let negPanY = 0;
+
 function updateContactSelectionUI() {
     if (!currentRoll) return;
     const starCount = currentRoll.frames.filter(f => f.starred).length;
     const selBtn = document.getElementById("csSaveSelectedBtn");
     const allBtn = document.getElementById("csSelectAllBtn");
-    if (selBtn) selBtn.textContent = `Salva Selezionate (${starCount})`;
+    if (selBtn) selBtn.textContent = `Stampa Selezionate (${starCount})`;
     if (allBtn) {
         const allStarred = currentRoll.frames.length > 0 && starCount === currentRoll.frames.length;
         allBtn.textContent = allStarred ? "☆ Deseleziona" : "★ Tutte";
     }
 }
 
-function openContactSheet() {
+async function openContactSheet() {
+    const negMode = getRollNegativeMode(currentRoll);
     document.getElementById("csTitle").textContent = currentRoll.film.name;
+    document.getElementById("csSubtitle").textContent = negMode === 0
+        ? "Diapositive positive su tavolo luminoso • Tocca per ispezionare"
+        : "Negativi sviluppati • Tocca per carosello zoom e stampa";
     document.getElementById("csFilmEdge").textContent = `${currentRoll.film.name.toUpperCase()} • ISO ${currentRoll.film.iso}`;
     const pTxt = currentRoll.pushStops === 0 ? "DEV: STD" : (currentRoll.pushStops > 0 ? `PUSH +${currentRoll.pushStops}` : `PULL ${currentRoll.pushStops}`);
     document.getElementById("csDevEdge").textContent = pTxt;
+
+    const hintEl = document.getElementById("csLightTableHint");
+    if (hintEl) {
+        if (negMode === 0) {
+            hintEl.innerHTML = `<b>Tavolo Luminoso (Diapositiva E-6):</b> questa pellicola è invertita e mostra subito immagini positive trasparenti. Tocca una diapositiva per ispezionarla o passare all'Ingranditore; i tasti <b>Stampa</b> in alto esportano direttamente i file in positivo.`;
+        } else if (negMode === 2) {
+            hintEl.innerHTML = `<b>Tavolo Luminoso (Negativo B&amp;N):</b> le zone scure del negativo rappresentano le luci brillanti della scena, quelle chiare le ombre. Tocca un negativo per zoomare/scorrere o passare all'Ingranditore; <b>Stampa</b> esporta già in positivo.`;
+        } else {
+            hintEl.innerHTML = `<b>Tavolo Luminoso (Negativo Colore C-41):</b> la tipica maschera arancione serve a correggere i colori in fase di stampa. Tocca un negativo per zoomare/scorrere o passare all'Ingranditore; <b>Stampa</b> in alto esporta le foto già in positivo!`;
+        }
+    }
 
     const grid = document.getElementById("contactGrid");
     grid.innerHTML = "";
@@ -2015,7 +2142,7 @@ function openContactSheet() {
         cell.className = "contact-frame" + (frame.starred ? " starred" : "");
 
         const img = document.createElement("img");
-        const srcObj = frame.thumbBlob || frame.thumbDataUrl;
+        const srcObj = frame.negThumbBlob || frame.thumbBlob || frame.thumbDataUrl;
         if (srcObj instanceof Blob) {
             const u = URL.createObjectURL(srcObj);
             img.onload = () => URL.revokeObjectURL(u);
@@ -2059,7 +2186,7 @@ function openContactSheet() {
             cell.appendChild(dot);
         }
 
-        cell.addEventListener("click", () => openPrintEnlarger(idx));
+        cell.addEventListener("click", () => openNegativeViewer(idx));
         grid.appendChild(cell);
     });
 
@@ -2067,19 +2194,206 @@ function openContactSheet() {
     switchView("view-contact");
 }
 
+function applyNegativeTransform() {
+    const imgEl = document.getElementById("negModalImg");
+    const badge = document.getElementById("negZoomBadge");
+    const resetBtn = document.getElementById("negModalResetZoomBtn");
+    if (!imgEl) return;
+
+    imgEl.style.transform = `translate3d(${negPanX}px, ${negPanY}px, 0) scale(${negZoom.toFixed(3)})`;
+    if (badge) badge.textContent = `${negZoom.toFixed(1)}×`;
+    if (resetBtn) resetBtn.style.display = negZoom > 1.05 ? "inline-flex" : "none";
+}
+
+function resetNegativeZoom() {
+    negZoom = 1.0;
+    negPanX = 0;
+    negPanY = 0;
+    applyNegativeTransform();
+}
+
+async function renderNegativeSlideAtIdx(idx) {
+    if (!currentRoll || !currentRoll.frames[idx]) return;
+    activeNegIdx = idx;
+    resetNegativeZoom();
+
+    const frame = currentRoll.frames[idx];
+    const negMode = getRollNegativeMode(currentRoll);
+    const total = currentRoll.frames.length;
+
+    document.getElementById("negModalTitle").textContent = negMode === 0
+        ? `Diapositiva #${String(frame.number).padStart(2, "0")} (${idx + 1}/${total})`
+        : `Negativo #${String(frame.number).padStart(2, "0")} (${idx + 1}/${total})`;
+
+    const apStr = frame.aperture ? `f/${frame.aperture}` : "f/4";
+    const shStr = frame.shutterLabel ? `${frame.shutterLabel}s` : "1/125s";
+    document.getElementById("negModalMeta").textContent = `${currentRoll.film.name} • ${apStr} • ${shStr}${frame.flash ? " • ⚡" : ""}`;
+
+    const starBtn = document.getElementById("negModalStarBtn");
+    starBtn.textContent = frame.starred ? "★" : "☆";
+    starBtn.classList.toggle("btn-gold", !!frame.starred);
+
+    document.getElementById("negPrevBtn").disabled = idx <= 0;
+    document.getElementById("negNextBtn").disabled = idx >= total - 1;
+
+    const noteEl = document.getElementById("negDidacticNote");
+    if (negMode === 0) {
+        noteEl.textContent = "Diapositiva E-6: colori e densità sono già positivi e pronti da osservare sul tavolo luminoso o da stampare su Ilfochrome.";
+    } else if (negMode === 2) {
+        noteEl.textContent = "Negativo Bianco & Nero: più argento metallico scuro vedi, più luminosa sarà quell'area nella stampa finale positiva.";
+    } else {
+        noteEl.textContent = "Maschera arancione C-41: i cieli azzurri appaiono arancioni e le ombre scure risultano quasi trasparenti. Passa alla stampa per invertire i colori.";
+    }
+
+    const imgEl = document.getElementById("negModalImg");
+    const rawImg = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
+    renderFrameWithWebGL(rawImg, currentRoll.film, frame, currentRoll.pushStops, null, false, 1400, negMode);
+    const negBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.90);
+    const u = URL.createObjectURL(negBlob);
+    imgEl.onload = () => URL.revokeObjectURL(u);
+    imgEl.src = u;
+}
+
+async function openNegativeViewer(idx) {
+    document.getElementById("negativeModal").classList.add("open");
+    await renderNegativeSlideAtIdx(idx);
+}
+
+document.getElementById("negModalCloseBtn").addEventListener("click", () => {
+    document.getElementById("negativeModal").classList.remove("open");
+});
+
+document.getElementById("negModalResetZoomBtn").addEventListener("click", resetNegativeZoom);
+
+document.getElementById("negModalStarBtn").addEventListener("click", async () => {
+    if (!currentRoll || !currentRoll.frames[activeNegIdx]) return;
+    const fr = currentRoll.frames[activeNegIdx];
+    fr.starred = !fr.starred;
+    await saveRollToDB(currentRoll);
+    const starBtn = document.getElementById("negModalStarBtn");
+    starBtn.textContent = fr.starred ? "★" : "☆";
+    starBtn.classList.toggle("btn-gold", !!fr.starred);
+    openContactSheet();
+});
+
+document.getElementById("negPrevBtn").addEventListener("click", () => {
+    if (activeNegIdx > 0) renderNegativeSlideAtIdx(activeNegIdx - 1);
+});
+
+document.getElementById("negNextBtn").addEventListener("click", () => {
+    if (currentRoll && activeNegIdx < currentRoll.frames.length - 1) {
+        renderNegativeSlideAtIdx(activeNegIdx + 1);
+    }
+});
+
+document.getElementById("negPrintBtn").addEventListener("click", () => {
+    document.getElementById("negativeModal").classList.remove("open");
+    openPrintEnlarger(activeNegIdx);
+});
+
+// Gesti Swipe Carosello + Pinch Zoom + Double Tap sul Visore Negativi
+const negStage = document.getElementById("negModalStage");
+let negPointers = new Map();
+let negPinchStartDist = 0;
+let negPinchStartZoom = 1;
+let negSwipeStart = { x: 0, y: 0, panX: 0, panY: 0, moved: false };
+let negLastTapTime = 0;
+
+negStage.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) return;
+    e.preventDefault();
+    negPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (negPointers.size === 1) {
+        negSwipeStart = { x: e.clientX, y: e.clientY, panX: negPanX, panY: negPanY, moved: false };
+    } else if (negPointers.size === 2) {
+        const pts = Array.from(negPointers.values());
+        negPinchStartDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+        negPinchStartZoom = negZoom;
+    }
+});
+
+negStage.addEventListener("pointermove", (e) => {
+    if (!negPointers.has(e.pointerId)) return;
+    negPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (negPointers.size === 2) {
+        const pts = Array.from(negPointers.values());
+        const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+        if (negPinchStartDist > 10) {
+            negZoom = Math.max(1.0, Math.min(4.0, negPinchStartZoom * (dist / negPinchStartDist)));
+            if (negZoom <= 1.02) { negZoom = 1.0; negPanX = 0; negPanY = 0; }
+            applyNegativeTransform();
+        }
+        return;
+    }
+
+    if (negPointers.size === 1) {
+        const dx = e.clientX - negSwipeStart.x;
+        const dy = e.clientY - negSwipeStart.y;
+        if (Math.hypot(dx, dy) > 8) negSwipeStart.moved = true;
+
+        if (negZoom > 1.05) {
+            const limitX = (negStage.clientWidth * (negZoom - 1)) * 0.5;
+            const limitY = (negStage.clientHeight * (negZoom - 1)) * 0.5;
+            negPanX = Math.max(-limitX, Math.min(limitX, negSwipeStart.panX + dx));
+            negPanY = Math.max(-limitY, Math.min(limitY, negSwipeStart.panY + dy));
+            applyNegativeTransform();
+        }
+    }
+});
+
+function handleNegPointerEnd(e) {
+    if (!negPointers.has(e.pointerId)) return;
+    const endPos = negPointers.get(e.pointerId);
+    negPointers.delete(e.pointerId);
+
+    if (negPointers.size === 0) {
+        const dx = endPos.x - negSwipeStart.x;
+        const dy = endPos.y - negSwipeStart.y;
+
+        if (!negSwipeStart.moved) {
+            const now = Date.now();
+            if (now - negLastTapTime < 280) {
+                if (negZoom > 1.1) resetNegativeZoom();
+                else { negZoom = 2.5; negPanX = 0; negPanY = 0; applyNegativeTransform(); }
+                negLastTapTime = 0;
+            } else {
+                negLastTapTime = now;
+            }
+        } else if (negZoom <= 1.05 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+            // Swipe orizzontale carosello tra i negativi
+            if (dx < 0 && currentRoll && activeNegIdx < currentRoll.frames.length - 1) {
+                renderNegativeSlideAtIdx(activeNegIdx + 1);
+            } else if (dx > 0 && activeNegIdx > 0) {
+                renderNegativeSlideAtIdx(activeNegIdx - 1);
+            }
+        }
+    }
+}
+negStage.addEventListener("pointerup", handleNegPointerEnd);
+negStage.addEventListener("pointercancel", handleNegPointerEnd);
+
+// Esportazione rapida dal Tavolo Luminoso -> Esporta SEMPRE stampe positive alla massima risoluzione
 async function exportContactFrames(framesToExport, labelSlug) {
     if (!framesToExport.length) {
-        alert("Metti prima la stellina (★) su almeno una foto oppure clicca 'Salva Tutte'.");
+        alert("Metti prima la stellina (★) su almeno una foto oppure clicca 'Stampa Tutte (+)'.");
         return;
     }
     const items = [];
-    const exportJpegQ = qualityMode === "max" ? 0.96 : 0.91;
     const slug = currentRoll.film.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const defPid = getDefaultPaperIdForFilm(currentRoll.film);
 
     for (const frame of framesToExport) {
         const img = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
-        renderFrameWithWebGL(img, currentRoll.film, frame, currentRoll.pushStops, null, false);
-        const blob = await canvasToBlob(glCanvas, "image/jpeg", exportJpegQ);
+        renderFrameWithWebGL(img, currentRoll.film, frame, currentRoll.pushStops, {
+            paperId: defPid, time: 12.0, grade: 2.5, cyan: 0, mag: 0, yel: 0,
+            burn: 0.10, grainScale: 1.0, paperTexScale: 1.0, enlargerApIdx: 3,
+            tonerType: 0, tonerAmount: 0, testStrip: false,
+            zoom: 1.0, rotation: 0, panX: 0, panY: 0, border: "none",
+            defects: ensureFrameDefects(frame)
+        }, false, null, 0);
+        const blob = await canvasToBlob(glCanvas, "image/jpeg", 0.95);
         items.push({ name: `${slug}-f${String(frame.number).padStart(2, "0")}.jpg`, blob });
         frame.savedLocally = true;
     }
@@ -2119,7 +2433,7 @@ document.getElementById("newRollFromCsBtn").addEventListener("click", () => {
 });
 
 /* =========================================================
-   10. STAZIONE DI STAMPA / INGRANDITORE
+   10. STAZIONE DI STAMPA / INGRANDITORE DIDATTICO
    ========================================================= */
 let activePrintIdx = 0;
 let activePrintImg = null;
@@ -2127,21 +2441,28 @@ let printShowOriginal = false;
 let activeFrameDirty = false;
 
 let activePrintPresetDefaults = {
-    time: 12.0, grade: 2.5, mag: 0, yel: 0, burn: 0.10,
-    zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0
+    time: 12.0, grade: 2.5, cyan: 0, mag: 0, yel: 0, burn: 0.10,
+    enlargerApIdx: 3, tonerType: 0, tonerAmount: 0.6,
+    zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0, paperTexScale: 1.0
 };
 
 let printState = {
     presetId: "lab-std",
     paperId: "kodak-endura",
     time: 12.0,
+    enlargerApIdx: 3,
     grade: 2.5,
+    cyan: 0,
     mag: 0,
     yel: 0,
+    tonerType: 0,
+    tonerAmount: 0.6,
+    testStrip: false,
     burn: 0.10,
     border: "none",
     borderThickness: 0.06,
     grainScale: 1.0,
+    paperTexScale: 1.0,
     zoom: 1.0,
     rotation: 0,
     panX: 0,
@@ -2162,8 +2483,6 @@ function layoutPrintPreview() {
     if (printState.border === "white") {
         const t = printState.borderThickness;
         pSide = t; pTop = t; pBot = t;
-    } else if (printState.border === "rebate") {
-        pSide = 0.045; pTop = 0.085 / aspect; pBot = 0.085 / aspect;
     }
 
     const maxW_byW = availW / (1 + pSide * 2);
@@ -2180,6 +2499,21 @@ window.addEventListener("resize", () => {
     if (document.getElementById("printModal").classList.contains("open")) layoutPrintPreview();
 });
 
+function renderTestStripOverlay() {
+    const ov = document.getElementById("testStripOverlay");
+    if (!ov) return;
+    ov.classList.toggle("visible", !!printState.testStrip);
+    if (!printState.testStrip) {
+        ov.innerHTML = "";
+        return;
+    }
+    const evs = [-1.0, -0.5, 0.0, 0.5, 1.0];
+    ov.innerHTML = evs.map(ev => {
+        const sec = (printState.time * Math.pow(2, ev)).toFixed(1);
+        return `<div class="test-strip-col"><span class="test-strip-tag">${sec}s</span></div>`;
+    }).join("");
+}
+
 function renderPrintPresetsAndPapers() {
     const pStrip = document.getElementById("printPresetStrip");
     pStrip.innerHTML = "";
@@ -2189,8 +2523,9 @@ function renderPrintPresetsAndPapers() {
         chip.innerHTML = `<strong>${pr.name}</strong><small>${pr.sub}</small>`;
         chip.addEventListener("click", () => {
             activePrintPresetDefaults = {
-                time: pr.time, grade: pr.grade, mag: pr.mag, yel: pr.yel, burn: pr.burn,
-                zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0
+                ...activePrintPresetDefaults,
+                time: pr.time, grade: pr.grade, cyan: pr.cyan, mag: pr.mag, yel: pr.yel,
+                burn: pr.burn, tonerType: pr.tonerType, tonerAmount: pr.tonerAmount || 0.5
             };
             printState = {
                 ...printState,
@@ -2198,10 +2533,13 @@ function renderPrintPresetsAndPapers() {
                 paperId: pr.paperId,
                 time: pr.time,
                 grade: pr.grade,
+                cyan: pr.cyan,
                 mag: pr.mag,
                 yel: pr.yel,
                 burn: pr.burn,
-                border: pr.border
+                border: pr.border,
+                tonerType: pr.tonerType,
+                tonerAmount: pr.tonerAmount || 0.5
             };
             syncPrintControlsUI();
             updatePrintPreview();
@@ -2209,8 +2547,11 @@ function renderPrintPresetsAndPapers() {
         pStrip.appendChild(chip);
     });
 
-    const paperGrid = document.getElementById("paperGrid");
-    paperGrid.innerHTML = "";
+    const bwGroup = document.getElementById("paperGroupBW");
+    const colGroup = document.getElementById("paperGroupColor");
+    bwGroup.innerHTML = "";
+    colGroup.innerHTML = "";
+
     PAPER_STOCKS.forEach(pk => {
         const card = document.createElement("div");
         card.className = "paper-card" + (printState.paperId === pk.id ? " active" : "");
@@ -2227,12 +2568,16 @@ function renderPrintPresetsAndPapers() {
             syncPrintControlsUI();
             updatePrintPreview();
         });
-        paperGrid.appendChild(card);
+        if (pk.isBW) bwGroup.appendChild(card);
+        else colGroup.appendChild(card);
     });
 }
 
 function syncPrintControlsUI() {
     renderPrintPresetsAndPapers();
+
+    const paper = PAPER_STOCKS.find(p => p.id === printState.paperId) || PAPER_STOCKS[0];
+    const isSlide = currentRoll && currentRoll.film.mode === "slide";
 
     document.getElementById("prZoomSlider").value = printState.zoom;
     document.getElementById("prZoomVal").textContent = printState.zoom.toFixed(2) + "x";
@@ -2243,8 +2588,14 @@ function syncPrintControlsUI() {
     document.getElementById("prTimeSlider").value = printState.time;
     document.getElementById("prTimeVal").textContent = printState.time.toFixed(1) + "s";
 
+    document.getElementById("prLensApSlider").value = printState.enlargerApIdx;
+    document.getElementById("prLensApVal").textContent = `f/${ENLARGER_APERTURES[printState.enlargerApIdx]}`;
+
     document.getElementById("prGradeSlider").value = printState.grade;
     document.getElementById("prGradeVal").textContent = "Gr. " + printState.grade.toFixed(1);
+
+    document.getElementById("prCyanSlider").value = printState.cyan;
+    document.getElementById("prCyanVal").textContent = (printState.cyan > 0 ? "+" : "") + printState.cyan + " C";
 
     document.getElementById("prMagSlider").value = printState.mag;
     document.getElementById("prMagVal").textContent = (printState.mag > 0 ? "+" : "") + printState.mag + " M";
@@ -2252,15 +2603,53 @@ function syncPrintControlsUI() {
     document.getElementById("prYelSlider").value = printState.yel;
     document.getElementById("prYelVal").textContent = (printState.yel > 0 ? "+" : "") + printState.yel + " Y";
 
+    document.getElementById("prTonerSelect").value = String(printState.tonerType || 0);
+    document.getElementById("tonerIntRow").style.display = (paper.isBW && printState.tonerType > 0) ? "flex" : "none";
+    document.getElementById("prTonerIntSlider").value = printState.tonerAmount;
+    document.getElementById("prTonerIntVal").textContent = Math.round(printState.tonerAmount * 100) + "%";
+
     document.getElementById("prBurnSlider").value = printState.burn;
     document.getElementById("prBurnVal").textContent = Math.round(printState.burn * 100) + "%";
 
     document.getElementById("prGrainSlider").value = printState.grainScale;
     document.getElementById("prGrainVal").textContent = Math.round(printState.grainScale * 100) + "%";
 
+    document.getElementById("prPaperTexSlider").value = printState.paperTexScale;
+    document.getElementById("prPaperTexVal").textContent = Math.round(printState.paperTexScale * 100) + "%";
+
     document.getElementById("prBorderThickSlider").value = printState.borderThickness;
     document.getElementById("prBorderThickVal").textContent = Math.round(printState.borderThickness * 100) + "%";
     document.getElementById("borderThicknessRow").style.display = printState.border === "white" ? "flex" : "none";
+
+    // Visibilità didattica blocchi Ingranditore in base al tipo di carta
+    document.getElementById("bwGradeBlock").style.display = paper.isBW ? "flex" : "none";
+    document.getElementById("bwTonerBlock").style.display = paper.isBW ? "flex" : "none";
+    document.getElementById("ra4HeadBlock").style.display = paper.isBW ? "none" : "flex";
+
+    const ra4Explain = document.getElementById("ra4PhysicsExplain");
+    if (ra4Explain) {
+        if (isSlide) {
+            ra4Explain.innerHTML = `Stampa diretta da <b>Diapositiva</b> (${paper.name}): i filtri agiscono in modo diretto (+Giallo riscalda in giallo, +Magenta aggiunge magenta, +Ciano raffredda in ciano).`;
+        } else {
+            ra4Explain.innerHTML = `Nella stampa da <b>negativo colore</b> i filtri agiscono in modo sottrattivo: aggiungere <b>+Giallo (Y)</b> blocca il blu rendendo la stampa più <b>Blu</b>; <b>+Magenta (M)</b> più <b>Verde</b>; <b>+Ciano (C)</b> più <b>Rossa</b>.`;
+        }
+    }
+
+    const compatHint = document.getElementById("paperCompatibilityHint");
+    if (compatHint && currentRoll) {
+        if (paper.isBW && currentRoll.film.mode !== "bw") {
+            compatHint.innerHTML = `<b>Nota didattica:</b> stai stampando un rullino a colori su carta <b>${paper.name}</b> (gelatina d'argento). Come in una vera camera oscura, il risultato è in <b>Bianco &amp; Nero</b> controllato dal Filtro Grado 00–5.`;
+        } else {
+            compatHint.innerHTML = `Scegli una carta fotografica reale: le carte <b>B&amp;N</b> usano i filtri <b>Grado 00–5</b> e viraggi; le carte <b>RA-4 / Cibachrome</b> usano la <b>Testa Dicromatica C/M/Y</b>.`;
+        }
+    }
+
+    const stripBtn = document.getElementById("prTestStripBtn");
+    stripBtn.textContent = printState.testStrip
+        ? "📏 Provino a Scalare (5 Tempi): ON"
+        : "📏 Provino a Scalare (5 Tempi): OFF";
+    stripBtn.classList.toggle("btn-gold", !!printState.testStrip);
+    stripBtn.classList.toggle("btn-gold-outline", !printState.testStrip);
 
     const d = printState.defects;
     document.getElementById("boxPrLeaks").classList.toggle("active", d.lightLeak.active);
@@ -2283,22 +2672,17 @@ function syncPrintControlsUI() {
     document.getElementById("prScratchInt").value = d.scratches.intensity;
     document.getElementById("prScratchIntVal").textContent = Math.round(d.scratches.intensity * 100) + "%";
 
-    const isBW = currentRoll && currentRoll.film.mode === "bw";
-    document.getElementById("ra4MagentaRow").style.display = isBW ? "none" : "flex";
-    document.getElementById("ra4YellowRow").style.display = isBW ? "none" : "flex";
-
-    const paper = PAPER_STOCKS.find(p => p.id === printState.paperId) || PAPER_STOCKS[0];
     const wrap = document.getElementById("printWrapper");
     const effectiveSwatch = (d.agedPaper.active && d.agedPaper.intensity > 0) ? "#e8d6b3" : paper.swatch;
     wrap.style.setProperty("--paper-bg", effectiveSwatch);
     wrap.className = "print-frame-wrapper";
     if (printState.border === "white") wrap.classList.add("border-white");
-    if (printState.border === "rebate") wrap.classList.add("border-rebate");
 
     document.querySelectorAll("#borderSelector button").forEach(b => {
         b.classList.toggle("btn-gold-outline", b.dataset.border === printState.border);
     });
 
+    renderTestStripOverlay();
     layoutPrintPreview();
 }
 
@@ -2315,7 +2699,7 @@ async function openPrintEnlarger(idx) {
     activePrintIdx = idx;
     activeFrameDirty = false;
     const frame = currentRoll.frames[idx];
-    document.getElementById("printFrameTitle").textContent = `Foto #${String(frame.number).padStart(2, "0")}`;
+    document.getElementById("printFrameTitle").textContent = `Stampa #${String(frame.number).padStart(2, "0")}`;
     const apStr = frame.aperture ? `f/${frame.aperture}` : "f/4";
     const shStr = frame.shutterLabel ? `${frame.shutterLabel}s` : "1/125s";
     const flStr = frame.flash ? " • ⚡" : "";
@@ -2323,27 +2707,40 @@ async function openPrintEnlarger(idx) {
 
     const frameDef = ensureFrameDefects(frame);
 
-    printState.zoom = 1.0;
-    printState.rotation = 0;
-    printState.panX = 0;
-    printState.panY = 0;
-    printState.borderThickness = 0.06;
-    printState.grainScale = 1.0;
-    printState.defects = JSON.parse(JSON.stringify(frameDef));
+    const defPreset = currentRoll.film.mode === "bw"
+        ? PRINT_PRESETS[1]
+        : (currentRoll.film.mode === "slide" ? PRINT_PRESETS[3] : PRINT_PRESETS[0]);
+    const defPaperId = currentRoll.film.mode === "slide" ? "ilfochrome-classic" : defPreset.paperId;
 
-    const std = PRINT_PRESETS[0];
     activePrintPresetDefaults = {
-        time: std.time, grade: std.grade, mag: std.mag, yel: std.yel, burn: std.burn,
-        zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0
+        time: defPreset.time, grade: defPreset.grade, cyan: 0, mag: 0, yel: 0, burn: defPreset.burn,
+        enlargerApIdx: 3, tonerType: defPreset.tonerType, tonerAmount: defPreset.tonerAmount || 0.5,
+        zoom: 1.0, rotation: 0, borderThickness: 0.06, grainScale: 1.0, paperTexScale: 1.0
     };
-    printState.presetId = "lab-std";
-    printState.paperId = "kodak-endura";
-    printState.border = "none";
-    printState.time = std.time;
-    printState.grade = std.grade;
-    printState.mag = std.mag;
-    printState.yel = std.yel;
-    printState.burn = std.burn;
+
+    printState = {
+        presetId: currentRoll.film.mode === "slide" ? "custom" : defPreset.id,
+        paperId: defPaperId,
+        time: defPreset.time,
+        enlargerApIdx: 3,
+        grade: defPreset.grade,
+        cyan: 0,
+        mag: 0,
+        yel: 0,
+        tonerType: defPreset.tonerType,
+        tonerAmount: defPreset.tonerAmount || 0.5,
+        testStrip: false,
+        burn: defPreset.burn,
+        border: defPreset.border,
+        borderThickness: 0.06,
+        grainScale: 1.0,
+        paperTexScale: 1.0,
+        zoom: 1.0,
+        rotation: 0,
+        panX: 0,
+        panY: 0,
+        defects: JSON.parse(JSON.stringify(frameDef))
+    };
 
     activePrintImg = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
     document.getElementById("printModal").classList.add("open");
@@ -2354,7 +2751,7 @@ async function openPrintEnlarger(idx) {
 function updatePrintPreview() {
     if (!activePrintImg) return;
     const frame = currentRoll.frames[activePrintIdx];
-    renderFrameWithWebGL(activePrintImg, currentRoll.film, frame, currentRoll.pushStops, printState, printShowOriginal);
+    renderFrameWithWebGL(activePrintImg, currentRoll.film, frame, currentRoll.pushStops, printState, printShowOriginal, null, 0);
     layoutPrintPreview();
 }
 
@@ -2365,6 +2762,12 @@ document.querySelectorAll("#printTabs .print-tab").forEach(tab => {
         tab.classList.add("active");
         document.getElementById(tab.dataset.tab).classList.add("active");
     });
+});
+
+document.getElementById("prTestStripBtn").addEventListener("click", () => {
+    printState.testStrip = !printState.testStrip;
+    syncPrintControlsUI();
+    updatePrintPreview();
 });
 
 function rotatePrint90() {
@@ -2402,6 +2805,25 @@ document.getElementById("prRotSlider").addEventListener("input", (e) => {
     updatePrintPreview();
 });
 
+document.getElementById("prLensApSlider").addEventListener("input", (e) => {
+    printState.enlargerApIdx = parseInt(e.target.value);
+    syncPrintControlsUI();
+    updatePrintPreview();
+});
+
+document.getElementById("prTonerSelect").addEventListener("change", (e) => {
+    printState.tonerType = parseInt(e.target.value);
+    if (printState.tonerType > 0 && printState.tonerAmount === 0) printState.tonerAmount = 0.6;
+    syncPrintControlsUI();
+    updatePrintPreview();
+});
+
+document.getElementById("prTonerIntSlider").addEventListener("input", (e) => {
+    printState.tonerAmount = parseFloat(e.target.value);
+    syncPrintControlsUI();
+    updatePrintPreview();
+});
+
 document.getElementById("prBorderThickSlider").addEventListener("input", (e) => {
     printState.borderThickness = parseFloat(e.target.value);
     document.getElementById("prBorderThickVal").textContent = Math.round(printState.borderThickness * 100) + "%";
@@ -2433,10 +2855,12 @@ document.querySelectorAll("[data-reset-defect]").forEach(btn => {
 [
     ["prTimeSlider", "time"],
     ["prGradeSlider", "grade"],
+    ["prCyanSlider", "cyan"],
     ["prMagSlider", "mag"],
     ["prYelSlider", "yel"],
     ["prBurnSlider", "burn"],
-    ["prGrainSlider", "grainScale"]
+    ["prGrainSlider", "grainScale"],
+    ["prPaperTexSlider", "paperTexScale"]
 ].forEach(([id, prop]) => {
     document.getElementById(id).addEventListener("input", (e) => {
         printState.presetId = "custom";
@@ -2567,8 +2991,10 @@ document.getElementById("closePrintBtn").addEventListener("click", async () => {
     document.getElementById("printModal").classList.remove("open");
     if (activeFrameDirty && currentRoll && currentRoll.frames[activePrintIdx] && activePrintImg) {
         const frame = currentRoll.frames[activePrintIdx];
-        renderFrameWithWebGL(activePrintImg, currentRoll.film, frame, currentRoll.pushStops, null, false, 480);
-        frame.thumbBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.82);
+        const negMode = getRollNegativeMode(currentRoll);
+        renderFrameWithWebGL(activePrintImg, currentRoll.film, frame, currentRoll.pushStops, null, false, 480, negMode);
+        frame.negThumbBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.84);
+        frame.thumbBlob = frame.negThumbBlob;
         await saveRollToDB(currentRoll);
         openContactSheet();
     }
@@ -2576,6 +3002,9 @@ document.getElementById("closePrintBtn").addEventListener("click", async () => {
 
 document.getElementById("downloadPrintBtn").addEventListener("click", async () => {
     printShowOriginal = false;
+    const prevStrip = printState.testStrip;
+    // Esportazione stampa pulita (senza strisce di test a meno che l'utente non voglia salvare)
+    printState.testStrip = false;
     updatePrintPreview();
 
     const imgW = glCanvas.width;
@@ -2585,48 +3014,27 @@ document.getElementById("downloadPrintBtn").addEventListener("click", async () =
     const paper = PAPER_STOCKS.find(p => p.id === printState.paperId) || PAPER_STOCKS[0];
     const agedActive = printState.defects.agedPaper.active && printState.defects.agedPaper.intensity > 0;
     const paperBgColor = agedActive ? "#e8d6b3" : paper.swatch;
-    const exportJpegQ = qualityMode === "max" ? 0.98 : 0.93;
 
-    if (printState.border === "none") {
-        outCanvas.width = imgW;
-        outCanvas.height = imgH;
-        ctx.drawImage(glCanvas, 0, 0);
-    } else if (printState.border === "white") {
+    if (printState.border === "white") {
         const pad = Math.round(imgW * printState.borderThickness);
         outCanvas.width = imgW + pad * 2;
         outCanvas.height = imgH + pad * 2;
         ctx.fillStyle = paperBgColor;
         ctx.fillRect(0, 0, outCanvas.width, outCanvas.height);
         ctx.drawImage(glCanvas, pad, pad);
-    } else if (printState.border === "rebate") {
-        const padX = Math.round(imgW * 0.045);
-        const padY = Math.round(imgH * 0.085);
-        outCanvas.width = imgW + padX * 2;
-        outCanvas.height = imgH + padY * 2;
-        ctx.fillStyle = "#060607";
-        ctx.fillRect(0, 0, outCanvas.width, outCanvas.height);
-        ctx.drawImage(glCanvas, padX, padY);
-
-        ctx.fillStyle = "#e8e8ec";
-        const holeW = Math.round(imgW * 0.032);
-        const holeH = Math.round(padY * 0.36);
-        const step = holeW * 2.1;
-        for (let x = padX; x < outCanvas.width - padX; x += step) {
-            ctx.beginPath();
-            ctx.roundRect(x, Math.round(padY * 0.18), holeW, holeH, 4);
-            ctx.roundRect(x, outCanvas.height - Math.round(padY * 0.54), holeW, holeH, 4);
-            ctx.fill();
-        }
-        ctx.fillStyle = "#e09f3e";
-        ctx.font = `bold ${Math.max(14, Math.round(padY * 0.22))}px "Courier New", monospace`;
-        const frameLabel = `${String(currentRoll.frames[activePrintIdx].number).padStart(2, "0")}A   ${currentRoll.film.name.toUpperCase()}`;
-        ctx.fillText(frameLabel, padX, outCanvas.height - Math.round(padY * 0.12));
+    } else {
+        outCanvas.width = imgW;
+        outCanvas.height = imgH;
+        ctx.drawImage(glCanvas, 0, 0);
     }
 
-    const outBlob = await canvasToBlob(outCanvas, "image/jpeg", exportJpegQ);
+    const outBlob = await canvasToBlob(outCanvas, "image/jpeg", 0.96);
     const slug = currentRoll.film.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     downloadSingleBlob(outBlob, `print-${slug}-f${activePrintIdx + 1}.jpg`);
     outCanvas.width = 0; outCanvas.height = 0;
+
+    printState.testStrip = prevStrip;
+    updatePrintPreview();
 
     if (currentRoll && currentRoll.frames[activePrintIdx]) {
         currentRoll.frames[activePrintIdx].savedLocally = true;
@@ -2762,7 +3170,8 @@ function renderLabPreview() {
         0,
         null,
         labShowOriginal,
-        640
+        640,
+        0
     );
 
     previewCanvas.width = glCanvas.width;
@@ -3134,20 +3543,21 @@ document.getElementById("runDiagTestBtn").addEventListener("click", async () => 
         const sw = tempVid.videoWidth;
         const sh = tempVid.videoHeight;
         const mp = ((sw * sh) / 1000000).toFixed(1);
-        document.getElementById("diagSensorRes").textContent = `${sw}×${sh} (${mp} MP)`;
+        const icSupport = typeof ImageCapture !== "undefined" ? " + ImageCapture OK" : " (Solo Stream)";
+        document.getElementById("diagSensorRes").textContent = `${sw}×${sh} (${mp} MP)${icSupport}`;
         stream.getTracks().forEach(t => t.stop());
-        log.textContent = `Sensore OK: ${sw}×${sh}px (${mp} MP). 2/2 Benchmark GPU WebGL...`;
+        log.textContent = `Sensore OK: ${sw}×${sh}px${icSupport}. 2/2 Benchmark GPU WebGL...`;
     } catch (err) {
         document.getElementById("diagSensorRes").textContent = "Bloccato (Serve HTTPS)";
         log.textContent = `Camera non accessibile (${err.name}). 2/2 Benchmark GPU WebGL...`;
     }
 
     const testCanvas = document.createElement("canvas");
-    testCanvas.width = 1800;
-    testCanvas.height = 2400;
+    testCanvas.width = 2400;
+    testCanvas.height = 3200;
     const tCtx = testCanvas.getContext("2d");
     tCtx.fillStyle = "#7ea3b8";
-    tCtx.fillRect(0, 0, 1800, 2400);
+    tCtx.fillRect(0, 0, 2400, 3200);
 
     const t0 = performance.now();
     renderFrameWithWebGL(
@@ -3157,11 +3567,12 @@ document.getElementById("runDiagTestBtn").addEventListener("click", async () => 
         0,
         null,
         false,
-        1800
+        3200,
+        0
     );
     if (gl) gl.finish();
     const dt = (performance.now() - t0).toFixed(1);
-    document.getElementById("diagGpuTime").textContent = `${dt} ms (1800px)`;
+    document.getElementById("diagGpuTime").textContent = `${dt} ms (3200px)`;
     testCanvas.width = 0; testCanvas.height = 0;
 
     await refreshDiagSummary();
@@ -3171,7 +3582,6 @@ document.getElementById("runDiagTestBtn").addEventListener("click", async () => 
 /* =========================================================
    13. AVVIO APP
    ========================================================= */
-setQualityMode(qualityMode);
 syncThirdsUI();
 renderLoadView();
 
