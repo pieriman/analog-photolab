@@ -1,5 +1,5 @@
 /* =========================================================
-   ANALOG PHOTOLAB v1.0.2 — APP.JS
+   ANALOG PHOTOLAB v1.0.4 — APP.JS
    ========================================================= */
 
 function onId(id, event, handler) {
@@ -907,36 +907,40 @@ if (gl) {
         }
         return s;
     }
-    program = gl.createProgram();
-    gl.attachShader(program, compileShader(gl.VERTEX_SHADER, document.getElementById("vs").text));
-    gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, document.getElementById("fs").text));
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error("Program link error:", gl.getProgramInfoLog(program));
+    const vsEl = document.getElementById("vs");
+    const fsEl = document.getElementById("fs");
+    if (vsEl && fsEl) {
+        program = gl.createProgram();
+        gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vsEl.text));
+        gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fsEl.text));
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error("Program link error:", gl.getProgramInfoLog(program));
+        }
+        gl.useProgram(program);
+
+        const posBuf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+        const posLoc = gl.getAttribLocation(program, "a_position");
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+        const texBuf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, texBuf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]), gl.STATIC_DRAW);
+        const texLoc = gl.getAttribLocation(program, "a_texCoord");
+        gl.enableVertexAttribArray(texLoc);
+        gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+
+        glTex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, glTex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     }
-    gl.useProgram(program);
-
-    const posBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    const posLoc = gl.getAttribLocation(program, "a_position");
-    gl.enableVertexAttribArray(posLoc);
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-
-    const texBuf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, texBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]), gl.STATIC_DRAW);
-    const texLoc = gl.getAttribLocation(program, "a_texCoord");
-    gl.enableVertexAttribArray(texLoc);
-    gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
-
-    glTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, glTex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 }
 
 function getDefaultPaperIdForFilm(film) {
@@ -1072,6 +1076,7 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     gl.uniform3f(gl.getUniformLocation(program, "u_shadowTint"), 1.0 + film.shadowTemp * 0.45, 1.0 + Math.abs(film.shadowTemp) * 0.08, 1.0 - film.shadowTemp * 0.45);
     gl.uniform3f(gl.getUniformLocation(program, "u_highlightTint"), 1.0 + film.highTemp * 0.45, 1.0 + film.highTemp * 0.12, 1.0 - film.highTemp * 0.45);
     gl.uniform3f(gl.getUniformLocation(program, "u_bwWeights"), 0.34, 0.56, 0.10);
+
     const grade = frameData.grade || {};
     const sLift = grade.shadowLift || [0.0, 0.0, 0.0];
     const mGain = grade.midGain || [1.0, 1.0, 1.0];
@@ -1079,9 +1084,7 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
     gl.uniform3fv(gl.getUniformLocation(program, "u_shadowLift"), new Float32Array(sLift));
     gl.uniform3fv(gl.getUniformLocation(program, "u_midGain"), new Float32Array(mGain));
     gl.uniform3fv(gl.getUniformLocation(program, "u_highGain"), new Float32Array(hGain));
-    gl.uniform3fv(gl.getUniformLocation(program, "u_shadowLift"), new Float32Array(sLift));
-    gl.uniform3fv(gl.getUniformLocation(program, "u_midGain"), new Float32Array(mGain));
-    gl.uniform3fv(gl.getUniformLocation(program, "u_highGain"), new Float32Array(hGain));
+
     gl.uniform1f(gl.getUniformLocation(program, "u_halation"), film.halation);
     gl.uniform1f(gl.getUniformLocation(program, "u_halThreshold"), film.halThreshold);
     gl.uniform3f(gl.getUniformLocation(program, "u_halationColor"), 0.96, 0.18, 0.04);
@@ -1682,7 +1685,7 @@ onId("loadRollBtn", "click", async () => {
 });
 
 /* =========================================================
-   7. FOTOCAMERA LIVE & ACQUISIZIONE FULL-RES (ImageCapture)
+   7. FOTOCAMERA LIVE & ACQUISIZIONE ISTANTANEA
    ========================================================= */
 async function startCamera() {
     stopCamera();
@@ -1779,6 +1782,7 @@ function drawCroppedToCanvas(sourceObj, srcW, srcH, targetRatio, mirror = false)
     ctx.drawImage(sourceObj, sx, sy, sw, sh, 0, 0, sw, sh);
     return c;
 }
+
 async function captureFrameInstant(video, targetRatio, useFlash = false) {
     const track = mediaStream ? mediaStream.getVideoTracks()[0] : null;
     const mirror = facingMode === "user";
@@ -1807,23 +1811,6 @@ async function captureFrameInstant(video, targetRatio, useFlash = false) {
 
     const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
     return { canvas: c, hardwareFlashFired: false };
-}
-if (track && typeof ImageCapture !== "undefined") {
-    try {
-        const ic = new ImageCapture(track);
-        const blob = await ic.takePhoto({ fillLightMode: "off" });
-        const bitmap = await createImageBitmap(blob);
-        if (bitmap.width >= video.videoWidth && bitmap.height >= video.videoHeight) {
-            const c = drawCroppedToCanvas(bitmap, bitmap.width, bitmap.height, targetRatio, mirror);
-            bitmap.close();
-            return { canvas: c, hardwareFlashFired: false };
-        }
-        bitmap.close();
-    } catch (err) { }
-}
-
-const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror);
-return { canvas: c, hardwareFlashFired: false };
 }
 
 async function recordLatentFrame(sourceCanvasOrImg, usedFlash = false, hardwareFlashFired = false) {

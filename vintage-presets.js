@@ -1479,15 +1479,3 @@ function initVintageEventListeners() {
         }
     });
 }
-
-```
-E nel listener `onId("shutterBtn", "click", ...)` di `app.js`, sostituisci la chiamata `captureFrameFullRes` con `captureFrameInstant`:
-```javascript
-isCapturing = true;
-try {
-    const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, flashActive);
-    await recordLatentFrame(capCanvas, flashActive, hardwareFlashFired);
-    capCanvas.width = 0; capCanvas.height = 0;
-} finally {
-    isCapturing = false;
-}
