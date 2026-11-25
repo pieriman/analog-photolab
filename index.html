@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
   <title>Analog PhotoLab v1.0 — Pellicole, Polaroid &amp; Usa &amp; Getta</title>
-  <link rel="stylesheet" href="style.css?v=1.0.8" />
+  <link rel="stylesheet" href="style.css?v=1.0.9" />
 </head>
 
 <body>
 
-  <!-- Lampo flash Xenon simulato (e illuminazione frontale su selfie) -->
+  <!-- Lampo flash Xenon / pre-flash schermo camera frontale -->
   <div id="frontScreenFlash"></div>
 
   <!-- =========================================================
@@ -573,7 +573,7 @@
   </div>
 
   <!-- =========================================================
-       VIEW 2B: FOTOCAMERA USA & GETTA (ROTELLA TRASCINABILE + FLASH LED)
+       VIEW 2B: FOTOCAMERA USA & GETTA (ROTELLA TRASCINABILE + FLASH)
        ========================================================= -->
   <div id="view-vintage-camera" class="view">
     <div class="vintage-top-bar">
@@ -1607,7 +1607,6 @@
       col *= pow(2.0, clamp(u_exposure + stripEV, -6.0, 6.0));
       col *= u_wbGain;
 
-      // Simulazione flash Xenon analogico: lampo centrale forte e caduta progressiva verso i bordi
       if (u_flashFalloff > 0.001) {
         float radial = smoothstep(0.02, 0.95, distSqSrc);
         float flashGain = mix(2.05, 0.38, pow(radial, 0.85));
@@ -1887,9 +1886,9 @@
     }
   </script>
 
-  <script src="polaroid.js?v=1.0.8"></script>
-  <script src="vintage-presets.js?v=1.0.8"></script>
-  <script src="app.js?v=1.0.8"></script>
+  <script src="polaroid.js?v=1.0.9"></script>
+  <script src="vintage-presets.js?v=1.0.9"></script>
+  <script src="app.js?v=1.0.9"></script>
 
 </body>
 

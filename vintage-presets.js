@@ -1,5 +1,5 @@
 /* =========================================================
-   VINTAGE-PRESETS.JS — USA & GETTA v1.0.8 (FLASH ANALOGICO + NAV)
+   VINTAGE-PRESETS.JS — USA & GETTA v1.0.9 (LED FLASH SINCRO + NAV)
    ========================================================= */
 
 const VINTAGE_DECADES = [
@@ -521,7 +521,9 @@ function updateVintageFlashButtonUI() {
         lbl.textContent = "CARICA FLASH...";
     } else if (vintageFlashState === "ready") {
         btn.classList.add("ready");
-        lbl.textContent = "⚡ FLASH PRONTO";
+        if (facingMode === "user") lbl.textContent = "⚡ FLASH SCHERMO";
+        else if (hardwareFlashSupport.hasTorch) lbl.textContent = "⚡ LED PRONTO";
+        else lbl.textContent = "⚡ FLASH PRONTO";
     } else {
         lbl.textContent = "⚡ CARICA FLASH";
     }
@@ -620,11 +622,12 @@ async function startVintageCameraStream() {
     const videoConstraints = { facingMode: facingMode, width: { ideal: 2560 }, height: { ideal: 1920 } };
 
     try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+        mediaStream = await openCameraStreamWithRetry(videoConstraints);
         video.srcObject = mediaStream;
         video.style.display = "block";
         try { await video.play(); } catch (e) { }
         fallback.style.display = "none";
+        await detectFlashCapabilities();
         updateVintageFlashButtonUI();
         const track = mediaStream.getVideoTracks()[0];
         if (track) applyFixedHyperfocalFocus(track);
@@ -765,8 +768,8 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             agedPaper: { active: edit.agedPaper > 0, intensity: edit.agedPaper },
             scratches: { active: edit.scratches > 0, intensity: edit.scratches }
         };
-        const flashBoost = frame.flash ? (frame.hardwareFlashFired ? 0.15 : 0.38) : 0.0;
-        const flashFalloff = frame.flash ? (frame.hardwareFlashFired ? 0.48 : 0.85) : 0.0;
+        const flashBoost = frame.flash ? (frame.hardwareFlashFired ? 0.05 : 0.38) : 0.0;
+        const flashFalloff = frame.flash ? (frame.hardwareFlashFired ? 0.30 : 0.85) : 0.0;
 
         const frameStub = {
             exposureEV: (edit.ev || 0) + flashBoost,
@@ -1222,7 +1225,7 @@ function initVintageEventListeners() {
     });
 
     vOn("vintageExitBtn", "click", async () => {
-        if (vintageDeveloping) return;
+        if (vintageDeveloping || vintageCapturing) return;
         await vintageSaveQueue.catch(() => { });
         stopCamera();
         refreshVintageArchiveList();
@@ -1232,7 +1235,7 @@ function initVintageEventListeners() {
     });
 
     vOn("vintageRewindBtn", "click", async () => {
-        if (vintageDeveloping || !currentVintageRoll) return;
+        if (vintageDeveloping || vintageCapturing || !currentVintageRoll) return;
         const count = getEffectiveVintageCount();
         if (count === 0) {
             if (confirm("Nessuna foto scattata. Estrarre il rullino Usa & Getta vuoto?")) {
@@ -1278,6 +1281,7 @@ function initVintageEventListeners() {
     });
 
     vOn("vintageSwitchCamBtn", "click", () => {
+        if (vintageCapturing) return;
         facingMode = facingMode === "environment" ? "user" : "environment";
         startVintageCameraStream();
     });
@@ -1363,13 +1367,14 @@ function initVintageEventListeners() {
         const curtain = document.getElementById("vintageCurtain");
 
         try {
-            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, useFlash, 2400);
-            playShutterSound(1 / 125, useFlash);
-            if (curtain) {
-                curtain.style.backgroundColor = "#000000";
-                curtain.classList.add("blink");
-                setTimeout(() => curtain.classList.remove("blink"), 110);
-            }
+            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithSyncedFlash(video, 3 / 4, {
+                useFlash,
+                maxLongSide: 2400,
+                curtainEl: curtain,
+                curtainMinMs: 110,
+                restartStreamFn: startVintageCameraStream,
+                onShutterFire: () => playShutterSound(1 / 125, useFlash)
+            });
             setVintageWheelArmedState(false);
             await vWaitPaint();
             enqueueVintageLatentFrame(capCanvas, useFlash, hardwareFlashFired);

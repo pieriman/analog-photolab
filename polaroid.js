@@ -1,5 +1,5 @@
 /* =========================================================
-   POLAROID.JS — v1.0.8 (FLASH ANALOGICO ISTANTANEO + NAVIGAZIONE)
+   POLAROID.JS — v1.0.9 (LED FLASH SINCRO + NAVIGAZIONE)
    ========================================================= */
 
 const POLAROID_STOCKS = [
@@ -455,7 +455,15 @@ function updatePolaroidUI() {
     const flashBtn = document.getElementById("polaroidFlashBtn");
     if (flashBtn) {
         flashBtn.classList.toggle("active", polaroidFlashEnabled);
-        flashBtn.textContent = polaroidFlashEnabled ? "⚡ ON" : "⚡ OFF";
+        if (!polaroidFlashEnabled) {
+            flashBtn.textContent = "⚡ OFF";
+        } else if (facingMode === "user") {
+            flashBtn.textContent = "⚡ SCHERMO";
+        } else if (hardwareFlashSupport.hasTorch) {
+            flashBtn.textContent = "⚡ LED ON";
+        } else {
+            flashBtn.textContent = "⚡ SIMULATO";
+        }
     }
 
     const stockStrip = document.getElementById("polaroidStockStrip");
@@ -500,13 +508,14 @@ async function startPolaroidCameraStream() {
     const videoConstraints = { facingMode: facingMode, width: { ideal: 2560 }, height: { ideal: 1920 } };
 
     try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+        mediaStream = await openCameraStreamWithRetry(videoConstraints);
         if (video) {
             video.srcObject = mediaStream;
             video.style.display = "block";
             try { await video.play(); } catch (e) { }
         }
         if (fallback) fallback.style.display = "none";
+        await detectFlashCapabilities();
         updatePolaroidUI();
     } catch (err) {
         if (video) video.style.display = "none";
@@ -669,7 +678,7 @@ function startLivePolaroidDevelopment(initialShot, previewImgOrCanvas, stock, fr
 }
 
 async function processPolaroidInQueue(croppedCanvas, stock, frameStyle, ldEV, usedFlash, hardwareFlashFired) {
-    const flashBoost = usedFlash ? (hardwareFlashFired ? 0.15 : 0.35) : 0.0;
+    const flashBoost = usedFlash ? (hardwareFlashFired ? 0.05 : 0.35) : 0.0;
     const frameStub = {
         exposureEV: ldEV + flashBoost - 0.10,
         aperture: 4.0,
@@ -681,7 +690,7 @@ async function processPolaroidInQueue(croppedCanvas, stock, frameStyle, ldEV, us
             barrel: stock.optics.barrel,
             softness: stock.optics.softness,
             fadeBlack: stock.optics.fadeBlack,
-            flashFalloff: usedFlash ? (hardwareFlashFired ? 0.45 : 0.80) : 0.0
+            flashFalloff: usedFlash ? (hardwareFlashFired ? 0.28 : 0.80) : 0.0
         }
     };
     const printOptsStub = {
@@ -916,6 +925,7 @@ function initPolaroidEventListeners() {
     };
 
     pOn("polaroidExitBtn", "click", async () => {
+        if (polaroidCapturing) return;
         await polSaveQueue.catch(() => null);
         stopCamera();
         refreshHomeStatus();
@@ -924,6 +934,7 @@ function initPolaroidEventListeners() {
     });
 
     pOn("polaroidOpenGalleryBtn", "click", () => {
+        if (polaroidCapturing) return;
         stopCamera();
         openPolaroidGallery("view-polaroid");
     });
@@ -970,6 +981,7 @@ function initPolaroidEventListeners() {
     });
 
     pOn("polaroidSwitchCamBtn", "click", () => {
+        if (polaroidCapturing) return;
         facingMode = facingMode === "environment" ? "user" : "environment";
         startPolaroidCameraStream();
     });
@@ -995,13 +1007,14 @@ function initPolaroidEventListeners() {
 
         try {
             const stock = getPolaroidStock();
-            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, stock.imgRatio, useFlash, 2400);
-            playPolaroidEjectSound(useFlash);
-            if (curtain) {
-                curtain.style.backgroundColor = "#000000";
-                curtain.classList.add("blink");
-                setTimeout(() => curtain.classList.remove("blink"), 110);
-            }
+            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithSyncedFlash(video, stock.imgRatio, {
+                useFlash,
+                maxLongSide: 2400,
+                curtainEl: curtain,
+                curtainMinMs: 110,
+                restartStreamFn: startPolaroidCameraStream,
+                onShutterFire: () => playPolaroidEjectSound(useFlash)
+            });
             await polWaitPaint();
             captureAndDevelopPolaroidInstant(capCanvas, useFlash, hardwareFlashFired);
         } finally {
