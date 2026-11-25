@@ -1,5 +1,5 @@
 /* =========================================================
-   ANALOG PHOTOLAB v1.0.11 — APP.JS
+   ANALOG PHOTOLAB v1.0.10 — APP.JS (LED FLASH FIX + SAFE HOME NAV)
    ========================================================= */
 
 function onId(id, event, handler) {
@@ -140,56 +140,83 @@ function resolveFilmBrandTheme(film) {
 
 const PAPER_STOCKS = [
     {
-        id: "ilford-rc-glossy", name: "Ilford MG RC Glossy", isBW: true,
-        desc: "B&N Politeneata Lucida • Neri profondi, bianchi freddi", swatch: "#f7f8fa",
+        id: "ilford-rc-glossy",
+        name: "Ilford MG RC Glossy",
+        isBW: true,
+        desc: "B&N Politeneata Lucida • Neri profondi, bianchi freddi",
+        swatch: "#f7f8fa",
         baseTint: [0.99, 1.00, 1.02], shadowTint: [0.98, 0.99, 1.02], highTint: [1.00, 1.00, 1.01],
         dmax: 0.96, contrastOffset: 0.08, satMult: 1.0, texture: 0.004
     },
     {
-        id: "ilford-rc-pearl", name: "Ilford MG RC Pearl", isBW: true,
-        desc: "B&N Satinata/Perlata • Antiriflesso equilibrata", swatch: "#f3f2ef",
+        id: "ilford-rc-pearl",
+        name: "Ilford MG RC Pearl",
+        isBW: true,
+        desc: "B&N Satinata/Perlata • Antiriflesso equilibrata",
+        swatch: "#f3f2ef",
         baseTint: [1.00, 1.00, 0.99], shadowTint: [1.00, 0.99, 0.98], highTint: [1.00, 1.00, 0.99],
         dmax: 0.90, contrastOffset: 0.02, satMult: 1.0, texture: 0.014
     },
     {
-        id: "ilford-fb-classic", name: "Ilford MG FB Classic", isBW: true,
-        desc: "B&N Baritata Fibra • Tono neutro museale, neri vellutati", swatch: "#f4f1ea",
+        id: "ilford-fb-classic",
+        name: "Ilford MG FB Classic",
+        isBW: true,
+        desc: "B&N Baritata Fibra • Tono neutro museale, neri vellutati",
+        swatch: "#f4f1ea",
         baseTint: [1.01, 1.00, 0.96], shadowTint: [1.01, 0.99, 0.96], highTint: [1.02, 1.00, 0.97],
         dmax: 0.95, contrastOffset: 0.06, satMult: 1.0, texture: 0.026
     },
     {
-        id: "ilford-fb-warm", name: "Ilford MG FB Warmtone", isBW: true,
-        desc: "B&N Baritata Calda • Avorio e ombre brune (ottima per viraggi)", swatch: "#efe2c6",
+        id: "ilford-fb-warm",
+        name: "Ilford MG FB Warmtone",
+        isBW: true,
+        desc: "B&N Baritata Calda • Avorio e ombre brune (ottima per viraggi)",
+        swatch: "#efe2c6",
         baseTint: [1.04, 0.97, 0.87], shadowTint: [1.07, 0.95, 0.83], highTint: [1.04, 0.98, 0.89],
         dmax: 0.91, contrastOffset: 0.04, satMult: 1.0, texture: 0.032
     },
     {
-        id: "kodak-endura", name: "Kodak Endura Supra", isBW: false,
-        desc: "RA-4 Satinata • Incarnati naturali e luci morbide", swatch: "#f6f1e6",
+        id: "kodak-endura",
+        name: "Kodak Endura Supra",
+        isBW: false,
+        desc: "RA-4 Satinata • Incarnati naturali e luci morbide",
+        swatch: "#f6f1e6",
         baseTint: [1.01, 0.99, 0.95], shadowTint: [1.03, 0.99, 0.95], highTint: [1.02, 1.00, 0.96],
         dmax: 0.90, contrastOffset: -0.02, satMult: 0.98, texture: 0.016
     },
     {
-        id: "kodak-metallic", name: "Kodak Endura Metallic", isBW: false,
-        desc: "RA-4 Metallica • Riflessi perlescenti, contrasto e saturazione", swatch: "#eef1f5",
+        id: "kodak-metallic",
+        name: "Kodak Endura Metallic",
+        isBW: false,
+        desc: "RA-4 Metallica • Riflessi perlescenti, contrasto e saturazione",
+        swatch: "#eef1f5",
         baseTint: [1.00, 1.01, 1.03], shadowTint: [0.97, 0.99, 1.04], highTint: [1.03, 1.02, 1.00],
         dmax: 0.98, contrastOffset: 0.16, satMult: 1.22, texture: 0.006
     },
     {
-        id: "fuji-crystal-glossy", name: "Fuji Crystal Archive Glossy", isBW: false,
-        desc: "RA-4 Lucida • Bianchi freddi puri, colori vivi e nitidi", swatch: "#f0f5fc",
+        id: "fuji-crystal-glossy",
+        name: "Fuji Crystal Archive Glossy",
+        isBW: false,
+        desc: "RA-4 Lucida • Bianchi freddi puri, colori vivi e nitidi",
+        swatch: "#f0f5fc",
         baseTint: [0.96, 0.99, 1.04], shadowTint: [0.93, 0.98, 1.07], highTint: [0.98, 1.00, 1.03],
         dmax: 0.96, contrastOffset: 0.10, satMult: 1.14, texture: 0.004
     },
     {
-        id: "fuji-crystal-matte", name: "Fuji Crystal Archive Matte", isBW: false,
-        desc: "RA-4 Opaca • Zero riflessi, neri morbidi editoriali", swatch: "#f4f2ed",
+        id: "fuji-crystal-matte",
+        name: "Fuji Crystal Archive Matte",
+        isBW: false,
+        desc: "RA-4 Opaca • Zero riflessi, neri morbidi editoriali",
+        swatch: "#f4f2ed",
         baseTint: [1.00, 0.99, 0.97], shadowTint: [1.02, 1.00, 0.98], highTint: [1.00, 0.99, 0.97],
         dmax: 0.78, contrastOffset: -0.06, satMult: 0.92, texture: 0.028
     },
     {
-        id: "ilfochrome-classic", name: "Ilfochrome / Cibachrome", isBW: false,
-        desc: "Diapositiva Diretta • Poliestere lucido, contrasto e neri assoluti", swatch: "#f4f6fa",
+        id: "ilfochrome-classic",
+        name: "Ilfochrome / Cibachrome",
+        isBW: false,
+        desc: "Diapositiva Diretta • Poliestere lucido, contrasto e neri assoluti",
+        swatch: "#f4f6fa",
         baseTint: [0.99, 1.00, 1.02], shadowTint: [0.95, 0.98, 1.05], highTint: [1.01, 1.01, 1.00],
         dmax: 0.99, contrastOffset: 0.20, satMult: 1.25, texture: 0.002
     }
@@ -1233,7 +1260,6 @@ function clearAllVideoSrcObjects() {
         if (v && v.srcObject) {
             try { v.pause(); } catch (e) { }
             v.srcObject = null;
-            try { v.load(); } catch (e) { }
         }
     });
 }
@@ -1367,7 +1393,6 @@ meterCanvas.height = 16;
 const meterCtx = meterCanvas.getContext("2d", { willReadFrequently: true });
 
 function sampleLiveSceneEV() {
-    if (isCapturing || isCameraRestarting) return;
     const video = document.getElementById("camVideo");
     if (mediaStream && video && video.readyState >= 2 && video.videoWidth > 0) {
         meterCtx.drawImage(video, 0, 0, 16, 16);
@@ -1984,8 +2009,8 @@ function stopCamera() {
 
 async function openCameraStreamWithRetry(videoConstraints, expectedSession = cameraSessionSeq) {
     const elapsedSinceStop = performance.now() - lastCameraStopAt;
-    if (lastCameraStopAt > 0 && elapsedSinceStop < 520) {
-        await new Promise(r => setTimeout(r, 520 - elapsedSinceStop));
+    if (lastCameraStopAt > 0 && elapsedSinceStop < 380) {
+        await new Promise(r => setTimeout(r, 380 - elapsedSinceStop));
     }
     if (expectedSession !== cameraSessionSeq) return null;
 
@@ -2003,7 +2028,7 @@ async function openCameraStreamWithRetry(videoConstraints, expectedSession = cam
             }
             return stream;
         }
-        await new Promise(r => setTimeout(r, 380));
+        await new Promise(r => setTimeout(r, 350));
     }
     throw new Error("Camera unavailable or timed out");
 }
@@ -2142,39 +2167,27 @@ function triggerFlashStrobeVisual(durationMs = 70) {
 }
 
 async function setTrackTorch(track, enabled) {
-    if (!track || track.readyState === "ended" || typeof track.applyConstraints !== "function") {
-        return { ok: false, timedOut: false };
-    }
-    if (enabled) activeTorchTrack = track;
-
-    const timeoutMs = enabled ? 1000 : 450;
-    let status = "ok";
-    const okAdv = await Promise.race([
-        track.applyConstraints({ advanced: [{ torch: enabled }] })
-            .then(() => { status = "ok"; return true; })
-            .catch(() => { status = "err"; return false; }),
-        new Promise((resolve) => setTimeout(() => { status = "timeout"; resolve(false); }, timeoutMs))
-    ]);
-
+    if (!track || track.readyState === "ended" || typeof track.applyConstraints !== "function") return false;
+    const okAdv = await withTimeout(
+        track.applyConstraints({ advanced: [{ torch: enabled }] }).then(() => true),
+        700,
+        false
+    );
     if (okAdv) {
         activeTorchTrack = enabled ? track : null;
-        return { ok: true, timedOut: false };
+        return true;
     }
-    if (status === "timeout") {
-        return { ok: false, timedOut: true };
-    }
-
     const okDirect = await withTimeout(
         track.applyConstraints({ torch: enabled }).then(() => true),
-        450,
+        500,
         false
     );
     if (okDirect) {
         activeTorchTrack = enabled ? track : null;
-        return { ok: true, timedOut: false };
+        return true;
     }
     if (!enabled && activeTorchTrack === track) activeTorchTrack = null;
-    return { ok: false, timedOut: false };
+    return false;
 }
 
 function waitForLitVideoFrames(video, minMs = 520, minFrames = 6, maxMs = 850) {
@@ -2215,8 +2228,12 @@ function waitForLitVideoFrames(video, minMs = 520, minFrames = 6, maxMs = 850) {
 
 async function stopTorchAndResetStream(track, restartStreamFn, mySession) {
     await setTrackTorch(track, false);
-    await new Promise(r => setTimeout(r, 80));
+    await new Promise(r => setTimeout(r, 60));
+    if (track && track.readyState !== "ended") {
+        await setTrackTorch(track, false);
+    }
 
+    // Scollega prima i <video> sink, poi ferma la traccia per spegnere fisicamente il LED e resettare l'HAL Android
     stopActiveMediaTracks();
     if (track && track.readyState !== "ended") {
         try { track.stop(); } catch (e) { }
@@ -2229,7 +2246,7 @@ async function stopTorchAndResetStream(track, restartStreamFn, mySession) {
         isCameraRestarting = true;
         const restartJob = (async () => {
             try {
-                await new Promise(r => setTimeout(r, 520));
+                await new Promise(r => setTimeout(r, 380));
                 if (mySession !== cameraSessionSeq) return;
                 await restartStreamFn();
             } catch (e) {
@@ -2269,6 +2286,7 @@ async function captureFrameWithSyncedFlash(video, targetRatio, opts = {}) {
     }
 
     if (mirror) {
+        // Camera frontale: pre-flash schermo per illuminare davvero il volto
         const frontFlash = document.getElementById("frontScreenFlash");
         if (frontFlash) frontFlash.classList.add("lit");
         try {
@@ -2283,12 +2301,13 @@ async function captureFrameWithSyncedFlash(video, targetRatio, opts = {}) {
         }
     }
 
+    // Camera posteriore: lampo LED fisico sincronizzato ai frame video reali
     const track = mediaStream && mediaStream.getVideoTracks ? mediaStream.getVideoTracks()[0] : null;
     const hasTorch = hardwareFlashSupport.hasTorch || await checkTrackSupportsTorch(track);
 
     if (track && hasTorch && mySession === cameraSessionSeq) {
-        const torchRes = await setTrackTorch(track, true);
-        if (torchRes.ok) {
+        const litOk = await setTrackTorch(track, true);
+        if (litOk) {
             let capturedCanvas = null;
             const curtainStart = performance.now();
             try {
@@ -2315,17 +2334,10 @@ async function captureFrameWithSyncedFlash(video, targetRatio, opts = {}) {
             }
             return { canvas: capturedCanvas, hardwareFlashFired: true };
         }
-        if (torchRes.timedOut) {
-            await stopTorchAndResetStream(track, restartStreamFn, mySession);
-            if (mySession !== cameraSessionSeq || !video.videoWidth) {
-                return { canvas: null, hardwareFlashFired: false };
-            }
-        } else {
-            activeTorchTrack = null;
-        }
     }
 
     if (mySession !== cameraSessionSeq) return { canvas: null, hardwareFlashFired: false };
+    // Fallback dispositivi senza LED (iPhone Safari / desktop)
     if (onShutterFire) onShutterFire();
     triggerFlashStrobeVisual(70);
     blinkCurtain(curtainMinMs);
@@ -2833,6 +2845,7 @@ function closeNegativeModal() {
 }
 
 onId("negModalCloseBtn", "click", closeNegativeModal);
+
 onId("negModalResetZoomBtn", "click", resetNegativeZoom);
 
 onId("negModalStarBtn", "click", async () => {
