@@ -87,6 +87,18 @@ input[type="file"] {
   color: #ffb1a7;
 }
 
+.back-nav-btn {
+  min-height: 34px;
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  background-color: #212129;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* =========================================================
    LAYOUT & HEADER
    ========================================================= */
@@ -929,17 +941,20 @@ header {
   opacity: 1;
 }
 
+
 #frontScreenFlash {
   position: fixed;
   inset: 0;
-  background-color: #fff8ed;
+  background-color: #fffaf0;
   opacity: 0;
   pointer-events: none;
   z-index: 999;
+  transition: opacity 0.18s ease-out;
 }
 
 #frontScreenFlash.lit {
   opacity: 1;
+  transition: none;
 }
 
 .vf-modal-overlay {

@@ -1,3 +1,76 @@
+Ho analizzato tutti i file e individuato la causa esatta dei due problemi. Ecco
+cosa succedeva e come li ho risolti:
+
+1. Fix del Flash (Priorità 1 — Simulazione Analogica Pura & Istantanea)
+
+Perché prima non funzionava bene:
+
+- Nella v1.0.7 il metodo captureFrameInstant() provava prima
+ImageCapture.takePhoto({ fillLightMode: "flash" }) con un timeout da 2,6
+secondi (causando scatti lentissimi o flash in ritardo), e poi ripiegava su
+applyConstraints({ torch: true }) con 320ms di attesa (accendendo la torcia
+continua invece di un lampo, spesso fuori sincrono rispetto al fotogramma
+video).
+- Inoltre, in app.js (modalità Simulazione Pellicole), l'oggetto
+optics.flashFalloff non veniva nemmeno salvato sui fotogrammi del rullino,
+quindi in camera oscura l'effetto ottico del flash non veniva applicato dal
+shader WebGL!
+- Infine, lo scatto veniva sovrapposto con un gradiente bianco su canvas 2D
+che sbiadiva i neri invece di simulare una vera luce flash.
+
+Cosa ho cambiato:
+
+- Scatto istantaneo (zero latenza): rimossi ImageCapture.takePhoto e torch da
+captureFrameInstant() in app.js. Sulla camera posteriore lo scatto cattura
+il fotogramma all'istante (0 ms di attesa), sincronizzato con un lampo
+stroboscopico visivo Xenon su schermo (#frontScreenFlash con accensione
+immediata e decadimento rapido in 180ms), otturatore e suono flash. Sulla
+camera frontale (user) il pre-flash schermo dura solo 85ms per illuminare
+davvero il volto prima dello scatto.
+- Resa ottica da vero flash analogico nello shader WebGL (index.html):
+potenziato il blocco u_flashFalloff in luce lineare prima della curva
+pellicola: boost luminoso deciso al centro (~2.05x), temperatura Xenon
+leggermente più nitida/fredda (5600K) nella zona colpita dal lampo e caduta
+progressiva verso i bordi/sfondo (0.38x).
+- Attivo su tutte e 3 le fotocamere: collegato correttamente
+optics.flashFalloff e il recupero esposizione su Simulazione Pellicole
+(app.js), Polaroid (polaroid.js) e Usa & Getta (vintage-presets.js), pulendo
+anche le etichette HUD (niente più "TORCIA").
+
+2. Usabilità: Tasto "Indietro" dello Smartphone (popstate) + Pulsanti UI uniformi
+
+1. Intercettazione del pulsante "Indietro" dello smartphone (app.js):
+- Aggiunto un sistema di guardia sulla History API (ensureBackGuard() +
+listener window.popstate).
+- Quando sei in qualsiasi sotto-schermata o modal (incluse le
+visualizzazioni foto, l'ingranditore, la camera oscura, il lab o i
+dettagli Polaroid/Usa & Getta), premere il tasto Indietro del telefono
+non esce più dal sito, ma chiude il modal attivo o torna alla schermata
+precedente fino alla Home (salvando eventuali modifiche in corso, es. su
+Usa & Getta o Ingranditore).
+2. Pulsanti "Indietro" grandi, chiari e coerenti in alto a sinistra su TUTTE le
+schermate:
+- Aggiunta la classe .back-nav-btn (min-height: 34px, alto contrasto)
+sempre posizionata in alto a sinistra (al posto delle piccole ✕ in alto
+a destra):
+- polaroidDetailModal: ← Indietro (in alto a sinistra)
+- vintageDetailModal: ← Indietro (in alto a sinistra)
+- negativeModal: ← Negativi (in alto a sinistra)
+- printModal: ← Indietro (in alto a sinistra)
+- labModal: ← Indietro (spostato in alto a sinistra)
+- diagModal: ← Indietro (spostato in alto a sinistra)
+- view-darkroom: ← Home (spostato in alto a sinistra)
+- view-contact (Tavolo Luminoso): aggiunto ← Archivio in alto a
+sinistra (oltre a Home a destra)
+- view-vintage-lab (Rullino Usa & Getta): aggiunto ← Archivio in alto
+a sinistra (oltre a Home a destra)
+- view-polaroid-gallery: ← Home o ← Camera dinamico in base a da dove
+l'hai aperta.
+
+Ecco i 5 file aggiornati completi pronti da sostituire:
+
+1. index.html
+
 <!DOCTYPE html>
 <html lang="it">
 
@@ -6,12 +79,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
   <title>Analog PhotoLab v1.0 — Pellicole, Polaroid &amp; Usa &amp; Getta</title>
-  <link rel="stylesheet" href="style.css?v=1.0.7" />
+  <link rel="stylesheet" href="style.css?v=1.0.8" />
 </head>
 
 <body>
 
-  <!-- Pre-flash schermo usato SOLO su camera frontale priva di LED -->
+  <!-- Lampo flash Xenon simulato (e illuminazione frontale su selfie) -->
   <div id="frontScreenFlash"></div>
 
   <!-- =========================================================
@@ -122,14 +195,14 @@
        ========================================================= -->
   <div id="view-load" class="view">
     <header>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button class="btn" id="backHomeFromLoadBtn" style="padding:6px 9px;">← Home</button>
-        <div class="brand">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button class="btn back-nav-btn" id="backHomeFromLoadBtn">← Home</button>
+        <div class="brand" style="min-width:0;">
           <h1>Simulazione Pellicole</h1>
           <span>Scegli emulsione, lunghezza rullino o archivio</span>
         </div>
       </div>
-      <button class="btn btn-gold-outline" id="openLabFromRollsBtn">Lab Pellicole</button>
+      <button class="btn btn-gold-outline" id="openLabFromRollsBtn" style="flex-shrink:0;">Lab Pellicole</button>
     </header>
 
     <div class="scroll-body">
@@ -178,8 +251,8 @@
   <div id="view-camera" class="view">
     <div class="wa-top-plate">
       <div class="wa-left-cluster">
-        <button type="button" class="wa-home-btn" id="camHomeBtn" title="Torna alla Home (il rullino resta attivo)">←
-          Home</button>
+        <button type="button" class="wa-home-btn back-nav-btn" id="camHomeBtn"
+          title="Torna alla Home (il rullino resta attivo)">← Home</button>
         <div class="wa-film-slot" title="Finestrella pellicola caricata">
           <div class="wa-film-slot-glass">
             <div class="wa-film-canister" id="camFilmCanister">
@@ -378,7 +451,7 @@
        ========================================================= -->
   <div id="view-polaroid" class="view">
     <div class="pol-top-bar">
-      <button type="button" class="btn pol-btn-light" id="polaroidExitBtn">← Home</button>
+      <button type="button" class="btn pol-btn-light back-nav-btn" id="polaroidExitBtn">← Home</button>
       <div class="pol-spec-pill" id="polaroidSpecBadge">88.5×107.5mm • FULL RES</div>
       <button type="button" class="btn btn-gold" id="polaroidOpenGalleryBtn" style="padding:6px 10px;">Galleria
         (0)</button>
@@ -465,14 +538,14 @@
        ========================================================= -->
   <div id="view-polaroid-gallery" class="view">
     <header>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button class="btn" id="polaroidGalleryBackCamBtn" style="padding:6px 9px;">← Camera</button>
-        <div class="brand">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button class="btn back-nav-btn" id="polaroidGalleryBackCamBtn">← Camera</button>
+        <div class="brand" style="min-width:0;">
           <h1>Istantanee Polaroid</h1>
           <span id="polaroidGallerySub">Proporzioni reali • Massima risoluzione nativa</span>
         </div>
       </div>
-      <button class="btn btn-gold" id="polaroidGalleryHomeBtn">Home</button>
+      <button class="btn btn-gold" id="polaroidGalleryHomeBtn" style="flex-shrink:0;">Home</button>
     </header>
 
     <div class="sheet-toolbar">
@@ -492,14 +565,17 @@
   <!-- Modal dettaglio Polaroid -->
   <div id="polaroidDetailModal" class="full-modal">
     <header>
-      <div class="brand" style="min-width:0;">
-        <h1 id="polaroidDetailTitle">Polaroid</h1>
-        <span id="polaroidDetailMeta">Piena risoluzione nativa</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+        <button class="btn back-nav-btn" id="polaroidDetailCloseBtn">← Indietro</button>
+        <div class="brand" style="min-width:0;">
+          <h1 id="polaroidDetailTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Polaroid
+          </h1>
+          <span id="polaroidDetailMeta">Piena risoluzione nativa</span>
+        </div>
       </div>
-      <div style="display:flex; gap:5px; align-items:center;">
+      <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
         <button class="btn" id="polaroidDetailStarBtn" style="padding:7px 9px;">☆</button>
-        <button class="btn btn-gold" id="polaroidDetailSaveBtn" style="padding:7px 10px;">Esporta Foto</button>
-        <button class="btn" id="polaroidDetailCloseBtn" style="padding:7px 9px;">✕</button>
+        <button class="btn btn-gold" id="polaroidDetailSaveBtn" style="padding:7px 10px;">Esporta</button>
       </div>
     </header>
     <div class="print-stage" style="background:#08080a; flex-direction:column; gap:10px;">
@@ -519,14 +595,14 @@
        ========================================================= -->
   <div id="view-disposable-load" class="view">
     <header>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button class="btn" id="backHomeFromDisposableBtn" style="padding:6px 9px;">← Home</button>
-        <div class="brand">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button class="btn back-nav-btn" id="backHomeFromDisposableBtn">← Home</button>
+        <div class="brand" style="min-width:0;">
           <h1>Usa &amp; Getta</h1>
           <span>Scegli decade, pose del rullino o archivio</span>
         </div>
       </div>
-      <span id="selectedVintageEraBadge" class="vintage-era-pill">'98 HUJI</span>
+      <span id="selectedVintageEraBadge" class="vintage-era-pill" style="flex-shrink:0;">'98 HUJI</span>
     </header>
 
     <div class="scroll-body">
@@ -575,7 +651,7 @@
   <div id="view-vintage-camera" class="view">
     <div class="vintage-top-bar">
       <div style="display:flex; align-items:center; gap:6px;">
-        <button type="button" class="btn" id="vintageExitBtn" style="padding:5px 9px;">← Home</button>
+        <button type="button" class="btn back-nav-btn" id="vintageExitBtn">← Home</button>
         <div class="vintage-era-pill" id="vintageTopEraBadge">'98 HUJI</div>
       </div>
       <div class="wa-counter-window" style="padding:2px 9px;">
@@ -682,11 +758,15 @@
        ========================================================= -->
   <div id="view-vintage-lab" class="view">
     <header>
-      <div class="brand">
-        <h1 id="vintageLabTitle">Rullino Usa &amp; Getta</h1>
-        <span id="vintageLabSubtitle">Tocca una foto per personalizzare o rimuovere gli effetti</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button class="btn back-nav-btn" id="vintageLabBackBtn">← Archivio</button>
+        <div class="brand" style="min-width:0;">
+          <h1 id="vintageLabTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Rullino Usa
+            &amp; Getta</h1>
+          <span id="vintageLabSubtitle">Tocca una foto per modificare o rimuovere effetti</span>
+        </div>
       </div>
-      <button class="btn btn-gold" id="vintageLabHomeBtn">Home</button>
+      <button class="btn btn-gold" id="vintageLabHomeBtn" style="flex-shrink:0;">Home</button>
     </header>
 
     <div class="sheet-toolbar" id="vintageToolbar">
@@ -706,15 +786,17 @@
   <!-- Modal dettaglio + Editor Effetti Vintage Post-Scatto -->
   <div id="vintageDetailModal" class="full-modal">
     <header>
-      <div class="brand" style="min-width:0;">
-        <h1 id="vintageDetailTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Scatto Usa
-          &amp; Getta</h1>
-        <span id="vintageDetailMeta">1990s</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+        <button class="btn back-nav-btn" id="vintageDetailCloseBtn">← Indietro</button>
+        <div class="brand" style="min-width:0;">
+          <h1 id="vintageDetailTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Scatto Usa
+            &amp; Getta</h1>
+          <span id="vintageDetailMeta">1990s</span>
+        </div>
       </div>
       <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
         <button class="btn" id="vintageDetailStarBtn" style="padding:7px 9px;">☆</button>
-        <button class="btn btn-gold" id="vintageDetailSaveBtn" style="padding:7px 10px;">Salva Foto</button>
-        <button class="btn" id="vintageDetailCloseBtn" style="padding:7px 9px;">✕</button>
+        <button class="btn btn-gold" id="vintageDetailSaveBtn" style="padding:7px 10px;">Salva</button>
       </div>
     </header>
 
@@ -763,11 +845,13 @@
        ========================================================= -->
   <div id="view-darkroom" class="view">
     <header>
-      <div class="brand">
-        <h1 style="color:#ff6b5b;">Camera Oscura</h1>
-        <span>Bagno Chimico, Sviluppo &amp; Imperfezioni Casuali</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button class="btn back-nav-btn" id="darkroomHomeBtn">← Home</button>
+        <div class="brand" style="min-width:0;">
+          <h1 style="color:#ff6b5b;">Camera Oscura</h1>
+          <span>Bagno Chimico, Sviluppo &amp; Imperfezioni Casuali</span>
+        </div>
       </div>
-      <button class="btn" id="darkroomHomeBtn" style="padding:6px 9px;">← Home</button>
     </header>
 
     <div class="darkroom-center">
@@ -842,11 +926,15 @@
        ========================================================= -->
   <div id="view-contact" class="view">
     <header>
-      <div class="brand">
-        <h1 id="csTitle">Tavolo Luminoso Negativi</h1>
-        <span id="csSubtitle">Tocca un negativo per ispezionarlo o passare alla stampa</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button class="btn back-nav-btn" id="csBackArchiveBtn">← Archivio</button>
+        <div class="brand" style="min-width:0;">
+          <h1 id="csTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Tavolo Luminoso Negativi
+          </h1>
+          <span id="csSubtitle">Tocca un negativo per ispezionarlo o stampare</span>
+        </div>
       </div>
-      <button class="btn btn-gold" id="newRollFromCsBtn">Home</button>
+      <button class="btn btn-gold" id="newRollFromCsBtn" style="flex-shrink:0;">Home</button>
     </header>
 
     <div class="sheet-toolbar" id="csToolbar">
@@ -877,14 +965,16 @@
        ========================================================= -->
   <div id="negativeModal" class="full-modal">
     <header>
-      <div class="brand" style="min-width:0;">
-        <h1 id="negModalTitle">Negativo #01</h1>
-        <span id="negModalMeta">Tavolo Luminoso • Scorri per cambiare posa</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+        <button class="btn back-nav-btn" id="negModalCloseBtn">← Negativi</button>
+        <div class="brand" style="min-width:0;">
+          <h1 id="negModalTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Negativo #01</h1>
+          <span id="negModalMeta">Tavolo Luminoso • Scorri per cambiare posa</span>
+        </div>
       </div>
       <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
         <button class="btn" id="negModalStarBtn" style="padding:7px 9px;">☆</button>
         <button class="btn" id="negModalResetZoomBtn" style="padding:7px 8px; display:none;">1:1</button>
-        <button class="btn" id="negModalCloseBtn" style="padding:7px 9px;">✕</button>
       </div>
     </header>
 
@@ -916,15 +1006,17 @@
        ========================================================= -->
   <div id="printModal">
     <header>
-      <div class="brand" style="min-width:0;">
-        <h1 id="printFrameTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Stampa #01</h1>
-        <span id="printExifMeta">f/4 • 1/125s</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+        <button class="btn back-nav-btn" id="closePrintBtn">← Indietro</button>
+        <div class="brand" style="min-width:0;">
+          <h1 id="printFrameTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Stampa #01</h1>
+          <span id="printExifMeta">f/4 • 1/125s</span>
+        </div>
       </div>
       <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
         <button class="btn btn-gold-outline" id="headerRotate90Btn" title="Ruota 90°" style="padding:7px 8px;">↻
           90°</button>
         <button class="btn btn-gold" id="downloadPrintBtn" style="padding:7px 10px;">Salva Stampa</button>
-        <button class="btn" id="closePrintBtn" style="padding:7px 9px;">✕</button>
       </div>
     </header>
 
@@ -1199,12 +1291,14 @@
        ========================================================= -->
   <div id="labModal" class="full-modal">
     <header>
-      <div class="brand">
-        <h1>Laboratorio Emulsioni</h1>
-        <span>Crea o modifica pellicole con anteprima live</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button class="btn back-nav-btn" id="cancelLabModalBtn">← Indietro</button>
+        <div class="brand" style="min-width:0;">
+          <h1>Lab Emulsioni</h1>
+          <span>Crea o modifica pellicole</span>
+        </div>
       </div>
-      <div style="display:flex; gap:5px;">
-        <button class="btn" id="cancelLabModalBtn" style="padding:7px 9px;">Annulla</button>
+      <div style="display:flex; gap:5px; flex-shrink:0;">
         <button class="btn" id="labNewBtn" style="padding:7px 9px;">+ Nuova</button>
         <button class="btn btn-gold" id="closeLabModalBtn" style="padding:7px 11px;">Salva</button>
       </div>
@@ -1322,11 +1416,13 @@
        ========================================================= -->
   <div id="diagModal" class="full-modal">
     <header>
-      <div class="brand">
-        <h1>Test Fotocamera &amp; Prestazioni</h1>
-        <span>Verifica sensore, risoluzione, memoria e WebGL</span>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button class="btn back-nav-btn" id="closeDiagBtn">← Indietro</button>
+        <div class="brand" style="min-width:0;">
+          <h1>Test Fotocamera &amp; Info</h1>
+          <span>Sensore, risoluzione, memoria e WebGL</span>
+        </div>
       </div>
-      <button class="btn btn-gold" id="closeDiagBtn">Chiudi</button>
     </header>
 
     <div class="scroll-body">
@@ -1343,8 +1439,7 @@
       <div class="lab-section">
         <h3>Test Risoluzione Sensore &amp; Benchmark Render</h3>
         <p style="font-size:11px; color:var(--muted); line-height:1.4;">
-          Verifica la risoluzione reale concessa dal sensore (flusso live + ImageCapture full-res se supportato) e
-          misura la velocità di sviluppo WebGL a piena risoluzione.
+          Verifica la risoluzione reale concessa dal sensore e misura la velocità di sviluppo WebGL a piena risoluzione.
         </p>
         <div class="diag-grid">
           <div class="diag-stat"><small>Risoluzione Sensore Live</small><strong id="diagSensorRes">Non testato</strong>
@@ -1585,9 +1680,12 @@
       col *= pow(2.0, clamp(u_exposure + stripEV, -6.0, 6.0));
       col *= u_wbGain;
 
+      // Simulazione flash Xenon analogico: lampo centrale forte e caduta progressiva verso i bordi
       if (u_flashFalloff > 0.001) {
-        float flashGain = mix(1.36, 0.46, smoothstep(0.05, 0.92, distSqSrc));
-        col *= mix(1.0, flashGain, u_flashFalloff);
+        float radial = smoothstep(0.02, 0.95, distSqSrc);
+        float flashGain = mix(2.05, 0.38, pow(radial, 0.85));
+        vec3 xenonTint = mix(vec3(0.99, 1.00, 1.05), vec3(1.00, 0.98, 0.95), radial);
+        col *= mix(vec3(1.0), xenonTint * flashGain, u_flashFalloff);
       }
 
       float lensVig = 1.0 - clamp(distSqSrc * u_lensVignette, 0.0, 0.58);
@@ -1862,9 +1960,9 @@
     }
   </script>
 
-  <script src="polaroid.js?v=1.0.7"></script>
-  <script src="vintage-presets.js?v=1.0.7"></script>
-  <script src="app.js?v=1.0.7"></script>
+  <script src="polaroid.js?v=1.0.8"></script>
+  <script src="vintage-presets.js?v=1.0.8"></script>
+  <script src="app.js?v=1.0.8"></script>
 
 </body>
 

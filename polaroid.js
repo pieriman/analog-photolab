@@ -1,5 +1,5 @@
 /* =========================================================
-   POLAROID.JS — v1.0.7 (TORCIA HARDWARE REAL + FULL-RES FLUIDO)
+   POLAROID.JS — v1.0.8 (FLASH ANALOGICO ISTANTANEO + NAVIGAZIONE)
    ========================================================= */
 
 const POLAROID_STOCKS = [
@@ -179,6 +179,7 @@ let selectedPolaroidFrameId = localStorage.getItem("analog_photolab_pol_frame") 
 let polaroidLdEV = 0.0;
 let polaroidFlashEnabled = false;
 let polaroidCapturing = false;
+let polaroidGalleryOrigin = "view-polaroid";
 let memoryPolaroidShots = [];
 let activePolaroidDetailId = null;
 
@@ -260,7 +261,7 @@ function deletePolaroidShotFromDB(id) {
     });
 }
 
-function playPolaroidEjectSound() {
+function playPolaroidEjectSound(withFlash = false) {
     try {
         const ctx = getAudioCtx();
         if (!ctx) return;
@@ -275,6 +276,18 @@ function playPolaroidEjectSound() {
         clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
         clickOsc.connect(clickGain); clickGain.connect(ctx.destination);
         clickOsc.start(now); clickOsc.stop(now + 0.05);
+
+        if (withFlash) {
+            const fOsc = ctx.createOscillator();
+            const fGain = ctx.createGain();
+            fOsc.type = "sine";
+            fOsc.frequency.setValueAtTime(3100, now);
+            fOsc.frequency.exponentialRampToValueAtTime(700, now + 0.032);
+            fGain.gain.setValueAtTime(0.24, now);
+            fGain.gain.exponentialRampToValueAtTime(0.001, now + 0.036);
+            fOsc.connect(fGain); fGain.connect(ctx.destination);
+            fOsc.start(now); fOsc.stop(now + 0.04);
+        }
 
         const motorOsc = ctx.createOscillator();
         const lfoOsc = ctx.createOscillator();
@@ -442,15 +455,7 @@ function updatePolaroidUI() {
     const flashBtn = document.getElementById("polaroidFlashBtn");
     if (flashBtn) {
         flashBtn.classList.toggle("active", polaroidFlashEnabled);
-        if (!polaroidFlashEnabled) {
-            flashBtn.textContent = "⚡ OFF";
-        } else if (facingMode === "user") {
-            flashBtn.textContent = "⚡ SCHERMO";
-        } else if (hardwareFlashSupport.hasPhotoFlash || hardwareFlashSupport.hasTorch) {
-            flashBtn.textContent = "⚡ TORCIA ON";
-        } else {
-            flashBtn.textContent = "⚡ SIMULATO";
-        }
+        flashBtn.textContent = polaroidFlashEnabled ? "⚡ ON" : "⚡ OFF";
     }
 
     const stockStrip = document.getElementById("polaroidStockStrip");
@@ -502,7 +507,6 @@ async function startPolaroidCameraStream() {
             try { await video.play(); } catch (e) { }
         }
         if (fallback) fallback.style.display = "none";
-        await detectFlashCapabilities();
         updatePolaroidUI();
     } catch (err) {
         if (video) video.style.display = "none";
@@ -665,7 +669,7 @@ function startLivePolaroidDevelopment(initialShot, previewImgOrCanvas, stock, fr
 }
 
 async function processPolaroidInQueue(croppedCanvas, stock, frameStyle, ldEV, usedFlash, hardwareFlashFired) {
-    const flashBoost = (usedFlash && !hardwareFlashFired) ? 0.22 : 0.0;
+    const flashBoost = usedFlash ? (hardwareFlashFired ? 0.15 : 0.35) : 0.0;
     const frameStub = {
         exposureEV: ldEV + flashBoost - 0.10,
         aperture: 4.0,
@@ -677,7 +681,7 @@ async function processPolaroidInQueue(croppedCanvas, stock, frameStyle, ldEV, us
             barrel: stock.optics.barrel,
             softness: stock.optics.softness,
             fadeBlack: stock.optics.fadeBlack,
-            flashFalloff: (usedFlash && !hardwareFlashFired) ? 0.70 : (usedFlash ? 0.26 : 0.0)
+            flashFalloff: usedFlash ? (hardwareFlashFired ? 0.45 : 0.80) : 0.0
         }
     };
     const printOptsStub = {
@@ -775,7 +779,13 @@ async function updatePolaroidSelectionUI() {
     }
 }
 
-async function openPolaroidGallery() {
+async function openPolaroidGallery(origin = null) {
+    if (origin) polaroidGalleryOrigin = origin;
+    const backBtn = document.getElementById("polaroidGalleryBackCamBtn");
+    if (backBtn) {
+        backBtn.textContent = polaroidGalleryOrigin === "view-home" ? "← Home" : "← Camera";
+    }
+
     await polSaveQueue.catch(() => null);
     const shots = (await getAllPolaroidShotsFromDB()).sort((a, b) => b.createdAt - a.createdAt);
     const grid = document.getElementById("polaroidGalleryGrid");
@@ -863,6 +873,11 @@ async function openPolaroidDetail(shotId) {
     }
 
     document.getElementById("polaroidDetailModal").classList.add("open");
+    if (typeof ensureBackGuard === "function") ensureBackGuard();
+}
+
+function closePolaroidDetailModal() {
+    document.getElementById("polaroidDetailModal").classList.remove("open");
 }
 
 async function exportPolaroidBatch(shotsToExport, zipName) {
@@ -910,11 +925,17 @@ function initPolaroidEventListeners() {
 
     pOn("polaroidOpenGalleryBtn", "click", () => {
         stopCamera();
-        openPolaroidGallery();
+        openPolaroidGallery("view-polaroid");
     });
 
     pOn("polaroidGalleryBackCamBtn", "click", () => {
-        enterPolaroidMode();
+        if (polaroidGalleryOrigin === "view-home") {
+            refreshHomeStatus();
+            refreshStorageSummary();
+            switchView("view-home");
+        } else {
+            enterPolaroidMode();
+        }
     });
 
     pOn("polaroidGalleryHomeBtn", "click", () => {
@@ -975,7 +996,7 @@ function initPolaroidEventListeners() {
         try {
             const stock = getPolaroidStock();
             const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, stock.imgRatio, useFlash, 2400);
-            playPolaroidEjectSound();
+            playPolaroidEjectSound(useFlash);
             if (curtain) {
                 curtain.style.backgroundColor = "#000000";
                 curtain.classList.add("blink");
@@ -994,7 +1015,7 @@ function initPolaroidEventListeners() {
         if (!file) return;
         try {
             const img = await loadImageFromSource(file);
-            playPolaroidEjectSound();
+            playPolaroidEjectSound(polaroidFlashEnabled);
             const stock = getPolaroidStock();
             const c = drawCroppedToCanvas(img, img.naturalWidth || img.width, img.naturalHeight || img.height, stock.imgRatio, false, 3072);
             captureAndDevelopPolaroidInstant(c, polaroidFlashEnabled, false);
@@ -1025,9 +1046,7 @@ function initPolaroidEventListeners() {
         await exportPolaroidBatch(shots, "polaroid-tutte.zip");
     });
 
-    pOn("polaroidDetailCloseBtn", "click", () => {
-        document.getElementById("polaroidDetailModal").classList.remove("open");
-    });
+    pOn("polaroidDetailCloseBtn", "click", closePolaroidDetailModal);
 
     pOn("polaroidDetailStarBtn", "click", async () => {
         const shots = await getAllPolaroidShotsFromDB();
@@ -1087,7 +1106,7 @@ function initPolaroidEventListeners() {
         if (!activePolaroidDetailId) return;
         if (!confirm("Eliminare questa Polaroid dalla memoria?")) return;
         await deletePolaroidShotFromDB(activePolaroidDetailId);
-        document.getElementById("polaroidDetailModal").classList.remove("open");
+        closePolaroidDetailModal();
         await refreshPolaroidGalleryBadge();
         await refreshStorageSummary();
         const galView = document.getElementById("view-polaroid-gallery");

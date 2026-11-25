@@ -1,5 +1,5 @@
 /* =========================================================
-   ANALOG PHOTOLAB v1.0.7 — APP.JS (TORCIA REALE + FIX VARI)
+   ANALOG PHOTOLAB v1.0.8 — APP.JS (FLASH ANALOGICO + BACK NAV)
    ========================================================= */
 
 function onId(id, event, handler) {
@@ -811,11 +811,11 @@ function playShutterSound(shutterSeconds = 0.008, withFlash = false) {
             const fGain = ctx.createGain();
             fOsc.type = "sine";
             fOsc.frequency.setValueAtTime(3200, now);
-            fOsc.frequency.exponentialRampToValueAtTime(750, now + 0.03);
-            fGain.gain.setValueAtTime(0.22, now);
-            fGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+            fOsc.frequency.exponentialRampToValueAtTime(750, now + 0.032);
+            fGain.gain.setValueAtTime(0.24, now);
+            fGain.gain.exponentialRampToValueAtTime(0.001, now + 0.038);
             fOsc.connect(fGain); fGain.connect(ctx.destination);
-            fOsc.start(now); fOsc.stop(now + 0.04);
+            fOsc.start(now); fOsc.stop(now + 0.042);
         }
     } catch (e) { }
 }
@@ -1170,7 +1170,7 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
 }
 
 /* =========================================================
-   5. TRIANGOLO ESPOSIZIONE, MODALITÀ M + LANCETTA & TORCIA
+   5. TRIANGOLO ESPOSIZIONE, MODALITÀ M + LANCETTA & FLASH
    ========================================================= */
 const APERTURES = [1.4, 2.0, 2.8, 4.0, 5.6, 8.0, 11, 16];
 const SHUTTERS = [
@@ -1200,7 +1200,6 @@ let isCapturing = false;
 let isRewinding = false;
 let rollPendingCount = 0;
 let rollSaveQueue = Promise.resolve();
-let hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false, canTakePhoto: false };
 
 let thirdsVisible = localStorage.getItem("analog_lab_thirds_v7") === "1";
 function syncThirdsUI() {
@@ -1214,35 +1213,6 @@ onId("vfThirdsToggleBtn", "click", () => {
     localStorage.setItem("analog_lab_thirds_v7", thirdsVisible ? "1" : "0");
     syncThirdsUI();
 });
-
-async function detectFlashCapabilities() {
-    hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false, canTakePhoto: false };
-    if (!mediaStream) return hardwareFlashSupport;
-    const track = mediaStream.getVideoTracks()[0];
-    if (!track) return hardwareFlashSupport;
-
-    try {
-        if (typeof track.getCapabilities === "function") {
-            const caps = track.getCapabilities();
-            if (caps && caps.torch) hardwareFlashSupport.hasTorch = true;
-        }
-    } catch (e) { }
-
-    try {
-        if (typeof ImageCapture !== "undefined") {
-            const ic = new ImageCapture(track);
-            hardwareFlashSupport.canTakePhoto = typeof ic.takePhoto === "function";
-            if (typeof ic.getPhotoCapabilities === "function") {
-                const pCaps = await ic.getPhotoCapabilities();
-                if (pCaps && Array.isArray(pCaps.fillLightMode) && pCaps.fillLightMode.includes("flash")) {
-                    hardwareFlashSupport.hasPhotoFlash = true;
-                }
-            }
-        }
-    } catch (e) { }
-
-    return hardwareFlashSupport;
-}
 
 function getEffectiveRollCount() {
     if (!currentRoll) return 0;
@@ -1415,13 +1385,7 @@ function recalculateExposureTriangle() {
     hudSh.className = "vf-seg" + ((camMode === "TV" || camMode === "M") ? " locked" : "");
 
     if (flashActive) {
-        if (facingMode === "user") {
-            hudSt.textContent = "FLASH SCHERMO ⚡";
-        } else if (hardwareFlashSupport.hasPhotoFlash || hardwareFlashSupport.hasTorch) {
-            hudSt.textContent = "TORCIA / FLASH ⚡";
-        } else {
-            hudSt.textContent = "FLASH SIMULATO ⚡";
-        }
+        hudSt.textContent = "FLASH ON ⚡";
         hudSt.className = "meter-status meter-warn";
     } else if (exposureErrorEV < -0.7) {
         hudSt.textContent = `SOTTO ${exposureErrorEV.toFixed(1)} EV`;
@@ -1519,13 +1483,34 @@ document.querySelectorAll("#camModeSelector .mode-pill").forEach(pill => {
 });
 
 /* =========================================================
-   6. NAVIGAZIONE HOME 3 PERCORSI, RULLINI & ARCHIVIO
+   6. NAVIGAZIONE HOME 3 PERCORSI, TASTO INDIETRO SMARTPHONE & ARCHIVIO
    ========================================================= */
 let selectedLoadFilmId = films[0].id;
 let selectedExposures = 12;
 let currentRoll = null;
 let mediaStream = null;
 let facingMode = "environment";
+let isHandlingPopstate = false;
+
+function isAtAppRoot() {
+    const anyModalOpen = ["printModal", "negativeModal", "polaroidDetailModal", "vintageDetailModal", "labModal", "diagModal"]
+        .some(id => {
+            const el = document.getElementById(id);
+            return el && el.classList.contains("open");
+        });
+    if (anyModalOpen) return false;
+    const home = document.getElementById("view-home");
+    return !!(home && home.classList.contains("active"));
+}
+
+function ensureBackGuard() {
+    if (isHandlingPopstate || isAtAppRoot()) return;
+    try {
+        if (!window.history.state || !window.history.state.analogGuard) {
+            window.history.pushState({ analogGuard: true }, "");
+        }
+    } catch (e) { }
+}
 
 function switchView(viewId) {
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
@@ -1535,7 +1520,126 @@ function switchView(viewId) {
         stopCamera();
         if (meterInterval) { clearInterval(meterInterval); meterInterval = null; }
     }
+    if (viewId !== "view-home") {
+        ensureBackGuard();
+    }
 }
+
+async function navigateBackOneStep() {
+    const isModalOpen = (id) => {
+        const el = document.getElementById(id);
+        return el && el.classList.contains("open");
+    };
+    const isViewActive = (id) => {
+        const el = document.getElementById(id);
+        return el && el.classList.contains("active");
+    };
+
+    if (isModalOpen("printModal")) {
+        await closePrintModal();
+        return;
+    }
+    if (isModalOpen("negativeModal")) {
+        closeNegativeModal();
+        return;
+    }
+    if (isModalOpen("polaroidDetailModal")) {
+        if (typeof closePolaroidDetailModal === "function") closePolaroidDetailModal();
+        return;
+    }
+    if (isModalOpen("vintageDetailModal")) {
+        if (typeof closeVintageDetailModal === "function") await closeVintageDetailModal();
+        return;
+    }
+    if (isModalOpen("labModal")) {
+        closeLabModalCancel();
+        return;
+    }
+    if (isModalOpen("diagModal")) {
+        closeDiagModal();
+        return;
+    }
+
+    if (isViewActive("view-camera")) {
+        if (isRewinding) return;
+        await rollSaveQueue.catch(() => { });
+        refreshHomeStatus();
+        refreshStorageSummary();
+        switchView("view-home");
+        return;
+    }
+    if (isViewActive("view-darkroom")) {
+        refreshHomeStatus();
+        switchView("view-home");
+        return;
+    }
+    if (isViewActive("view-contact")) {
+        currentRoll = null;
+        await refreshArchiveList();
+        renderLoadView();
+        switchView("view-load");
+        return;
+    }
+    if (isViewActive("view-load")) {
+        refreshHomeStatus();
+        switchView("view-home");
+        return;
+    }
+    if (isViewActive("view-polaroid-gallery")) {
+        if (typeof polaroidGalleryOrigin !== "undefined" && polaroidGalleryOrigin === "view-polaroid") {
+            enterPolaroidMode();
+        } else {
+            refreshHomeStatus();
+            refreshStorageSummary();
+            switchView("view-home");
+        }
+        return;
+    }
+    if (isViewActive("view-polaroid")) {
+        if (typeof polSaveQueue !== "undefined") await polSaveQueue.catch(() => null);
+        stopCamera();
+        refreshHomeStatus();
+        refreshStorageSummary();
+        switchView("view-home");
+        return;
+    }
+    if (isViewActive("view-vintage-camera")) {
+        if (typeof vintageDeveloping !== "undefined" && vintageDeveloping) return;
+        if (typeof vintageSaveQueue !== "undefined") await vintageSaveQueue.catch(() => { });
+        stopCamera();
+        if (typeof refreshVintageArchiveList === "function") refreshVintageArchiveList();
+        refreshStorageSummary();
+        refreshHomeStatus();
+        switchView("view-home");
+        return;
+    }
+    if (isViewActive("view-vintage-lab")) {
+        currentVintageRoll = null;
+        if (typeof refreshVintageArchiveList === "function") await refreshVintageArchiveList();
+        await refreshStorageSummary();
+        refreshHomeStatus();
+        switchView("view-disposable-load");
+        return;
+    }
+    if (isViewActive("view-disposable-load")) {
+        refreshHomeStatus();
+        switchView("view-home");
+        return;
+    }
+}
+
+window.addEventListener("popstate", async () => {
+    if (isAtAppRoot()) return;
+    isHandlingPopstate = true;
+    try {
+        await navigateBackOneStep();
+    } finally {
+        isHandlingPopstate = false;
+        if (!isAtAppRoot()) {
+            ensureBackGuard();
+        }
+    }
+});
 
 async function refreshHomeStatus() {
     const rolls = await getAllRollsFromDB();
@@ -1634,7 +1738,7 @@ onId("pathPolaroidBtn", "click", () => {
 
 onId("homePolaroidGalleryBtn", "click", (e) => {
     e.stopPropagation();
-    if (typeof openPolaroidGallery === "function") openPolaroidGallery();
+    if (typeof openPolaroidGallery === "function") openPolaroidGallery("view-home");
 });
 
 onId("pathDisposableBtn", "click", () => {
@@ -1753,7 +1857,7 @@ onId("loadRollBtn", "click", async () => {
 });
 
 /* =========================================================
-   7. FOTOCAMERA LIVE & ACQUISIZIONE CON TORCIA HARDWARE
+   7. FOTOCAMERA LIVE & ACQUISIZIONE CON FLASH ANALOGICO PURO
    ========================================================= */
 async function startCamera() {
     stopCamera();
@@ -1766,7 +1870,6 @@ async function startCamera() {
         video.style.display = "block";
         try { await video.play(); } catch (e) { }
         fallback.style.display = "none";
-        await detectFlashCapabilities();
         recalculateExposureTriangle();
     } catch (err) {
         video.style.display = "none";
@@ -1776,15 +1879,9 @@ async function startCamera() {
 
 function stopCamera() {
     if (mediaStream) {
-        mediaStream.getTracks().forEach(t => {
-            if (hardwareFlashSupport.hasTorch && typeof t.applyConstraints === "function") {
-                try { t.applyConstraints({ advanced: [{ torch: false }] }).catch(() => { }); } catch (e) { }
-            }
-            t.stop();
-        });
+        mediaStream.getTracks().forEach(t => t.stop());
         mediaStream = null;
     }
-    hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false, canTakePhoto: false };
 }
 
 function updateCameraHUD() {
@@ -1868,6 +1965,15 @@ function drawCroppedToCanvas(sourceObj, srcW, srcH, targetRatio, mirror = false,
     return c;
 }
 
+function triggerFlashStrobeVisual(durationMs = 65) {
+    const frontFlash = document.getElementById("frontScreenFlash");
+    if (!frontFlash) return;
+    frontFlash.classList.add("lit");
+    setTimeout(() => {
+        frontFlash.classList.remove("lit");
+    }, durationMs);
+}
+
 async function captureFrameInstant(video, targetRatio, useFlash = false, maxLongSide = 2400) {
     const mirror = facingMode === "user";
 
@@ -1877,47 +1983,18 @@ async function captureFrameInstant(video, targetRatio, useFlash = false, maxLong
     }
 
     if (mirror) {
+        // Camera frontale: breve pre-flash schermo per illuminare il volto, poi scatto
         const frontFlash = document.getElementById("frontScreenFlash");
         if (frontFlash) frontFlash.classList.add("lit");
-        await new Promise(r => setTimeout(r, 120));
+        await new Promise(r => setTimeout(r, 85));
         const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, true, maxLongSide);
         if (frontFlash) frontFlash.classList.remove("lit");
         return { canvas: c, hardwareFlashFired: true };
     }
 
-    const track = mediaStream && mediaStream.getVideoTracks ? mediaStream.getVideoTracks()[0] : null;
-
-    if (track && hardwareFlashSupport.hasPhotoFlash && typeof ImageCapture !== "undefined") {
-        try {
-            const ic = new ImageCapture(track);
-            const photoBlob = await Promise.race([
-                ic.takePhoto({ fillLightMode: "flash" }),
-                new Promise((_, rej) => setTimeout(() => rej(new Error("takePhoto timeout")), 2600))
-            ]);
-            const img = await loadImageFromSource(photoBlob);
-            const w = img.naturalWidth || img.width;
-            const h = img.naturalHeight || img.height;
-            const c = drawCroppedToCanvas(img, w, h, targetRatio, false, maxLongSide);
-            return { canvas: c, hardwareFlashFired: true };
-        } catch (err) {
-            console.warn("ImageCapture flash fallback su torcia:", err);
-        }
-    }
-
-    if (track && hardwareFlashSupport.hasTorch && typeof track.applyConstraints === "function") {
-        try {
-            await track.applyConstraints({ advanced: [{ torch: true }] });
-            await new Promise(r => setTimeout(r, 320));
-            const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, false, maxLongSide);
-            return { canvas: c, hardwareFlashFired: true };
-        } catch (err) {
-            console.warn("Torch constraint non riuscito:", err);
-        } finally {
-            try { await track.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) { }
-        }
-    }
-
+    // Camera posteriore: cattura istantanea (0ms ritardo) + lampo flash Xenon simulato
     const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, false, maxLongSide);
+    triggerFlashStrobeVisual(65);
     return { canvas: c, hardwareFlashFired: false };
 }
 
@@ -1939,37 +2016,24 @@ function enqueueLatentFrame(sourceCanvas, expInfo, usedFlash = false, hardwareFl
         await new Promise(r => setTimeout(r, 40));
         try {
             let encodeCanvas = sourceCanvas;
-            const needsPostOverlay = (usedFlash && !hardwareFlashFired) || (!usedFlash && expInfo.shutter.sec >= 1 / 15);
 
-            if (needsPostOverlay) {
+            if (!usedFlash && expInfo.shutter.sec >= 1 / 15) {
                 const ctx = encodeCanvas.getContext("2d");
-                if (usedFlash && !hardwareFlashFired) {
-                    const w = encodeCanvas.width, h = encodeCanvas.height;
-                    const grad = ctx.createRadialGradient(w * 0.5, h * 0.5, w * 0.08, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
-                    grad.addColorStop(0, "rgba(255, 252, 245, 0.24)");
-                    grad.addColorStop(0.55, "rgba(255, 250, 240, 0.08)");
-                    grad.addColorStop(1, "rgba(0, 0, 0, 0.22)");
-                    ctx.fillStyle = grad;
-                    ctx.fillRect(0, 0, w, h);
-                }
-
-                if (!usedFlash && expInfo.shutter.sec >= 1 / 15) {
-                    const snapCanvas = document.createElement("canvas");
-                    snapCanvas.width = encodeCanvas.width;
-                    snapCanvas.height = encodeCanvas.height;
-                    snapCanvas.getContext("2d").drawImage(encodeCanvas, 0, 0);
-                    const shakePx = Math.min(22, Math.round(expInfo.shutter.sec * 28));
-                    ctx.globalAlpha = 0.35;
-                    ctx.drawImage(snapCanvas, shakePx, Math.round(shakePx * 0.4));
-                    ctx.globalAlpha = 0.20;
-                    ctx.drawImage(snapCanvas, -Math.round(shakePx * 0.5), -Math.round(shakePx * 0.3));
-                    ctx.globalAlpha = 1.0;
-                    snapCanvas.width = 0; snapCanvas.height = 0;
-                }
+                const snapCanvas = document.createElement("canvas");
+                snapCanvas.width = encodeCanvas.width;
+                snapCanvas.height = encodeCanvas.height;
+                snapCanvas.getContext("2d").drawImage(encodeCanvas, 0, 0);
+                const shakePx = Math.min(22, Math.round(expInfo.shutter.sec * 28));
+                ctx.globalAlpha = 0.35;
+                ctx.drawImage(snapCanvas, shakePx, Math.round(shakePx * 0.4));
+                ctx.globalAlpha = 0.20;
+                ctx.drawImage(snapCanvas, -Math.round(shakePx * 0.5), -Math.round(shakePx * 0.3));
+                ctx.globalAlpha = 1.0;
+                snapCanvas.width = 0; snapCanvas.height = 0;
             }
 
             const clampedErrEV = Math.max(-2.5, Math.min(2.5, expInfo.exposureErrorEV));
-            const flashFillBoost = (usedFlash && !hardwareFlashFired) ? Math.max(0.45, -clampedErrEV * 0.65) : 0.0;
+            const flashFillBoost = usedFlash ? (hardwareFlashFired ? 0.15 : Math.max(0.35, -clampedErrEV * 0.55)) : 0.0;
             const effectiveFrameEV = Math.max(-2.5, Math.min(2.5, (modeSnap === "M" ? 0 : compSnap) + clampedErrEV + flashFillBoost));
             const seed = Math.random();
 
@@ -1983,6 +2047,9 @@ function enqueueLatentFrame(sourceCanvas, expInfo, usedFlash = false, hardwareFl
                 shutterLabel: expInfo.shutter.label,
                 mode: modeSnap,
                 flash: usedFlash,
+                optics: {
+                    flashFalloff: usedFlash ? (hardwareFlashFired ? 0.45 : 0.80) : 0.0
+                },
                 starred: false,
                 savedLocally: false,
                 defectSeed: seed,
@@ -2409,12 +2476,15 @@ async function renderNegativeSlideAtIdx(idx) {
 
 async function openNegativeViewer(idx) {
     document.getElementById("negativeModal").classList.add("open");
+    ensureBackGuard();
     await renderNegativeSlideAtIdx(idx);
 }
 
-onId("negModalCloseBtn", "click", () => {
+function closeNegativeModal() {
     document.getElementById("negativeModal").classList.remove("open");
-});
+}
+
+onId("negModalCloseBtn", "click", closeNegativeModal);
 
 onId("negModalResetZoomBtn", "click", resetNegativeZoom);
 
@@ -2440,7 +2510,7 @@ onId("negNextBtn", "click", () => {
 });
 
 onId("negPrintBtn", "click", () => {
-    document.getElementById("negativeModal").classList.remove("open");
+    closeNegativeModal();
     openPrintEnlarger(activeNegIdx);
 });
 
@@ -2574,6 +2644,13 @@ onId("csSaveSelectedBtn", "click", async () => {
 onId("csSaveAllBtn", "click", async () => {
     if (!currentRoll) return;
     await exportContactFrames(currentRoll.frames, "tutte");
+});
+
+onId("csBackArchiveBtn", "click", async () => {
+    currentRoll = null;
+    await refreshArchiveList();
+    renderLoadView();
+    switchView("view-load");
 });
 
 onId("newRollFromCsBtn", "click", () => {
@@ -2898,8 +2975,22 @@ async function openPrintEnlarger(idx) {
 
     activePrintImg = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
     document.getElementById("printModal").classList.add("open");
+    ensureBackGuard();
     updatePrintPreview();
     syncPrintControlsUI();
+}
+
+async function closePrintModal() {
+    document.getElementById("printModal").classList.remove("open");
+    if (activeFrameDirty && currentRoll && currentRoll.frames[activePrintIdx] && activePrintImg) {
+        const frame = currentRoll.frames[activePrintIdx];
+        const negMode = getRollNegativeMode(currentRoll);
+        renderFrameWithWebGL(activePrintImg, currentRoll.film, frame, currentRoll.pushStops, null, false, 480, negMode);
+        frame.negThumbBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.84);
+        frame.thumbBlob = frame.negThumbBlob;
+        await saveRollToDB(currentRoll);
+        openContactSheet();
+    }
 }
 
 function updatePrintPreview() {
@@ -3144,18 +3235,7 @@ function endStagePointer() {
 window.addEventListener("pointerup", endStagePointer);
 window.addEventListener("pointercancel", endStagePointer);
 
-onId("closePrintBtn", "click", async () => {
-    document.getElementById("printModal").classList.remove("open");
-    if (activeFrameDirty && currentRoll && currentRoll.frames[activePrintIdx] && activePrintImg) {
-        const frame = currentRoll.frames[activePrintIdx];
-        const negMode = getRollNegativeMode(currentRoll);
-        renderFrameWithWebGL(activePrintImg, currentRoll.film, frame, currentRoll.pushStops, null, false, 480, negMode);
-        frame.negThumbBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.84);
-        frame.thumbBlob = frame.negThumbBlob;
-        await saveRollToDB(currentRoll);
-        openContactSheet();
-    }
-});
+onId("closePrintBtn", "click", closePrintModal);
 
 onId("downloadPrintBtn", "click", async () => {
     printShowOriginal = false;
@@ -3373,7 +3453,17 @@ function openLabModal() {
     populateLabSelect();
     syncLabForm();
     document.getElementById("labModal").classList.add("open");
+    ensureBackGuard();
     renderLabPreview();
+}
+
+function closeLabModalCancel() {
+    if (labSnapshotFilms) {
+        films = JSON.parse(JSON.stringify(labSnapshotFilms));
+        selectedLoadFilmId = labSnapshotSelectedId || films[0].id;
+    }
+    document.getElementById("labModal").classList.remove("open");
+    renderLoadView();
 }
 
 function populateLabSelect() {
@@ -3615,15 +3705,7 @@ onId("deleteFilmBtn", "click", () => {
 });
 
 onId("openLabFromLoadBtn", "click", openLabModal);
-
-onId("cancelLabModalBtn", "click", () => {
-    if (labSnapshotFilms) {
-        films = JSON.parse(JSON.stringify(labSnapshotFilms));
-        selectedLoadFilmId = labSnapshotSelectedId || films[0].id;
-    }
-    document.getElementById("labModal").classList.remove("open");
-    renderLoadView();
-});
+onId("cancelLabModalBtn", "click", closeLabModalCancel);
 
 onId("closeLabModalBtn", "click", () => {
     films.forEach(f => delete f._nameEditedManually);
@@ -3633,7 +3715,7 @@ onId("closeLabModalBtn", "click", () => {
 });
 
 /* =========================================================
-   12. DIAGNOSTICA DISPOSITIVO, RISOLUZIONE, TORCIA & GPU
+   12. DIAGNOSTICA DISPOSITIVO, RISOLUZIONE & GPU
    ========================================================= */
 async function refreshDiagSummary() {
     const isHttps = window.isSecureContext;
@@ -3671,14 +3753,17 @@ async function refreshDiagSummary() {
     }
 }
 
+function closeDiagModal() {
+    document.getElementById("diagModal").classList.remove("open");
+}
+
 onId("openDiagBtn", "click", async () => {
     await refreshDiagSummary();
     document.getElementById("diagModal").classList.add("open");
+    ensureBackGuard();
 });
 
-onId("closeDiagBtn", "click", () => {
-    document.getElementById("diagModal").classList.remove("open");
-});
+onId("closeDiagBtn", "click", closeDiagModal);
 
 onId("runDiagTestBtn", "click", async () => {
     const log = document.getElementById("diagLog");
@@ -3701,20 +3786,8 @@ onId("runDiagTestBtn", "click", async () => {
         const mp = ((sw * sh) / 1000000).toFixed(1);
         document.getElementById("diagSensorRes").textContent = `${sw}×${sh} (${mp} MP)`;
 
-        const track = stream.getVideoTracks()[0];
-        const caps = track && track.getCapabilities ? track.getCapabilities() : {};
-        let flashCapsTxt = caps && caps.torch ? "Torcia LED OK" : "Torcia non esposta dal browser";
-        if (typeof ImageCapture !== "undefined" && track) {
-            try {
-                const pc = await new ImageCapture(track).getPhotoCapabilities();
-                if (pc && Array.isArray(pc.fillLightMode) && pc.fillLightMode.includes("flash")) {
-                    flashCapsTxt += " + ImageCapture Flash OK";
-                }
-            } catch (e) { }
-        }
-
         stream.getTracks().forEach(t => t.stop());
-        log.textContent = `Sensore OK: ${sw}×${sh}px | ${flashCapsTxt}. 2/2 Benchmark GPU WebGL...`;
+        log.textContent = `Sensore OK: ${sw}×${sh}px | Flash analogico istantaneo attivo. 2/2 Benchmark GPU WebGL...`;
     } catch (err) {
         document.getElementById("diagSensorRes").textContent = "Bloccato (Serve HTTPS)";
         log.textContent = `Camera non accessibile (${err.name}). 2/2 Benchmark GPU WebGL...`;

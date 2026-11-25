@@ -1,5 +1,5 @@
 /* =========================================================
-   VINTAGE-PRESETS.JS — USA & GETTA v1.0.7 (HUJI '98 + TORCIA REALE)
+   VINTAGE-PRESETS.JS — USA & GETTA v1.0.8 (FLASH ANALOGICO + NAV)
    ========================================================= */
 
 const VINTAGE_DECADES = [
@@ -521,9 +521,7 @@ function updateVintageFlashButtonUI() {
         lbl.textContent = "CARICA FLASH...";
     } else if (vintageFlashState === "ready") {
         btn.classList.add("ready");
-        if (facingMode === "user") lbl.textContent = "⚡ FLASH SCHERMO";
-        else if (hardwareFlashSupport.hasPhotoFlash || hardwareFlashSupport.hasTorch) lbl.textContent = "⚡ TORCIA PRONTA";
-        else lbl.textContent = "⚡ FLASH PRONTO";
+        lbl.textContent = "⚡ FLASH PRONTO";
     } else {
         lbl.textContent = "⚡ CARICA FLASH";
     }
@@ -627,7 +625,6 @@ async function startVintageCameraStream() {
         video.style.display = "block";
         try { await video.play(); } catch (e) { }
         fallback.style.display = "none";
-        await detectFlashCapabilities();
         updateVintageFlashButtonUI();
         const track = mediaStream.getVideoTracks()[0];
         if (track) applyFixedHyperfocalFocus(track);
@@ -768,8 +765,8 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             agedPaper: { active: edit.agedPaper > 0, intensity: edit.agedPaper },
             scratches: { active: edit.scratches > 0, intensity: edit.scratches }
         };
-        const flashBoost = (frame.flash && !frame.hardwareFlashFired) ? 0.25 : 0.0;
-        const flashFalloff = (frame.flash && !frame.hardwareFlashFired) ? 0.78 : (frame.flash ? 0.28 : 0.0);
+        const flashBoost = frame.flash ? (frame.hardwareFlashFired ? 0.15 : 0.38) : 0.0;
+        const flashFalloff = frame.flash ? (frame.hardwareFlashFired ? 0.48 : 0.85) : 0.0;
 
         const frameStub = {
             exposureEV: (edit.ev || 0) + flashBoost,
@@ -1135,7 +1132,28 @@ async function openVintageShotDetail(idx) {
 
     syncVintageEditorUI(frame);
     document.getElementById("vintageDetailModal").classList.add("open");
+    if (typeof ensureBackGuard === "function") ensureBackGuard();
     await refreshVintageDetailPreview(frame);
+}
+
+async function closeVintageDetailModal() {
+    clearTimeout(vintageEditSaveTimer);
+    if (currentVintageRoll && activeVintageRawImg) {
+        const frame = currentVintageRoll.frames[activeVintageDetailIdx];
+        if (frame) {
+            const fullC = await renderVintageShotWithEdit(activeVintageRawImg, frame, null);
+            frame.developedBlob = await canvasToBlob(fullC, "image/jpeg", 0.95);
+            const tC = document.createElement("canvas");
+            tC.width = 360;
+            tC.height = Math.round((fullC.height / fullC.width) * 360);
+            tC.getContext("2d").drawImage(fullC, 0, 0, tC.width, tC.height);
+            frame.thumbBlob = await canvasToBlob(tC, "image/jpeg", 0.80);
+            fullC.width = 0; fullC.height = 0; tC.width = 0; tC.height = 0;
+            await saveVintageRollToDB(currentVintageRoll);
+        }
+    }
+    document.getElementById("vintageDetailModal").classList.remove("open");
+    openVintageLabRoll();
 }
 
 async function exportVintageFrames(framesToExport, labelSlug) {
@@ -1385,6 +1403,14 @@ function initVintageEventListeners() {
         }
     });
 
+    vOn("vintageLabBackBtn", "click", async () => {
+        currentVintageRoll = null;
+        await refreshVintageArchiveList();
+        await refreshStorageSummary();
+        if (typeof refreshHomeStatus === "function") refreshHomeStatus();
+        switchView("view-disposable-load");
+    });
+
     vOn("vintageLabHomeBtn", "click", () => {
         currentVintageRoll = null;
         refreshVintageArchiveList();
@@ -1412,25 +1438,7 @@ function initVintageEventListeners() {
         await exportVintageFrames(currentVintageRoll.frames, `${currentVintageRoll.decadeId}-tutte`);
     });
 
-    vOn("vintageDetailCloseBtn", "click", async () => {
-        clearTimeout(vintageEditSaveTimer);
-        if (currentVintageRoll && activeVintageRawImg) {
-            const frame = currentVintageRoll.frames[activeVintageDetailIdx];
-            if (frame) {
-                const fullC = await renderVintageShotWithEdit(activeVintageRawImg, frame, null);
-                frame.developedBlob = await canvasToBlob(fullC, "image/jpeg", 0.95);
-                const tC = document.createElement("canvas");
-                tC.width = 360;
-                tC.height = Math.round((fullC.height / fullC.width) * 360);
-                tC.getContext("2d").drawImage(fullC, 0, 0, tC.width, tC.height);
-                frame.thumbBlob = await canvasToBlob(tC, "image/jpeg", 0.80);
-                fullC.width = 0; fullC.height = 0; tC.width = 0; tC.height = 0;
-                await saveVintageRollToDB(currentVintageRoll);
-            }
-        }
-        document.getElementById("vintageDetailModal").classList.remove("open");
-        openVintageLabRoll();
-    });
+    vOn("vintageDetailCloseBtn", "click", closeVintageDetailModal);
 
     vOn("vintageDetailStarBtn", "click", async () => {
         if (!currentVintageRoll) return;
