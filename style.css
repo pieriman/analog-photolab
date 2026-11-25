@@ -1592,7 +1592,7 @@ header {
 
 #polaroidLiveCanvas {
   width: 146px;
-  height: 150px;
+  height: auto;
   display: block;
   background-color: #142022;
 }

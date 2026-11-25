@@ -1,5 +1,5 @@
 /* =========================================================
-   ANALOG PHOTOLAB v1.0.6 — APP.JS
+   ANALOG PHOTOLAB v1.0.7 — APP.JS (TORCIA REALE + FIX VARI)
    ========================================================= */
 
 function onId(id, event, handler) {
@@ -1170,7 +1170,7 @@ function renderFrameWithWebGL(imgElement, film, frameData, pushStops = 0, printO
 }
 
 /* =========================================================
-   5. TRIANGOLO ESPOSIZIONE, MODALITÀ M + LANCETTA
+   5. TRIANGOLO ESPOSIZIONE, MODALITÀ M + LANCETTA & TORCIA
    ========================================================= */
 const APERTURES = [1.4, 2.0, 2.8, 4.0, 5.6, 8.0, 11, 16];
 const SHUTTERS = [
@@ -1215,8 +1215,33 @@ onId("vfThirdsToggleBtn", "click", () => {
     syncThirdsUI();
 });
 
-function detectFlashCapabilities() {
+async function detectFlashCapabilities() {
     hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false, canTakePhoto: false };
+    if (!mediaStream) return hardwareFlashSupport;
+    const track = mediaStream.getVideoTracks()[0];
+    if (!track) return hardwareFlashSupport;
+
+    try {
+        if (typeof track.getCapabilities === "function") {
+            const caps = track.getCapabilities();
+            if (caps && caps.torch) hardwareFlashSupport.hasTorch = true;
+        }
+    } catch (e) { }
+
+    try {
+        if (typeof ImageCapture !== "undefined") {
+            const ic = new ImageCapture(track);
+            hardwareFlashSupport.canTakePhoto = typeof ic.takePhoto === "function";
+            if (typeof ic.getPhotoCapabilities === "function") {
+                const pCaps = await ic.getPhotoCapabilities();
+                if (pCaps && Array.isArray(pCaps.fillLightMode) && pCaps.fillLightMode.includes("flash")) {
+                    hardwareFlashSupport.hasPhotoFlash = true;
+                }
+            }
+        }
+    } catch (e) { }
+
+    return hardwareFlashSupport;
 }
 
 function getEffectiveRollCount() {
@@ -1390,7 +1415,13 @@ function recalculateExposureTriangle() {
     hudSh.className = "vf-seg" + ((camMode === "TV" || camMode === "M") ? " locked" : "");
 
     if (flashActive) {
-        hudSt.textContent = facingMode === "user" ? "FLASH SCHERMO ⚡" : "FLASH PRONTO ⚡";
+        if (facingMode === "user") {
+            hudSt.textContent = "FLASH SCHERMO ⚡";
+        } else if (hardwareFlashSupport.hasPhotoFlash || hardwareFlashSupport.hasTorch) {
+            hudSt.textContent = "TORCIA / FLASH ⚡";
+        } else {
+            hudSt.textContent = "FLASH SIMULATO ⚡";
+        }
         hudSt.className = "meter-status meter-warn";
     } else if (exposureErrorEV < -0.7) {
         hudSt.textContent = `SOTTO ${exposureErrorEV.toFixed(1)} EV`;
@@ -1722,7 +1753,7 @@ onId("loadRollBtn", "click", async () => {
 });
 
 /* =========================================================
-   7. FOTOCAMERA LIVE & ACQUISIZIONE ISTANTANEA
+   7. FOTOCAMERA LIVE & ACQUISIZIONE CON TORCIA HARDWARE
    ========================================================= */
 async function startCamera() {
     stopCamera();
@@ -1735,7 +1766,7 @@ async function startCamera() {
         video.style.display = "block";
         try { await video.play(); } catch (e) { }
         fallback.style.display = "none";
-        detectFlashCapabilities();
+        await detectFlashCapabilities();
         recalculateExposureTriangle();
     } catch (err) {
         video.style.display = "none";
@@ -1745,9 +1776,15 @@ async function startCamera() {
 
 function stopCamera() {
     if (mediaStream) {
-        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream.getTracks().forEach(t => {
+            if (hardwareFlashSupport.hasTorch && typeof t.applyConstraints === "function") {
+                try { t.applyConstraints({ advanced: [{ torch: false }] }).catch(() => { }); } catch (e) { }
+            }
+            t.stop();
+        });
         mediaStream = null;
     }
+    hardwareFlashSupport = { hasTorch: false, hasPhotoFlash: false, canTakePhoto: false };
 }
 
 function updateCameraHUD() {
@@ -1831,17 +1868,56 @@ function drawCroppedToCanvas(sourceObj, srcW, srcH, targetRatio, mirror = false,
     return c;
 }
 
-async function captureFrameInstant(video, targetRatio, useFlash = false) {
+async function captureFrameInstant(video, targetRatio, useFlash = false, maxLongSide = 2400) {
     const mirror = facingMode === "user";
-    if (useFlash && facingMode === "user") {
+
+    if (!useFlash) {
+        const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror, maxLongSide);
+        return { canvas: c, hardwareFlashFired: false };
+    }
+
+    if (mirror) {
         const frontFlash = document.getElementById("frontScreenFlash");
         if (frontFlash) frontFlash.classList.add("lit");
-        await new Promise(r => setTimeout(r, 90));
-        const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror, 2400);
+        await new Promise(r => setTimeout(r, 120));
+        const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, true, maxLongSide);
         if (frontFlash) frontFlash.classList.remove("lit");
         return { canvas: c, hardwareFlashFired: true };
     }
-    const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, mirror, 2400);
+
+    const track = mediaStream && mediaStream.getVideoTracks ? mediaStream.getVideoTracks()[0] : null;
+
+    if (track && hardwareFlashSupport.hasPhotoFlash && typeof ImageCapture !== "undefined") {
+        try {
+            const ic = new ImageCapture(track);
+            const photoBlob = await Promise.race([
+                ic.takePhoto({ fillLightMode: "flash" }),
+                new Promise((_, rej) => setTimeout(() => rej(new Error("takePhoto timeout")), 2600))
+            ]);
+            const img = await loadImageFromSource(photoBlob);
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            const c = drawCroppedToCanvas(img, w, h, targetRatio, false, maxLongSide);
+            return { canvas: c, hardwareFlashFired: true };
+        } catch (err) {
+            console.warn("ImageCapture flash fallback su torcia:", err);
+        }
+    }
+
+    if (track && hardwareFlashSupport.hasTorch && typeof track.applyConstraints === "function") {
+        try {
+            await track.applyConstraints({ advanced: [{ torch: true }] });
+            await new Promise(r => setTimeout(r, 320));
+            const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, false, maxLongSide);
+            return { canvas: c, hardwareFlashFired: true };
+        } catch (err) {
+            console.warn("Torch constraint non riuscito:", err);
+        } finally {
+            try { await track.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) { }
+        }
+    }
+
+    const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, false, maxLongSide);
     return { canvas: c, hardwareFlashFired: false };
 }
 
@@ -1956,32 +2032,16 @@ onId("shutterBtn", "click", async () => {
 
     isCapturing = true;
     try {
-        if (useFlash && facingMode === "user") {
-            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, true);
-            playShutterSound(expInfo.shutter.sec, true);
-            if (curtain) {
-                curtain.classList.add("blink");
-                setTimeout(() => curtain.classList.remove("blink"), blinkDuration);
-            }
-            setShutterArmedState(false);
-            await appWaitPaint();
-            enqueueLatentFrame(capCanvas, expInfo, true, hardwareFlashFired);
-        } else {
-            playShutterSound(expInfo.shutter.sec, useFlash);
-            if (curtain) {
-                curtain.style.backgroundColor = useFlash ? "#fff8ea" : "#000000";
-                curtain.classList.add("blink");
-                setTimeout(() => {
-                    curtain.classList.remove("blink");
-                    curtain.style.backgroundColor = "#000000";
-                }, useFlash ? 110 : blinkDuration);
-            }
-            const mirror = facingMode === "user";
-            const capCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, 3 / 4, mirror, 2400);
-            setShutterArmedState(false);
-            await appWaitPaint();
-            enqueueLatentFrame(capCanvas, expInfo, useFlash, false);
+        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, useFlash, 2400);
+        playShutterSound(expInfo.shutter.sec, useFlash);
+        if (curtain) {
+            curtain.style.backgroundColor = "#000000";
+            curtain.classList.add("blink");
+            setTimeout(() => curtain.classList.remove("blink"), blinkDuration);
         }
+        setShutterArmedState(false);
+        await appWaitPaint();
+        enqueueLatentFrame(capCanvas, expInfo, useFlash, hardwareFlashFired);
     } finally {
         isCapturing = false;
     }
@@ -2187,6 +2247,7 @@ onId("startDevelopBtn", "click", async () => {
    9. TAVOLO LUMINOSO NEGATIVI & VISORE CAROSELLO FULLSCREEN
    ========================================================= */
 let activeNegIdx = 0;
+let negRenderToken = 0;
 let negZoom = 1.0;
 let negPanX = 0;
 let negPanY = 0;
@@ -2334,10 +2395,13 @@ async function renderNegativeSlideAtIdx(idx) {
         noteEl.textContent = "Maschera arancione C-41: i cieli azzurri appaiono arancioni e le ombre scure risultano quasi trasparenti. Passa alla stampa per invertire i colori.";
     }
 
+    const token = ++negRenderToken;
     const imgEl = document.getElementById("negModalImg");
     const rawImg = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
+    if (token !== negRenderToken) return;
     renderFrameWithWebGL(rawImg, currentRoll.film, frame, currentRoll.pushStops, null, false, 1400, negMode);
     const negBlob = await canvasToBlob(glCanvas, "image/jpeg", 0.90);
+    if (token !== negRenderToken) return;
     const u = URL.createObjectURL(negBlob);
     imgEl.onload = () => URL.revokeObjectURL(u);
     imgEl.src = u;
@@ -3569,7 +3633,7 @@ onId("closeLabModalBtn", "click", () => {
 });
 
 /* =========================================================
-   12. DIAGNOSTICA DISPOSITIVO, RISOLUZIONE, MEMORIA & GPU
+   12. DIAGNOSTICA DISPOSITIVO, RISOLUZIONE, TORCIA & GPU
    ========================================================= */
 async function refreshDiagSummary() {
     const isHttps = window.isSecureContext;
@@ -3636,8 +3700,21 @@ onId("runDiagTestBtn", "click", async () => {
         const sh = tempVid.videoHeight;
         const mp = ((sw * sh) / 1000000).toFixed(1);
         document.getElementById("diagSensorRes").textContent = `${sw}×${sh} (${mp} MP)`;
+
+        const track = stream.getVideoTracks()[0];
+        const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+        let flashCapsTxt = caps && caps.torch ? "Torcia LED OK" : "Torcia non esposta dal browser";
+        if (typeof ImageCapture !== "undefined" && track) {
+            try {
+                const pc = await new ImageCapture(track).getPhotoCapabilities();
+                if (pc && Array.isArray(pc.fillLightMode) && pc.fillLightMode.includes("flash")) {
+                    flashCapsTxt += " + ImageCapture Flash OK";
+                }
+            } catch (e) { }
+        }
+
         stream.getTracks().forEach(t => t.stop());
-        log.textContent = `Sensore OK: ${sw}×${sh}px. 2/2 Benchmark GPU WebGL...`;
+        log.textContent = `Sensore OK: ${sw}×${sh}px | ${flashCapsTxt}. 2/2 Benchmark GPU WebGL...`;
     } catch (err) {
         document.getElementById("diagSensorRes").textContent = "Bloccato (Serve HTTPS)";
         log.textContent = `Camera non accessibile (${err.name}). 2/2 Benchmark GPU WebGL...`;

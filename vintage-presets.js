@@ -1,5 +1,5 @@
 /* =========================================================
-   VINTAGE-PRESETS.JS — USA & GETTA v1.0.6 (HUJI '98 ENGINE)
+   VINTAGE-PRESETS.JS — USA & GETTA v1.0.7 (HUJI '98 + TORCIA REALE)
    ========================================================= */
 
 const VINTAGE_DECADES = [
@@ -16,7 +16,7 @@ const VINTAGE_DECADES = [
         burn: 0.22,
         evBase: -0.10,
         stampColor: "#e6c79c",
-        optics: { ca: 0.0, barrel: 0.014, softness: 0.04, fadeBlack: 0.012, orthoBW: true },
+        optics: { ca: 0.0, barrel: 0.014, softness: 0.06, fadeBlack: 0.012, orthoBW: true },
         colorGrade: {
             shadowLift: [0.010, 0.009, 0.006],
             midGain: [1.01, 1.00, 0.98],
@@ -24,7 +24,7 @@ const VINTAGE_DECADES = [
         },
         film: {
             id: "vintage-40s", name: "1940s Nitrate Noir", iso: 100, mode: "bw",
-            toe: 0.010, shoulder: 0.34, contrast: 0.56, temp: 0.0, tint: 0.0,
+            toe: 0.010, shoulder: 0.34, contrast: 0.48, temp: 0.0, tint: 0.0,
             saturation: 0.0, shadowTemp: 0.04, highTemp: 0.03,
             halation: 0.04, halThreshold: 0.90, bloom: 0.03, grain: 0.046, grainSize: 1.30,
             matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1]
@@ -72,7 +72,7 @@ const VINTAGE_DECADES = [
         burn: 0.14,
         evBase: -0.14,
         stampColor: "#ff8c3a",
-        optics: { ca: 0.10, barrel: 0.014, softness: 0.0, fadeBlack: 0.008, orthoBW: false },
+        optics: { ca: 0.10, barrel: 0.014, softness: 0.04, fadeBlack: 0.008, orthoBW: false },
         colorGrade: {
             shadowLift: [-0.004, 0.010, 0.014],
             midGain: [1.03, 1.00, 0.95],
@@ -100,7 +100,7 @@ const VINTAGE_DECADES = [
         burn: 0.18,
         evBase: -0.14,
         stampColor: "#ff7828",
-        optics: { ca: 0.12, barrel: 0.016, softness: 0.03, fadeBlack: 0.018, orthoBW: false },
+        optics: { ca: 0.12, barrel: 0.016, softness: 0.06, fadeBlack: 0.018, orthoBW: false },
         colorGrade: {
             shadowLift: [0.030, 0.020, 0.006],
             midGain: [1.04, 0.99, 0.90],
@@ -128,7 +128,7 @@ const VINTAGE_DECADES = [
         burn: 0.14,
         evBase: -0.15,
         stampColor: "#ff661a",
-        optics: { ca: 0.14, barrel: 0.016, softness: 0.0, fadeBlack: 0.004, orthoBW: false },
+        optics: { ca: 0.16, barrel: 0.016, softness: 0.06, fadeBlack: 0.004, orthoBW: false },
         colorGrade: {
             shadowLift: [0.008, -0.002, 0.014],
             midGain: [1.02, 0.98, 1.01],
@@ -156,7 +156,7 @@ const VINTAGE_DECADES = [
         burn: 0.16,
         evBase: -0.20,
         stampColor: "#ff5a14",
-        optics: { ca: 0.16, barrel: 0.020, softness: 0.0, fadeBlack: 0.006, orthoBW: false },
+        optics: { ca: 0.22, barrel: 0.022, softness: 0.18, fadeBlack: 0.008, orthoBW: false },
         colorGrade: {
             shadowLift: [0.010, 0.004, 0.016],
             midGain: [1.02, 0.99, 0.99],
@@ -233,15 +233,30 @@ function getActiveVintageDecade(id = selectedVintageDecadeId) {
     return VINTAGE_DECADES.find(d => d.id === id) || VINTAGE_DECADES[5];
 }
 
+function getVintageDateParts() {
+    const now = new Date();
+    return {
+        mm: String(now.getMonth() + 1).padStart(2, "0"),
+        dd: String(now.getDate()).padStart(2, "0"),
+        todayYY: "'" + String(now.getFullYear()).slice(-2)
+    };
+}
+
 function getVintageDateStampString(decade) {
     if (vintageDateMode === "off") return "";
-    const now = new Date();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    const yy = vintageDateMode === "today"
-        ? "'" + String(now.getFullYear()).slice(-2)
-        : decade.yearStamp;
+    const { mm, dd, todayYY } = getVintageDateParts();
+    const yy = vintageDateMode === "today" ? todayYY : decade.yearStamp;
     return `${yy} ${mm} ${dd}`;
+}
+
+function resolveFrameStampString(frame, decade) {
+    if (frame.dateMMDD) {
+        const yy = (frame.dateModeAtShot === "today" && frame.todayYY) ? frame.todayYY : decade.yearStamp;
+        return `${yy} ${frame.dateMMDD}`;
+    }
+    if (frame.stamp) return frame.stamp;
+    const { mm, dd } = getVintageDateParts();
+    return `${decade.yearStamp} ${mm} ${dd}`;
 }
 
 function playPlasticWheelClick(notch = 1) {
@@ -506,7 +521,9 @@ function updateVintageFlashButtonUI() {
         lbl.textContent = "CARICA FLASH...";
     } else if (vintageFlashState === "ready") {
         btn.classList.add("ready");
-        lbl.textContent = "⚡ FLASH PRONTO";
+        if (facingMode === "user") lbl.textContent = "⚡ FLASH SCHERMO";
+        else if (hardwareFlashSupport.hasPhotoFlash || hardwareFlashSupport.hasTorch) lbl.textContent = "⚡ TORCIA PRONTA";
+        else lbl.textContent = "⚡ FLASH PRONTO";
     } else {
         lbl.textContent = "⚡ CARICA FLASH";
     }
@@ -610,7 +627,8 @@ async function startVintageCameraStream() {
         video.style.display = "block";
         try { await video.play(); } catch (e) { }
         fallback.style.display = "none";
-        detectFlashCapabilities();
+        await detectFlashCapabilities();
+        updateVintageFlashButtonUI();
         const track = mediaStream.getVideoTracks()[0];
         if (track) applyFixedHyperfocalFocus(track);
     } catch (err) {
@@ -640,6 +658,8 @@ function enqueueVintageLatentFrame(sourceCanvas, usedFlash = false, hardwareFlas
 
     const rollRef = currentVintageRoll;
     const decadeId = rollRef.decadeId;
+    const dateModeAtShot = vintageDateMode;
+    const { mm, dd, todayYY } = getVintageDateParts();
     const stamp = getVintageDateStampString(getActiveVintageDecade(decadeId));
 
     vintagePendingCount++;
@@ -674,6 +694,9 @@ function enqueueVintageLatentFrame(sourceCanvas, usedFlash = false, hardwareFlas
                 developedBlob: null,
                 thumbBlob: null,
                 stamp,
+                dateModeAtShot,
+                dateMMDD: `${mm} ${dd}`,
+                todayYY,
                 vintageEdit: null
             });
 
@@ -688,14 +711,14 @@ function enqueueVintageLatentFrame(sourceCanvas, usedFlash = false, hardwareFlas
     return job;
 }
 
-function buildInitialVintageEdit(decade, applyRandom) {
+function buildInitialVintageEdit(decade, applyRandom, showStamp = true) {
     const ex = decade.exceptions;
     const rollVal = (prob) => (applyRandom && Math.random() < prob) ? +(0.24 + Math.random() * 0.42).toFixed(2) : 0;
 
     return {
         enabled: true,
         decadeId: decade.id,
-        showStamp: true,
+        showStamp,
         seed: Math.random(),
         lightLeak: rollVal(ex.leakProb),
         chemStain: rollVal(ex.chemProb),
@@ -710,7 +733,8 @@ function buildInitialVintageEdit(decade, applyRandom) {
 function ensureFrameVintageEdit(frame) {
     if (frame.vintageEdit) return frame.vintageEdit;
     const dec = getActiveVintageDecade(frame.decadeId || (currentVintageRoll && currentVintageRoll.decadeId));
-    frame.vintageEdit = buildInitialVintageEdit(dec, false);
+    const showStamp = frame.dateModeAtShot ? frame.dateModeAtShot !== "off" : !!frame.stamp;
+    frame.vintageEdit = buildInitialVintageEdit(dec, false, showStamp);
     return frame.vintageEdit;
 }
 
@@ -791,24 +815,27 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
     const oCtx = outCanvas.getContext("2d");
     oCtx.drawImage(glCanvas, 0, 0);
 
-    if (edit.enabled && edit.showStamp && frame.stamp) {
-        const fontSize = Math.max(20, Math.round(outCanvas.width * 0.036));
-        oCtx.save();
-        oCtx.font = `900 ${fontSize}px "Courier New", monospace`;
-        oCtx.textAlign = "right";
-        oCtx.textBaseline = "bottom";
-        const padX = Math.round(outCanvas.width * 0.045);
-        const padY = Math.round(outCanvas.height * 0.038);
+    if (edit.enabled && edit.showStamp) {
+        const stampTxt = resolveFrameStampString(frame, decade);
+        if (stampTxt) {
+            const fontSize = Math.max(20, Math.round(outCanvas.width * 0.036));
+            oCtx.save();
+            oCtx.font = `900 ${fontSize}px "Courier New", monospace`;
+            oCtx.textAlign = "right";
+            oCtx.textBaseline = "bottom";
+            const padX = Math.round(outCanvas.width * 0.045);
+            const padY = Math.round(outCanvas.height * 0.038);
 
-        oCtx.shadowColor = "rgba(255, 56, 8, 0.95)";
-        oCtx.shadowBlur = Math.round(fontSize * 0.45);
-        oCtx.fillStyle = decade.stampColor || "#ff5a14";
-        oCtx.fillText(frame.stamp, outCanvas.width - padX, outCanvas.height - padY);
+            oCtx.shadowColor = "rgba(255, 42, 0, 0.95)";
+            oCtx.shadowBlur = Math.round(fontSize * 0.55);
+            oCtx.fillStyle = decade.stampColor || "#ff5a14";
+            oCtx.fillText(stampTxt, outCanvas.width - padX, outCanvas.height - padY);
 
-        oCtx.shadowBlur = 0;
-        oCtx.fillStyle = "rgba(255, 224, 166, 0.85)";
-        oCtx.fillText(frame.stamp, outCanvas.width - padX, outCanvas.height - padY);
-        oCtx.restore();
+            oCtx.shadowBlur = Math.round(fontSize * 0.14);
+            oCtx.fillStyle = "rgba(255, 224, 166, 0.88)";
+            oCtx.fillText(stampTxt, outCanvas.width - padX, outCanvas.height - padY);
+            oCtx.restore();
+        }
     }
 
     return outCanvas;
@@ -845,7 +872,8 @@ async function executeVintageDevelopSequence() {
         await vWaitPaint();
         const frame = currentVintageRoll.frames[i];
         const decade = getActiveVintageDecade(frame.decadeId || currentVintageRoll.decadeId);
-        frame.vintageEdit = buildInitialVintageEdit(decade, vintageRandomEnabled);
+        const showStamp = frame.dateModeAtShot ? frame.dateModeAtShot !== "off" : !!frame.stamp;
+        frame.vintageEdit = buildInitialVintageEdit(decade, vintageRandomEnabled, showStamp);
 
         const srcImg = await loadImageFromSource(frame.rawBlob || frame.rawDataUrl);
         const outCanvas = await renderVintageShotWithEdit(srcImg, frame, null);
@@ -967,9 +995,10 @@ async function openVintageLabRoll() {
             cell.appendChild(numSpan);
 
             const edit = ensureFrameVintageEdit(frame);
+            const editDec = getActiveVintageDecade(edit.decadeId || frame.decadeId);
             const tagEl = document.createElement("em");
             tagEl.className = "defect-dot";
-            tagEl.textContent = edit.enabled ? (edit.showStamp && frame.stamp ? frame.stamp : "FX") : "PULITA";
+            tagEl.textContent = edit.enabled ? (edit.showStamp ? resolveFrameStampString(frame, editDec) : "FX") : "PULITA";
             cell.appendChild(tagEl);
 
             cell.addEventListener("click", () => openVintageShotDetail(idx));
@@ -1315,35 +1344,18 @@ function initVintageEventListeners() {
         vintageCapturing = true;
         const curtain = document.getElementById("vintageCurtain");
 
-        const prevFlashActive = flashActive;
-        flashActive = useFlash;
         try {
-            if (useFlash && facingMode === "user") {
-                const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, true);
-                playShutterSound(1 / 125, true);
-                if (curtain) {
-                    curtain.classList.add("blink");
-                    setTimeout(() => curtain.classList.remove("blink"), 110);
-                }
-                await vWaitPaint();
-                enqueueVintageLatentFrame(capCanvas, true, hardwareFlashFired);
-            } else {
-                playShutterSound(1 / 125, useFlash);
-                if (curtain) {
-                    curtain.style.backgroundColor = useFlash ? "#fff8ea" : "#000000";
-                    curtain.classList.add("blink");
-                    setTimeout(() => {
-                        curtain.classList.remove("blink");
-                        curtain.style.backgroundColor = "#000000";
-                    }, 110);
-                }
-                const mirror = facingMode === "user";
-                const capCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, 3 / 4, mirror, 2400);
-                await vWaitPaint();
-                enqueueVintageLatentFrame(capCanvas, useFlash, false);
+            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, 3 / 4, useFlash, 2400);
+            playShutterSound(1 / 125, useFlash);
+            if (curtain) {
+                curtain.style.backgroundColor = "#000000";
+                curtain.classList.add("blink");
+                setTimeout(() => curtain.classList.remove("blink"), 110);
             }
+            setVintageWheelArmedState(false);
+            await vWaitPaint();
+            enqueueVintageLatentFrame(capCanvas, useFlash, hardwareFlashFired);
         } finally {
-            flashActive = prevFlashActive;
             vintageCapturing = false;
         }
     });
@@ -1461,7 +1473,8 @@ function initVintageEventListeners() {
     vOn("vEditRerollBtn", "click", () => {
         const fr = currentVintageRoll.frames[activeVintageDetailIdx];
         const dec = getActiveVintageDecade(ensureFrameVintageEdit(fr).decadeId);
-        fr.vintageEdit = buildInitialVintageEdit(dec, true);
+        const keepStamp = ensureFrameVintageEdit(fr).showStamp;
+        fr.vintageEdit = buildInitialVintageEdit(dec, true, keepStamp);
         syncVintageEditorUI(fr);
         refreshVintageDetailPreview(fr);
         scheduleSaveVintageEditedFrame(fr);
@@ -1470,7 +1483,8 @@ function initVintageEventListeners() {
     vOn("vEditResetBtn", "click", () => {
         const fr = currentVintageRoll.frames[activeVintageDetailIdx];
         const dec = getActiveVintageDecade(ensureFrameVintageEdit(fr).decadeId);
-        fr.vintageEdit = buildInitialVintageEdit(dec, false);
+        const keepStamp = ensureFrameVintageEdit(fr).showStamp;
+        fr.vintageEdit = buildInitialVintageEdit(dec, false, keepStamp);
         syncVintageEditorUI(fr);
         refreshVintageDetailPreview(fr);
         scheduleSaveVintageEditedFrame(fr);

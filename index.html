@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
   <title>Analog PhotoLab v1.0 — Pellicole, Polaroid &amp; Usa &amp; Getta</title>
-  <link rel="stylesheet" href="style.css?v=1.0.6" />
+  <link rel="stylesheet" href="style.css?v=1.0.7" />
 </head>
 
 <body>
@@ -1495,15 +1495,15 @@
       if (u_chromaticAberration <= 0.001) {
         return texture2D(u_image, uv).rgb;
       }
-      float edgeCA = smoothstep(0.32, 1.0, distSqSrc);
-      vec2 dir = (uv - 0.5) * edgeCA * (u_chromaticAberration * 0.0032);
+      float edgeCA = smoothstep(0.28, 1.0, distSqSrc);
+      vec2 dir = (uv - 0.5) * edgeCA * (u_chromaticAberration * 0.0055);
       float r = texture2D(u_image, clamp(uv + dir, 0.001, 0.999)).r;
       float g = texture2D(u_image, uv).g;
-      float b = texture2D(u_image, clamp(uv - dir * 1.1, 0.001, 0.999)).b;
+      float b = texture2D(u_image, clamp(uv - dir * 1.15, 0.001, 0.999)).b;
       return vec3(r, g, b);
     }
 
-    void computeOpticalEffects(vec2 uv, vec2 texelSize, float threshold, out vec3 halationOut, out vec3 bloomOut) {
+    void computeOpticalEffects(vec2 uv, vec2 optUnit, float threshold, out vec3 halationOut, out vec3 bloomOut) {
       vec3 halAccum = vec3(0.0);
       vec3 bloomAccum = vec3(0.0);
       float wHalTotal = 0.0;
@@ -1513,7 +1513,7 @@
         float angle = float(i) * 2.3999632;
         float normDist = sqrt(float(i + 1) / 16.0);
 
-        vec2 offH = vec2(cos(angle), sin(angle)) * (normDist * 16.0) * texelSize;
+        vec2 offH = vec2(cos(angle), sin(angle)) * (normDist * 16.0) * optUnit;
         vec3 sH = texture2D(u_image, clamp(uv + offH, 0.001, 0.999)).rgb;
         float lumH = dot(sH, vec3(0.299, 0.587, 0.114));
         float bright = max(0.0, lumH - threshold) / max(0.05, 1.0 - threshold);
@@ -1521,10 +1521,10 @@
         halAccum += sH * (bright * bright) * wH;
         wHalTotal += wH;
 
-        vec2 offB = vec2(cos(angle + 0.5), sin(angle + 0.5)) * (normDist * 18.0) * texelSize;
+        vec2 offB = vec2(cos(angle + 0.5), sin(angle + 0.5)) * (normDist * 18.0) * optUnit;
         vec3 sB = texture2D(u_image, clamp(uv + offB, 0.001, 0.999)).rgb;
         float lumB = dot(sB, vec3(0.299, 0.587, 0.114));
-        float bBright = max(0.0, lumB - 0.88) / 0.12;
+        float bBright = max(0.0, lumB - 0.86) / 0.14;
         float wB = 1.0 - normDist * 0.55;
         bloomAccum += sB * (bBright * bBright) * wB;
         wBloomTotal += wB;
@@ -1551,18 +1551,22 @@
       vec2 centeredOut = v_texCoord - 0.5;
       float distSqOut = dot(centeredOut, centeredOut) * 2.0;
 
-      vec2 srcTexel = 1.0 / max(u_srcResolution, vec2(1.0));
+      float srcAspect = u_srcResolution.x / max(1.0, u_srcResolution.y);
+      vec2 normAspect = vec2(1.0 / max(1.0, srcAspect), min(1.0, srcAspect));
+      vec2 optUnit = normAspect * 0.0011;
+      vec2 softUnit = normAspect * 0.00085;
+
       vec3 baseRgb = sampleWithCA(srcUV, distSqSrc);
 
       if (u_lensSoftness > 0.001) {
-        float edgeBlur = smoothstep(0.38, 1.0, distSqSrc);
+        float edgeBlur = smoothstep(0.35, 1.0, distSqSrc);
         float blurRad = u_lensSoftness * edgeBlur * 2.2;
-        if (blurRad > 0.08) {
+        if (blurRad > 0.04) {
           vec3 bSum = baseRgb;
-          bSum += sampleWithCA(clamp(srcUV + vec2(blurRad, 0.0) * srcTexel, 0.001, 0.999), distSqSrc);
-          bSum += sampleWithCA(clamp(srcUV - vec2(blurRad, 0.0) * srcTexel, 0.001, 0.999), distSqSrc);
-          bSum += sampleWithCA(clamp(srcUV + vec2(0.0, blurRad) * srcTexel, 0.001, 0.999), distSqSrc);
-          bSum += sampleWithCA(clamp(srcUV - vec2(0.0, blurRad) * srcTexel, 0.001, 0.999), distSqSrc);
+          bSum += sampleWithCA(clamp(srcUV + vec2(blurRad, 0.0) * softUnit, 0.001, 0.999), distSqSrc);
+          bSum += sampleWithCA(clamp(srcUV - vec2(blurRad, 0.0) * softUnit, 0.001, 0.999), distSqSrc);
+          bSum += sampleWithCA(clamp(srcUV + vec2(0.0, blurRad) * softUnit, 0.001, 0.999), distSqSrc);
+          bSum += sampleWithCA(clamp(srcUV - vec2(0.0, blurRad) * softUnit, 0.001, 0.999), distSqSrc);
           baseRgb = bSum * 0.2;
         }
       }
@@ -1592,7 +1596,7 @@
 
       if (u_halation > 0.001 || u_bloom > 0.001) {
         vec3 halVec, bloomVec;
-        computeOpticalEffects(srcUV, srcTexel, u_halThreshold, halVec, bloomVec);
+        computeOpticalEffects(srcUV, optUnit, u_halThreshold, halVec, bloomVec);
         col += halVec * u_halationColor * u_halation;
         col += bloomVec * u_bloom;
       }
@@ -1656,31 +1660,31 @@
         float nLeak = fbm(v_texCoord * 3.2 + u_defectSeed * 19.0);
         vec3 leakRGB = vec3(0.0);
 
-        if (leakType < 0.45) {
-          float yTop = leakType < 0.25 ? (1.0 - v_texCoord.y) : v_texCoord.y;
-          float tBand = (yTop - 0.11) * 16.0;
+        if (leakType < 0.38) {
+          float yTop = leakType < 0.20 ? (1.0 - v_texCoord.y) : v_texCoord.y;
+          float tBand = (yTop - 0.10) * 11.0;
           float bandY = exp(-(tBand * tBand));
-          float cellX = fract(v_texCoord.x * 7.5 + fract(u_defectSeed * 9.1));
-          float sprocketBox = smoothstep(0.18, 0.28, cellX) * (1.0 - smoothstep(0.58, 0.68, cellX));
-          float fadeSide = smoothstep(0.05, 0.85, v_texCoord.x + 0.15 * nLeak);
-          float spMask = bandY * sprocketBox * fadeSide * amt * 0.85;
-          vec3 spCol = mix(vec3(0.35, 0.85, 0.82), vec3(1.00, 0.55, 0.18), smoothstep(0.25, 0.85, v_texCoord.x));
+          float cellX = fract(v_texCoord.x * 7.5 + fract(u_defectSeed * 9.1) + (nLeak - 0.5) * 0.25);
+          float sprocketBox = smoothstep(0.10, 0.34, cellX) * (1.0 - smoothstep(0.52, 0.76, cellX));
+          float fadeSide = smoothstep(0.05, 0.85, v_texCoord.x + 0.18 * nLeak);
+          float spMask = bandY * (0.28 + 0.72 * sprocketBox) * fadeSide * amt * 0.78;
+          vec3 spCol = mix(vec3(0.32, 0.80, 0.78), vec3(1.00, 0.48, 0.14), smoothstep(0.20, 0.85, v_texCoord.x));
           leakRGB += spCol * spMask;
 
           float cornerD = length(vec2(v_texCoord.x, yTop));
-          float tCorner = cornerD * 2.2;
-          float cornerGlow = exp(-(tCorner * tCorner)) * amt * 0.42;
-          leakRGB += vec3(0.95, 0.35, 0.42) * cornerGlow;
+          float tCorner = cornerD * 2.1;
+          float cornerGlow = exp(-(tCorner * tCorner)) * amt * 0.45;
+          leakRGB += vec3(0.95, 0.32, 0.36) * cornerGlow;
         } else {
-          float edgeCoord = leakType < 0.65 ? v_texCoord.x : (leakType < 0.85 ? (1.0 - v_texCoord.x) : (1.0 - v_texCoord.y));
-          float alongCoord = leakType < 0.85 ? v_texCoord.y : v_texCoord.x;
-          float spread = mix(8.0, 3.6, amt);
-          float tEdge = (edgeCoord - 0.01) * (spread + nLeak * 2.0);
+          float edgeCoord = leakType < 0.62 ? v_texCoord.x : (leakType < 0.84 ? (1.0 - v_texCoord.x) : (1.0 - v_texCoord.y));
+          float alongCoord = leakType < 0.84 ? v_texCoord.y : v_texCoord.x;
+          float spread = mix(7.5, 3.2, amt);
+          float tEdge = (edgeCoord - 0.01) * (spread + nLeak * 2.2);
           float edgeBand = exp(-(tEdge * tEdge));
-          float tFocal = (alongCoord - leakPos) * 1.8;
+          float tFocal = (alongCoord - leakPos) * 1.7;
           float focalSpot = exp(-(tFocal * tFocal));
-          float lMask = clamp(edgeBand * (0.40 + 0.75 * focalSpot) * (0.75 + 0.45 * nLeak) * (amt * 1.15), 0.0, 1.3);
-          leakRGB += vec3(0.98, 0.18, 0.04) * lMask + vec3(0.95, 0.60, 0.12) * pow(max(lMask, 0.0001), 1.7);
+          float lMask = clamp(edgeBand * (0.42 + 0.75 * focalSpot) * (0.75 + 0.45 * nLeak) * (amt * 1.15), 0.0, 1.35);
+          leakRGB += vec3(0.98, 0.18, 0.04) * lMask + vec3(0.96, 0.62, 0.12) * pow(max(lMask, 0.0001), 1.65);
         }
 
         col = 1.0 - (1.0 - col) * (1.0 - clamp(leakRGB, 0.0, 0.92));
@@ -1826,7 +1830,8 @@
       float midtoneMask = 4.0 * finalLuma * (1.0 - finalLuma);
       float strength = u_grain * (0.22 + 0.78 * midtoneMask);
 
-      float grainPitch = max(0.5, u_grainSize * max(1.0, u_zoom * 0.85));
+      float refResScale = max(1.0, max(u_outResolution.x, u_outResolution.y) / 1400.0);
+      float grainPitch = max(0.5, u_grainSize * refResScale * max(1.0, u_zoom * 0.85));
       vec2 grainCoord = gl_FragCoord.xy / grainPitch;
       if (u_isBW || u_paperIsBW) {
         float g = organicGrain(grainCoord, 1.3) * strength;
@@ -1857,9 +1862,9 @@
     }
   </script>
 
-  <script src="polaroid.js?v=1.0.6"></script>
-  <script src="vintage-presets.js?v=1.0.6"></script>
-  <script src="app.js?v=1.0.6"></script>
+  <script src="polaroid.js?v=1.0.7"></script>
+  <script src="vintage-presets.js?v=1.0.7"></script>
+  <script src="app.js?v=1.0.7"></script>
 
 </body>
 

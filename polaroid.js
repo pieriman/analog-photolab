@@ -1,5 +1,5 @@
 /* =========================================================
-   POLAROID.JS — v1.0.6 (FLASH ISTANTANEO + FULL-RES FLUIDO)
+   POLAROID.JS — v1.0.7 (TORCIA HARDWARE REAL + FULL-RES FLUIDO)
    ========================================================= */
 
 const POLAROID_STOCKS = [
@@ -16,7 +16,7 @@ const POLAROID_STOCKS = [
         surface: "Lucida (Glossy)",
         devSeconds: 10,
         paperId: "kodak-endura",
-        optics: { ca: 0.08, barrel: 0.012, softness: 0.02, fadeBlack: 0.014, edgeBleed: 0.14 },
+        optics: { ca: 0.08, barrel: 0.012, softness: 0.04, fadeBlack: 0.014, edgeBleed: 0.14 },
         colorGrade: {
             shadowLift: [-0.008, 0.014, 0.016],
             midGain: [1.01, 1.00, 0.97],
@@ -70,7 +70,7 @@ const POLAROID_STOCKS = [
         surface: "Lucida Spessa",
         devSeconds: 12,
         paperId: "kodak-endura",
-        optics: { ca: 0.10, barrel: 0.014, softness: 0.04, fadeBlack: 0.016, edgeBleed: 0.16 },
+        optics: { ca: 0.10, barrel: 0.014, softness: 0.06, fadeBlack: 0.016, edgeBleed: 0.16 },
         colorGrade: {
             shadowLift: [0.010, 0.014, 0.006],
             midGain: [1.04, 0.99, 0.91],
@@ -97,7 +97,7 @@ const POLAROID_STOCKS = [
         surface: "Satinata / Lucida",
         devSeconds: 8,
         paperId: "ilford-fb-warm",
-        optics: { ca: 0.0, barrel: 0.012, softness: 0.02, fadeBlack: 0.020, edgeBleed: 0.12 },
+        optics: { ca: 0.0, barrel: 0.012, softness: 0.04, fadeBlack: 0.020, edgeBleed: 0.12 },
         colorGrade: {
             shadowLift: [0.014, 0.012, 0.010],
             midGain: [1.02, 1.00, 0.97],
@@ -124,7 +124,7 @@ const POLAROID_STOCKS = [
         surface: "Lucida (Glossy)",
         devSeconds: 10,
         paperId: "kodak-endura",
-        optics: { ca: 0.08, barrel: 0.012, softness: 0.02, fadeBlack: 0.014, edgeBleed: 0.14 },
+        optics: { ca: 0.08, barrel: 0.012, softness: 0.04, fadeBlack: 0.014, edgeBleed: 0.14 },
         colorGrade: {
             shadowLift: [-0.008, 0.014, 0.016],
             midGain: [1.01, 1.00, 0.97],
@@ -151,7 +151,7 @@ const POLAROID_STOCKS = [
         surface: "Lucida (Glossy)",
         devSeconds: 9,
         paperId: "fuji-crystal-glossy",
-        optics: { ca: 0.10, barrel: 0.014, softness: 0.02, fadeBlack: 0.010, edgeBleed: 0.18 },
+        optics: { ca: 0.10, barrel: 0.014, softness: 0.04, fadeBlack: 0.010, edgeBleed: 0.18 },
         colorGrade: {
             shadowLift: [-0.005, 0.010, 0.014],
             midGain: [1.02, 0.99, 0.98],
@@ -442,7 +442,15 @@ function updatePolaroidUI() {
     const flashBtn = document.getElementById("polaroidFlashBtn");
     if (flashBtn) {
         flashBtn.classList.toggle("active", polaroidFlashEnabled);
-        flashBtn.textContent = polaroidFlashEnabled ? "⚡ ON" : "⚡ OFF";
+        if (!polaroidFlashEnabled) {
+            flashBtn.textContent = "⚡ OFF";
+        } else if (facingMode === "user") {
+            flashBtn.textContent = "⚡ SCHERMO";
+        } else if (hardwareFlashSupport.hasPhotoFlash || hardwareFlashSupport.hasTorch) {
+            flashBtn.textContent = "⚡ TORCIA ON";
+        } else {
+            flashBtn.textContent = "⚡ SIMULATO";
+        }
     }
 
     const stockStrip = document.getElementById("polaroidStockStrip");
@@ -494,7 +502,8 @@ async function startPolaroidCameraStream() {
             try { await video.play(); } catch (e) { }
         }
         if (fallback) fallback.style.display = "none";
-        detectFlashCapabilities();
+        await detectFlashCapabilities();
+        updatePolaroidUI();
     } catch (err) {
         if (video) video.style.display = "none";
         if (fallback) fallback.style.display = "flex";
@@ -546,6 +555,8 @@ function startLivePolaroidDevelopment(initialShot, previewImgOrCanvas, stock, fr
 
     canvas.width = 240;
     canvas.height = Math.round(240 / stock.imgRatio);
+    canvas.style.width = "146px";
+    canvas.style.height = Math.round(146 / stock.imgRatio) + "px";
     canvas.style.borderRadius = stock.format === "round" ? "50%" : "0px";
 
     tray.classList.add("open");
@@ -736,12 +747,11 @@ async function processPolaroidInQueue(croppedCanvas, stock, frameStyle, ldEV, us
     return shot;
 }
 
-function captureAndDevelopPolaroidInstant(sourceCanvas, usedFlash = false, hardwareFlashFired = false, maxSideCap = null) {
+function captureAndDevelopPolaroidInstant(croppedCanvas, usedFlash = false, hardwareFlashFired = false) {
     const stock = getPolaroidStock();
     const frameStyle = getPolaroidFrameStyle();
     const ldSnapshot = polaroidLdEV;
 
-    const croppedCanvas = drawCroppedToCanvas(sourceCanvas, sourceCanvas.width, sourceCanvas.height, stock.imgRatio, false, maxSideCap);
     const previewCanvas = buildPolaroidFastPreview(croppedCanvas, stock);
 
     const bgJob = polSaveQueue.then(async () => {
@@ -962,38 +972,18 @@ function initPolaroidEventListeners() {
         const useFlash = polaroidFlashEnabled;
         const curtain = document.getElementById("polaroidCurtain");
 
-        const prevFlash = flashActive;
-        flashActive = useFlash;
         try {
             const stock = getPolaroidStock();
-            if (useFlash && facingMode === "user") {
-                const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, stock.imgRatio, true);
-                playPolaroidEjectSound();
-                if (curtain) {
-                    curtain.classList.add("blink");
-                    setTimeout(() => curtain.classList.remove("blink"), 110);
-                }
-                await polWaitPaint();
-                captureAndDevelopPolaroidInstant(capCanvas, true, hardwareFlashFired, 2400);
-                capCanvas.width = 0; capCanvas.height = 0;
-            } else {
-                playPolaroidEjectSound();
-                if (curtain) {
-                    curtain.style.backgroundColor = useFlash ? "#fff8ea" : "#000000";
-                    curtain.classList.add("blink");
-                    setTimeout(() => {
-                        curtain.classList.remove("blink");
-                        curtain.style.backgroundColor = "#000000";
-                    }, 110);
-                }
-                const mirror = facingMode === "user";
-                const capCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, stock.imgRatio, mirror, 2400);
-                await polWaitPaint();
-                captureAndDevelopPolaroidInstant(capCanvas, useFlash, false, 2400);
-                capCanvas.width = 0; capCanvas.height = 0;
+            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameInstant(video, stock.imgRatio, useFlash, 2400);
+            playPolaroidEjectSound();
+            if (curtain) {
+                curtain.style.backgroundColor = "#000000";
+                curtain.classList.add("blink");
+                setTimeout(() => curtain.classList.remove("blink"), 110);
             }
+            await polWaitPaint();
+            captureAndDevelopPolaroidInstant(capCanvas, useFlash, hardwareFlashFired);
         } finally {
-            flashActive = prevFlash;
             polaroidCapturing = false;
         }
     });
@@ -1005,12 +995,9 @@ function initPolaroidEventListeners() {
         try {
             const img = await loadImageFromSource(file);
             playPolaroidEjectSound();
-            const c = document.createElement("canvas");
-            c.width = img.naturalWidth || img.width;
-            c.height = img.naturalHeight || img.height;
-            c.getContext("2d").drawImage(img, 0, 0);
-            captureAndDevelopPolaroidInstant(c, polaroidFlashEnabled, false, 3072);
-            c.width = 0; c.height = 0;
+            const stock = getPolaroidStock();
+            const c = drawCroppedToCanvas(img, img.naturalWidth || img.width, img.naturalHeight || img.height, stock.imgRatio, false, 3072);
+            captureAndDevelopPolaroidInstant(c, polaroidFlashEnabled, false);
         } catch (err) {
             alert("Impossibile caricare l'immagine selezionata.");
         }
