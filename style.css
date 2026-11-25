@@ -3077,3 +3077,8 @@ textarea#jsonArea {
   color: var(--text);
   margin-top: 2px;
 }
+
+#vintageLabGrid .contact-frame img {
+  object-fit: contain;
+  background-color: #0b0b0e;
+}

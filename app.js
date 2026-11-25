@@ -1,5 +1,5 @@
 /* =========================================================
-   ANALOG PHOTOLAB v1.0.9 — APP.JS (LED FLASH SINCRO + BACK NAV)
+   ANALOG PHOTOLAB v1.0.10 — APP.JS (LED FLASH FIX + SAFE HOME NAV)
    ========================================================= */
 
 function onId(id, event, handler) {
@@ -453,30 +453,52 @@ function initDB() {
 function saveRollToDB(roll) {
     if (!db || !db.objectStoreNames.contains("rolls")) return Promise.resolve();
     return new Promise((resolve) => {
-        const tx = db.transaction("rolls", "readwrite");
-        tx.objectStore("rolls").put(roll);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
+        let settled = false;
+        const done = () => { if (!settled) { settled = true; resolve(); } };
+        const timer = setTimeout(done, 2500);
+        try {
+            const tx = db.transaction("rolls", "readwrite");
+            tx.objectStore("rolls").put(roll);
+            tx.oncomplete = () => { clearTimeout(timer); done(); };
+            tx.onerror = () => { clearTimeout(timer); done(); };
+            tx.onabort = () => { clearTimeout(timer); done(); };
+        } catch (e) {
+            clearTimeout(timer);
+            done();
+        }
     });
 }
 
 function getAllRollsFromDB() {
     if (!db || !db.objectStoreNames.contains("rolls")) return Promise.resolve([]);
     return new Promise((resolve) => {
-        const tx = db.transaction("rolls", "readonly");
-        const req = tx.objectStore("rolls").getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => resolve([]);
+        try {
+            const tx = db.transaction("rolls", "readonly");
+            const req = tx.objectStore("rolls").getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        } catch (e) {
+            resolve([]);
+        }
     });
 }
 
 function deleteRollFromDB(id) {
     if (!db || !db.objectStoreNames.contains("rolls")) return Promise.resolve();
     return new Promise((resolve) => {
-        const tx = db.transaction("rolls", "readwrite");
-        tx.objectStore("rolls").delete(id);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
+        let settled = false;
+        const done = () => { if (!settled) { settled = true; resolve(); } };
+        const timer = setTimeout(done, 2000);
+        try {
+            const tx = db.transaction("rolls", "readwrite");
+            tx.objectStore("rolls").delete(id);
+            tx.oncomplete = () => { clearTimeout(timer); done(); };
+            tx.onerror = () => { clearTimeout(timer); done(); };
+            tx.onabort = () => { clearTimeout(timer); done(); };
+        } catch (e) {
+            clearTimeout(timer);
+            done();
+        }
     });
 }
 
@@ -1202,6 +1224,13 @@ let rollPendingCount = 0;
 let rollSaveQueue = Promise.resolve();
 let hardwareFlashSupport = { hasTorch: false };
 
+let cameraSessionSeq = 0;
+let activeTorchTrack = null;
+let lastCameraStopAt = 0;
+let cameraRestartPromise = Promise.resolve();
+let isCameraRestarting = false;
+let knownBackTorchSupported = false;
+
 let thirdsVisible = localStorage.getItem("analog_lab_thirds_v7") === "1";
 function syncThirdsUI() {
     const vfGrid = document.getElementById("vfThirdsGrid");
@@ -1215,19 +1244,51 @@ onId("vfThirdsToggleBtn", "click", () => {
     syncThirdsUI();
 });
 
+function withTimeout(promise, ms, fallbackVal = false) {
+    let timer;
+    return Promise.race([
+        Promise.resolve(promise).catch(() => fallbackVal),
+        new Promise((resolve) => {
+            timer = setTimeout(() => resolve(fallbackVal), ms);
+        })
+    ]).finally(() => clearTimeout(timer));
+}
+
+function clearAllVideoSrcObjects() {
+    ["camVideo", "vintageVideo", "polaroidVideo"].forEach(id => {
+        const v = document.getElementById(id);
+        if (v && v.srcObject) {
+            try { v.pause(); } catch (e) { }
+            v.srcObject = null;
+        }
+    });
+}
+
 async function checkTrackSupportsTorch(track) {
-    if (!track) return false;
+    if (!track || track.readyState === "ended") return false;
     try {
         if (typeof track.getCapabilities === "function") {
             const caps = track.getCapabilities();
-            if (caps && caps.torch) return true;
+            if (caps && caps.torch === true) return true;
+            if (caps && caps.torch === false) return false;
         }
     } catch (e) { }
+
+    await new Promise(r => setTimeout(r, 90));
+    if (!track || track.readyState === "ended") return false;
+    try {
+        if (typeof track.getCapabilities === "function") {
+            const caps2 = track.getCapabilities();
+            if (caps2 && caps2.torch === true) return true;
+            if (caps2 && caps2.torch === false) return false;
+        }
+    } catch (e) { }
+
     try {
         if (typeof ImageCapture !== "undefined") {
             const ic = new ImageCapture(track);
             if (typeof ic.getPhotoCapabilities === "function") {
-                const pc = await ic.getPhotoCapabilities();
+                const pc = await withTimeout(ic.getPhotoCapabilities(), 500, null);
                 if (pc && Array.isArray(pc.fillLightMode) && pc.fillLightMode.includes("torch")) {
                     return true;
                 }
@@ -1242,7 +1303,17 @@ async function detectFlashCapabilities() {
     if (!mediaStream) return hardwareFlashSupport;
     const track = mediaStream.getVideoTracks()[0];
     if (!track) return hardwareFlashSupport;
-    hardwareFlashSupport.hasTorch = await checkTrackSupportsTorch(track);
+    if (facingMode === "user") {
+        hardwareFlashSupport.hasTorch = false;
+        return hardwareFlashSupport;
+    }
+    let supported = await checkTrackSupportsTorch(track);
+    if (!supported && knownBackTorchSupported) {
+        supported = true;
+    } else if (supported) {
+        knownBackTorchSupported = true;
+    }
+    hardwareFlashSupport.hasTorch = supported;
     return hardwareFlashSupport;
 }
 
@@ -1599,8 +1670,10 @@ async function navigateBackOneStep() {
     }
 
     if (isViewActive("view-camera")) {
-        if (isRewinding || isCapturing) return;
-        await rollSaveQueue.catch(() => { });
+        if (isRewinding) return;
+        stopCamera();
+        isCapturing = false;
+        await Promise.race([rollSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 1000))]);
         refreshHomeStatus();
         refreshStorageSummary();
         switchView("view-home");
@@ -1635,8 +1708,10 @@ async function navigateBackOneStep() {
     }
     if (isViewActive("view-polaroid")) {
         if (typeof polaroidCapturing !== "undefined" && polaroidCapturing) return;
-        if (typeof polSaveQueue !== "undefined") await polSaveQueue.catch(() => null);
         stopCamera();
+        if (typeof polSaveQueue !== "undefined") {
+            await Promise.race([polSaveQueue.catch(() => null), new Promise(r => setTimeout(r, 1000))]);
+        }
         refreshHomeStatus();
         refreshStorageSummary();
         switchView("view-home");
@@ -1645,8 +1720,10 @@ async function navigateBackOneStep() {
     if (isViewActive("view-vintage-camera")) {
         if (typeof vintageDeveloping !== "undefined" && vintageDeveloping) return;
         if (typeof vintageCapturing !== "undefined" && vintageCapturing) return;
-        if (typeof vintageSaveQueue !== "undefined") await vintageSaveQueue.catch(() => { });
         stopCamera();
+        if (typeof vintageSaveQueue !== "undefined") {
+            await Promise.race([vintageSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 1000))]);
+        }
         if (typeof refreshVintageArchiveList === "function") refreshVintageArchiveList();
         refreshStorageSummary();
         refreshHomeStatus();
@@ -1740,7 +1817,7 @@ async function refreshHomeStatus() {
 }
 
 async function enterRollsSection() {
-    await rollSaveQueue.catch(() => { });
+    await Promise.race([rollSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 1500))]);
     const rolls = await getAllRollsFromDB();
     const activeShooting = rolls.find(r => r.status === "shooting");
     const activeRewound = rolls.find(r => r.status === "rewound");
@@ -1899,45 +1976,100 @@ onId("loadRollBtn", "click", async () => {
 /* =========================================================
    7. FOTOCAMERA LIVE & ACQUISIZIONE CON LED FLASH SINCRONIZZATO
    ========================================================= */
-async function openCameraStreamWithRetry(videoConstraints) {
-    try {
-        return await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
-    } catch (err) {
-        await new Promise(r => setTimeout(r, 240));
-        return await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+function stopActiveMediaTracks() {
+    const tracksToStop = new Set();
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(t => tracksToStop.add(t));
+        mediaStream = null;
     }
+    if (activeTorchTrack) {
+        tracksToStop.add(activeTorchTrack);
+    }
+
+    clearAllVideoSrcObjects();
+
+    if (tracksToStop.size > 0) {
+        tracksToStop.forEach(t => {
+            if (t === activeTorchTrack && typeof t.applyConstraints === "function") {
+                try { t.applyConstraints({ advanced: [{ torch: false }] }).catch(() => { }); } catch (e) { }
+            }
+            try { t.stop(); } catch (e) { }
+        });
+        lastCameraStopAt = performance.now();
+    }
+    activeTorchTrack = null;
+    hardwareFlashSupport = { hasTorch: false };
+}
+
+function stopCamera() {
+    cameraSessionSeq++;
+    isCameraRestarting = false;
+    stopActiveMediaTracks();
+}
+
+async function openCameraStreamWithRetry(videoConstraints, expectedSession = cameraSessionSeq) {
+    const elapsedSinceStop = performance.now() - lastCameraStopAt;
+    if (lastCameraStopAt > 0 && elapsedSinceStop < 380) {
+        await new Promise(r => setTimeout(r, 380 - elapsedSinceStop));
+    }
+    if (expectedSession !== cameraSessionSeq) return null;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+        if (expectedSession !== cameraSessionSeq) return null;
+        const stream = await withTimeout(
+            navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false }),
+            4500,
+            null
+        );
+        if (stream) {
+            if (expectedSession !== cameraSessionSeq) {
+                stream.getTracks().forEach(t => { try { t.stop(); } catch (e) { } });
+                return null;
+            }
+            return stream;
+        }
+        await new Promise(r => setTimeout(r, 350));
+    }
+    throw new Error("Camera unavailable or timed out");
+}
+
+function syncViewfinderAspectFromVideo(videoId, frameId) {
+    const v = document.getElementById(videoId);
+    const f = document.getElementById(frameId);
+    if (!v || !f || !v.videoWidth || !v.videoHeight) return;
+    f.style.aspectRatio = v.videoWidth > v.videoHeight ? "4 / 3" : "3 / 4";
 }
 
 async function startCamera() {
-    stopCamera();
+    stopActiveMediaTracks();
+    const localSession = ++cameraSessionSeq;
     const video = document.getElementById("camVideo");
     const fallback = document.getElementById("camFallbackMsg");
     const videoConstraints = { facingMode: facingMode, width: { ideal: 2560 }, height: { ideal: 1920 } };
     try {
-        mediaStream = await openCameraStreamWithRetry(videoConstraints);
+        const stream = await openCameraStreamWithRetry(videoConstraints, localSession);
+        if (!stream || localSession !== cameraSessionSeq) {
+            if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch (e) { } });
+            return;
+        }
+        mediaStream = stream;
         video.srcObject = mediaStream;
         video.style.display = "block";
-        try { await video.play(); } catch (e) { }
+        video.onloadedmetadata = () => syncViewfinderAspectFromVideo("camVideo", "vfFrame");
+        video.onresize = () => syncViewfinderAspectFromVideo("camVideo", "vfFrame");
+        await withTimeout(video.play(), 1200, undefined);
+        syncViewfinderAspectFromVideo("camVideo", "vfFrame");
+        if (localSession !== cameraSessionSeq) return;
         fallback.style.display = "none";
         await detectFlashCapabilities();
+        if (localSession !== cameraSessionSeq) return;
         recalculateExposureTriangle();
     } catch (err) {
-        video.style.display = "none";
-        fallback.style.display = "flex";
+        if (localSession === cameraSessionSeq) {
+            video.style.display = "none";
+            fallback.style.display = "flex";
+        }
     }
-}
-
-function stopCamera() {
-    if (mediaStream) {
-        mediaStream.getTracks().forEach(t => {
-            if (typeof t.applyConstraints === "function") {
-                try { t.applyConstraints({ advanced: [{ torch: false }] }).catch(() => { }); } catch (e) { }
-            }
-            t.stop();
-        });
-        mediaStream = null;
-    }
-    hardwareFlashSupport = { hasTorch: false };
 }
 
 function updateCameraHUD() {
@@ -1960,6 +2092,7 @@ function updateCameraHUD() {
 
 function enterCameraMode() {
     isRewinding = false;
+    isCapturing = false;
     rollPendingCount = 0;
     camCompEV = 0.0;
     document.getElementById("camExpSlider").value = 0;
@@ -1979,8 +2112,10 @@ function enterCameraMode() {
 }
 
 onId("camHomeBtn", "click", async () => {
-    if (isRewinding || isCapturing) return;
-    await rollSaveQueue.catch(() => { });
+    if (isRewinding) return;
+    stopCamera();
+    isCapturing = false;
+    await Promise.race([rollSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 1000))]);
     refreshHomeStatus();
     refreshStorageSummary();
     switchView("view-home");
@@ -1993,7 +2128,7 @@ onId("camExpSlider", "input", (e) => {
 });
 
 onId("switchCamBtn", "click", () => {
-    if (isCapturing) return;
+    if (isCapturing || isCameraRestarting) return;
     facingMode = facingMode === "environment" ? "user" : "environment";
     startCamera();
 });
@@ -2032,18 +2167,27 @@ function triggerFlashStrobeVisual(durationMs = 70) {
 }
 
 async function setTrackTorch(track, enabled) {
-    if (!track || typeof track.applyConstraints !== "function") return false;
-    try {
-        await track.applyConstraints({ advanced: [{ torch: enabled }] });
+    if (!track || track.readyState === "ended" || typeof track.applyConstraints !== "function") return false;
+    const okAdv = await withTimeout(
+        track.applyConstraints({ advanced: [{ torch: enabled }] }).then(() => true),
+        700,
+        false
+    );
+    if (okAdv) {
+        activeTorchTrack = enabled ? track : null;
         return true;
-    } catch (e1) {
-        try {
-            await track.applyConstraints({ torch: enabled });
-            return true;
-        } catch (e2) {
-            return false;
-        }
     }
+    const okDirect = await withTimeout(
+        track.applyConstraints({ torch: enabled }).then(() => true),
+        500,
+        false
+    );
+    if (okDirect) {
+        activeTorchTrack = enabled ? track : null;
+        return true;
+    }
+    if (!enabled && activeTorchTrack === track) activeTorchTrack = null;
+    return false;
 }
 
 function waitForLitVideoFrames(video, minMs = 520, minFrames = 6, maxMs = 850) {
@@ -2082,23 +2226,36 @@ function waitForLitVideoFrames(video, minMs = 520, minFrames = 6, maxMs = 850) {
     });
 }
 
-async function stopTorchAndResetStream(track, restartStreamFn) {
+async function stopTorchAndResetStream(track, restartStreamFn, mySession) {
     await setTrackTorch(track, false);
-    await new Promise(r => setTimeout(r, 50));
-    await setTrackTorch(track, false);
-
-    // Su Android (Xiaomi, Samsung, ecc.) torch:false viene spesso ignorato dal driver:
-    // chiudere la traccia spegne fisicamente il LED al 100% e resetta lo stato HAL.
-    if (track) {
-        try { track.stop(); } catch (e) { }
+    await new Promise(r => setTimeout(r, 60));
+    if (track && track.readyState !== "ended") {
+        await setTrackTorch(track, false);
     }
-    mediaStream = null;
+
+    // Scollega prima i <video> sink, poi ferma la traccia per spegnere fisicamente il LED e resettare l'HAL Android
+    stopActiveMediaTracks();
+    if (track && track.readyState !== "ended") {
+        try { track.stop(); } catch (e) { }
+        lastCameraStopAt = performance.now();
+    }
+
+    if (mySession !== cameraSessionSeq) return;
 
     if (typeof restartStreamFn === "function") {
-        await new Promise(r => setTimeout(r, 120));
-        try {
-            await restartStreamFn();
-        } catch (e) { }
+        isCameraRestarting = true;
+        const restartJob = (async () => {
+            try {
+                await new Promise(r => setTimeout(r, 380));
+                if (mySession !== cameraSessionSeq) return;
+                await restartStreamFn();
+            } catch (e) {
+            } finally {
+                isCameraRestarting = false;
+            }
+        })();
+        cameraRestartPromise = restartJob;
+        await restartJob;
     }
 }
 
@@ -2112,6 +2269,7 @@ async function captureFrameWithSyncedFlash(video, targetRatio, opts = {}) {
         onShutterFire = null
     } = opts;
     const mirror = facingMode === "user";
+    const mySession = cameraSessionSeq;
 
     const blinkCurtain = (ms) => {
         if (!curtainEl) return;
@@ -2131,43 +2289,54 @@ async function captureFrameWithSyncedFlash(video, targetRatio, opts = {}) {
         // Camera frontale: pre-flash schermo per illuminare davvero il volto
         const frontFlash = document.getElementById("frontScreenFlash");
         if (frontFlash) frontFlash.classList.add("lit");
-        await waitForLitVideoFrames(video, 220, 3, 420);
-        if (onShutterFire) onShutterFire();
-        blinkCurtain(curtainMinMs);
-        const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, true, maxLongSide);
-        if (frontFlash) frontFlash.classList.remove("lit");
-        return { canvas: c, hardwareFlashFired: true };
+        try {
+            await waitForLitVideoFrames(video, 220, 3, 420);
+            if (mySession !== cameraSessionSeq) return { canvas: null, hardwareFlashFired: false };
+            if (onShutterFire) onShutterFire();
+            blinkCurtain(curtainMinMs);
+            const c = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, true, maxLongSide);
+            return { canvas: c, hardwareFlashFired: true };
+        } finally {
+            if (frontFlash) frontFlash.classList.remove("lit");
+        }
     }
 
-    // Camera posteriore: lampo LED fisico sincronizzato ai frame video reali (zero takePhoto)
+    // Camera posteriore: lampo LED fisico sincronizzato ai frame video reali
     const track = mediaStream && mediaStream.getVideoTracks ? mediaStream.getVideoTracks()[0] : null;
     const hasTorch = hardwareFlashSupport.hasTorch || await checkTrackSupportsTorch(track);
 
-    if (track && hasTorch) {
+    if (track && hasTorch && mySession === cameraSessionSeq) {
         const litOk = await setTrackTorch(track, true);
         if (litOk) {
-            await waitForLitVideoFrames(video, 520, 6, 850);
-            if (onShutterFire) onShutterFire();
-            if (curtainEl) {
-                curtainEl.style.backgroundColor = "#000000";
-                curtainEl.classList.add("blink");
-            }
+            let capturedCanvas = null;
             const curtainStart = performance.now();
-            const capturedCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, false, maxLongSide);
-
-            await new Promise(r => setTimeout(r, 50));
             try {
-                await stopTorchAndResetStream(track, restartStreamFn);
-            } finally {
+                await waitForLitVideoFrames(video, 520, 6, 850);
+                if (mySession !== cameraSessionSeq || !video.videoWidth) {
+                    return { canvas: null, hardwareFlashFired: false };
+                }
+                if (onShutterFire) onShutterFire();
                 if (curtainEl) {
-                    const rem = Math.max(0, curtainMinMs - (performance.now() - curtainStart));
-                    setTimeout(() => curtainEl.classList.remove("blink"), rem);
+                    curtainEl.style.backgroundColor = "#000000";
+                    curtainEl.classList.add("blink");
+                }
+                capturedCanvas = drawCroppedToCanvas(video, video.videoWidth, video.videoHeight, targetRatio, false, maxLongSide);
+                await new Promise(r => setTimeout(r, 50));
+            } finally {
+                try {
+                    await stopTorchAndResetStream(track, restartStreamFn, mySession);
+                } finally {
+                    if (curtainEl) {
+                        const rem = Math.max(0, curtainMinMs - (performance.now() - curtainStart));
+                        setTimeout(() => curtainEl.classList.remove("blink"), rem);
+                    }
                 }
             }
             return { canvas: capturedCanvas, hardwareFlashFired: true };
         }
     }
 
+    if (mySession !== cameraSessionSeq) return { canvas: null, hardwareFlashFired: false };
     // Fallback dispositivi senza LED (iPhone Safari / desktop)
     if (onShutterFire) onShutterFire();
     triggerFlashStrobeVisual(70);
@@ -2270,6 +2439,10 @@ onId("shutterBtn", "click", async () => {
         return;
     }
 
+    if (isCameraRestarting) {
+        await withTimeout(cameraRestartPromise, 1500, null);
+    }
+
     const video = document.getElementById("camVideo");
     if (!mediaStream || !video || video.readyState < 2 || video.videoWidth === 0) {
         alert("Fotocamera live non ancora pronta: attendi un istante o tocca '+ GALLERIA' in basso a sinistra per esporre una foto sul rullino!");
@@ -2280,10 +2453,11 @@ onId("shutterBtn", "click", async () => {
     const useFlash = flashActive;
     const curtain = document.getElementById("shutterCurtain");
     const blinkDuration = Math.min(600, Math.max(95, expInfo.shutter.sec * 1000));
+    const targetRatio = video.videoWidth > video.videoHeight ? (4 / 3) : (3 / 4);
 
     isCapturing = true;
     try {
-        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithSyncedFlash(video, 3 / 4, {
+        const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithSyncedFlash(video, targetRatio, {
             useFlash,
             maxLongSide: 2400,
             curtainEl: curtain,
@@ -2291,6 +2465,7 @@ onId("shutterBtn", "click", async () => {
             restartStreamFn: startCamera,
             onShutterFire: () => playShutterSound(expInfo.shutter.sec, useFlash)
         });
+        if (!capCanvas) return;
         setShutterArmedState(false);
         await appWaitPaint();
         enqueueLatentFrame(capCanvas, expInfo, useFlash, hardwareFlashFired);
@@ -2350,7 +2525,7 @@ async function executeRewindSequence() {
         requestAnimationFrame(step);
     });
 
-    await Promise.all([animPromise, rollSaveQueue.catch(() => { })]);
+    await Promise.all([animPromise, Promise.race([rollSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 2000))])]);
 
     animOverlay.classList.remove("open");
     isRewinding = false;
@@ -2363,7 +2538,7 @@ onId("rewindEarlyBtn", "click", async () => {
     const count = getEffectiveRollCount();
     if (count === 0) {
         if (confirm("Nessuna foto scattata. Estrarre il rullino vuoto?")) {
-            await rollSaveQueue.catch(() => { });
+            await Promise.race([rollSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 1000))]);
             await deleteRollFromDB(currentRoll.id);
             currentRoll = null;
             refreshHomeStatus().catch(() => { });
@@ -3954,15 +4129,20 @@ onId("runDiagTestBtn", "click", async () => {
     log.textContent = "1/2 Verifica apertura sensore fotocamera ad alta risoluzione...";
 
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment", width: { ideal: 2560 }, height: { ideal: 1920 } },
-            audio: false
-        });
+        const stream = await withTimeout(
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment", width: { ideal: 2560 }, height: { ideal: 1920 } },
+                audio: false
+            }),
+            5000,
+            null
+        );
+        if (!stream) throw new Error("Timeout apertura fotocamera");
         const tempVid = document.createElement("video");
         tempVid.playsInline = true;
         tempVid.muted = true;
         tempVid.srcObject = stream;
-        await tempVid.play();
+        await withTimeout(tempVid.play(), 1200, undefined);
         await new Promise(r => setTimeout(r, 250));
 
         const sw = tempVid.videoWidth;
@@ -3974,11 +4154,13 @@ onId("runDiagTestBtn", "click", async () => {
         const hasTorch = await checkTrackSupportsTorch(track);
         const flashCapsTxt = hasTorch ? "Torcia LED OK" : "Torcia non esposta dal browser";
 
+        tempVid.srcObject = null;
         stream.getTracks().forEach(t => t.stop());
+        lastCameraStopAt = performance.now();
         log.textContent = `Sensore OK: ${sw}×${sh}px | ${flashCapsTxt}. 2/2 Benchmark GPU WebGL...`;
     } catch (err) {
         document.getElementById("diagSensorRes").textContent = "Bloccato (Serve HTTPS)";
-        log.textContent = `Camera non accessibile (${err.name}). 2/2 Benchmark GPU WebGL...`;
+        log.textContent = `Camera non accessibile (${err.name || err.message}). 2/2 Benchmark GPU WebGL...`;
     }
 
     const testCanvas = document.createElement("canvas");

@@ -1,5 +1,5 @@
 /* =========================================================
-   POLAROID.JS — v1.0.9 (LED FLASH SINCRO + NAVIGAZIONE)
+   POLAROID.JS — v1.0.10 (LED FLASH FIX + SAFE DB)
    ========================================================= */
 
 const POLAROID_STOCKS = [
@@ -231,10 +231,19 @@ function savePolaroidShotToDB(shot) {
 
     if (!db || !db.objectStoreNames.contains("polaroidShots")) return Promise.resolve();
     return new Promise((resolve) => {
-        const tx = db.transaction("polaroidShots", "readwrite");
-        tx.objectStore("polaroidShots").put(shot);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
+        let settled = false;
+        const done = () => { if (!settled) { settled = true; resolve(); } };
+        const timer = setTimeout(done, 2500);
+        try {
+            const tx = db.transaction("polaroidShots", "readwrite");
+            tx.objectStore("polaroidShots").put(shot);
+            tx.oncomplete = () => { clearTimeout(timer); done(); };
+            tx.onerror = () => { clearTimeout(timer); done(); };
+            tx.onabort = () => { clearTimeout(timer); done(); };
+        } catch (e) {
+            clearTimeout(timer);
+            done();
+        }
     });
 }
 
@@ -243,10 +252,14 @@ function getAllPolaroidShotsFromDB() {
         return Promise.resolve([...memoryPolaroidShots]);
     }
     return new Promise((resolve) => {
-        const tx = db.transaction("polaroidShots", "readonly");
-        const req = tx.objectStore("polaroidShots").getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => resolve([...memoryPolaroidShots]);
+        try {
+            const tx = db.transaction("polaroidShots", "readonly");
+            const req = tx.objectStore("polaroidShots").getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([...memoryPolaroidShots]);
+        } catch (e) {
+            resolve([...memoryPolaroidShots]);
+        }
     });
 }
 
@@ -254,10 +267,19 @@ function deletePolaroidShotFromDB(id) {
     memoryPolaroidShots = memoryPolaroidShots.filter(s => s.id !== id);
     if (!db || !db.objectStoreNames.contains("polaroidShots")) return Promise.resolve();
     return new Promise((resolve) => {
-        const tx = db.transaction("polaroidShots", "readwrite");
-        tx.objectStore("polaroidShots").delete(id);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
+        let settled = false;
+        const done = () => { if (!settled) { settled = true; resolve(); } };
+        const timer = setTimeout(done, 2000);
+        try {
+            const tx = db.transaction("polaroidShots", "readwrite");
+            tx.objectStore("polaroidShots").delete(id);
+            tx.oncomplete = () => { clearTimeout(timer); done(); };
+            tx.onerror = () => { clearTimeout(timer); done(); };
+            tx.onabort = () => { clearTimeout(timer); done(); };
+        } catch (e) {
+            clearTimeout(timer);
+            done();
+        }
     });
 }
 
@@ -502,28 +524,39 @@ function updatePolaroidUI() {
 }
 
 async function startPolaroidCameraStream() {
-    stopCamera();
+    stopActiveMediaTracks();
+    const localSession = ++cameraSessionSeq;
     const video = document.getElementById("polaroidVideo");
     const fallback = document.getElementById("polaroidFallbackMsg");
     const videoConstraints = { facingMode: facingMode, width: { ideal: 2560 }, height: { ideal: 1920 } };
 
     try {
-        mediaStream = await openCameraStreamWithRetry(videoConstraints);
+        const stream = await openCameraStreamWithRetry(videoConstraints, localSession);
+        if (!stream || localSession !== cameraSessionSeq) {
+            if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch (e) { } });
+            return;
+        }
+        mediaStream = stream;
         if (video) {
             video.srcObject = mediaStream;
             video.style.display = "block";
-            try { await video.play(); } catch (e) { }
+            await withTimeout(video.play(), 1200, undefined);
         }
+        if (localSession !== cameraSessionSeq) return;
         if (fallback) fallback.style.display = "none";
         await detectFlashCapabilities();
+        if (localSession !== cameraSessionSeq) return;
         updatePolaroidUI();
     } catch (err) {
-        if (video) video.style.display = "none";
-        if (fallback) fallback.style.display = "flex";
+        if (localSession === cameraSessionSeq) {
+            if (video) video.style.display = "none";
+            if (fallback) fallback.style.display = "flex";
+        }
     }
 }
 
 function enterPolaroidMode() {
+    polaroidCapturing = false;
     const tGrid = document.getElementById("polaroidThirdsGrid");
     const tBtn = document.getElementById("polaroidThirdsToggleBtn");
     if (tGrid) tGrid.classList.toggle("visible", thirdsVisible);
@@ -795,7 +828,7 @@ async function openPolaroidGallery(origin = null) {
         backBtn.textContent = polaroidGalleryOrigin === "view-home" ? "← Home" : "← Camera";
     }
 
-    await polSaveQueue.catch(() => null);
+    await Promise.race([polSaveQueue.catch(() => null), new Promise(r => setTimeout(r, 1500))]);
     const shots = (await getAllPolaroidShotsFromDB()).sort((a, b) => b.createdAt - a.createdAt);
     const grid = document.getElementById("polaroidGalleryGrid");
     const empty = document.getElementById("polaroidGalleryEmpty");
@@ -925,9 +958,9 @@ function initPolaroidEventListeners() {
     };
 
     pOn("polaroidExitBtn", "click", async () => {
-        if (polaroidCapturing) return;
-        await polSaveQueue.catch(() => null);
         stopCamera();
+        polaroidCapturing = false;
+        await Promise.race([polSaveQueue.catch(() => null), new Promise(r => setTimeout(r, 1000))]);
         refreshHomeStatus();
         refreshStorageSummary();
         switchView("view-home");
@@ -981,7 +1014,7 @@ function initPolaroidEventListeners() {
     });
 
     pOn("polaroidSwitchCamBtn", "click", () => {
-        if (polaroidCapturing) return;
+        if (polaroidCapturing || isCameraRestarting) return;
         facingMode = facingMode === "environment" ? "user" : "environment";
         startPolaroidCameraStream();
     });
@@ -996,6 +1029,9 @@ function initPolaroidEventListeners() {
 
     pOn("polaroidShutterBtn", "click", async () => {
         if (polaroidCapturing) return;
+        if (isCameraRestarting) {
+            await withTimeout(cameraRestartPromise, 1500, null);
+        }
         const video = document.getElementById("polaroidVideo");
         if (!mediaStream || !video || video.readyState < 2 || video.videoWidth === 0) {
             alert("Fotocamera live non ancora pronta: attendi un istante o tocca '📷 Carica Foto' per sviluppare subito una Polaroid!");
@@ -1015,6 +1051,7 @@ function initPolaroidEventListeners() {
                 restartStreamFn: startPolaroidCameraStream,
                 onShutterFire: () => playPolaroidEjectSound(useFlash)
             });
+            if (!capCanvas) return;
             await polWaitPaint();
             captureAndDevelopPolaroidInstant(capCanvas, useFlash, hardwareFlashFired);
         } finally {

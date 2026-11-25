@@ -1,5 +1,5 @@
 /* =========================================================
-   VINTAGE-PRESETS.JS — USA & GETTA v1.0.9 (LED FLASH SINCRO + NAV)
+   VINTAGE-PRESETS.JS — USA & GETTA v1.0.10 (LED FIX + ROTAZIONE 90°)
    ========================================================= */
 
 const VINTAGE_DECADES = [
@@ -334,10 +334,19 @@ function saveVintageRollToDB(vRoll) {
         return Promise.resolve();
     }
     return new Promise((resolve) => {
-        const tx = db.transaction("vintageRolls", "readwrite");
-        tx.objectStore("vintageRolls").put(vRoll);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
+        let settled = false;
+        const done = () => { if (!settled) { settled = true; resolve(); } };
+        const timer = setTimeout(done, 2500);
+        try {
+            const tx = db.transaction("vintageRolls", "readwrite");
+            tx.objectStore("vintageRolls").put(vRoll);
+            tx.oncomplete = () => { clearTimeout(timer); done(); };
+            tx.onerror = () => { clearTimeout(timer); done(); };
+            tx.onabort = () => { clearTimeout(timer); done(); };
+        } catch (e) {
+            clearTimeout(timer);
+            done();
+        }
     });
 }
 
@@ -346,10 +355,14 @@ function getAllVintageRollsFromDB() {
         return Promise.resolve([...memoryVintageRolls]);
     }
     return new Promise((resolve) => {
-        const tx = db.transaction("vintageRolls", "readonly");
-        const req = tx.objectStore("vintageRolls").getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => resolve([...memoryVintageRolls]);
+        try {
+            const tx = db.transaction("vintageRolls", "readonly");
+            const req = tx.objectStore("vintageRolls").getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([...memoryVintageRolls]);
+        } catch (e) {
+            resolve([...memoryVintageRolls]);
+        }
     });
 }
 
@@ -359,15 +372,24 @@ function deleteVintageRollFromDB(id) {
         return Promise.resolve();
     }
     return new Promise((resolve) => {
-        const tx = db.transaction("vintageRolls", "readwrite");
-        tx.objectStore("vintageRolls").delete(id);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
+        let settled = false;
+        const done = () => { if (!settled) { settled = true; resolve(); } };
+        const timer = setTimeout(done, 2000);
+        try {
+            const tx = db.transaction("vintageRolls", "readwrite");
+            tx.objectStore("vintageRolls").delete(id);
+            tx.oncomplete = () => { clearTimeout(timer); done(); };
+            tx.onerror = () => { clearTimeout(timer); done(); };
+            tx.onabort = () => { clearTimeout(timer); done(); };
+        } catch (e) {
+            clearTimeout(timer);
+            done();
+        }
     });
 }
 
 async function enterDisposableSection() {
-    await vintageSaveQueue.catch(() => { });
+    await Promise.race([vintageSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 1500))]);
     const vRolls = await getAllVintageRollsFromDB();
     const activeShooting = vRolls.find(r => r.status === "shooting");
     if (activeShooting) {
@@ -600,45 +622,42 @@ function updateVintageCameraHUD() {
     document.getElementById("vintageFinishedOverlay").classList.toggle("open", isFull && !vintageDeveloping);
 }
 
-async function applyFixedHyperfocalFocus(track) {
-    if (!track || !track.getCapabilities || !track.applyConstraints) return;
-    try {
-        const caps = track.getCapabilities();
-        if (caps && Array.isArray(caps.focusMode) && caps.focusMode.includes("manual") && caps.focusDistance) {
-            const minD = typeof caps.focusDistance.min === "number" ? caps.focusDistance.min : 0;
-            const maxD = typeof caps.focusDistance.max === "number" ? caps.focusDistance.max : 10;
-            const targetDist = maxD <= 2.5 ? Math.min(maxD, Math.max(minD, 0.45)) : Math.min(maxD, Math.max(minD, 2.2));
-            await track.applyConstraints({
-                advanced: [{ focusMode: "manual", focusDistance: targetDist }]
-            });
-        }
-    } catch (e) { }
-}
-
 async function startVintageCameraStream() {
-    stopCamera();
+    stopActiveMediaTracks();
+    const localSession = ++cameraSessionSeq;
     const video = document.getElementById("vintageVideo");
     const fallback = document.getElementById("vintageFallbackMsg");
     const videoConstraints = { facingMode: facingMode, width: { ideal: 2560 }, height: { ideal: 1920 } };
 
     try {
-        mediaStream = await openCameraStreamWithRetry(videoConstraints);
+        const stream = await openCameraStreamWithRetry(videoConstraints, localSession);
+        if (!stream || localSession !== cameraSessionSeq) {
+            if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch (e) { } });
+            return;
+        }
+        mediaStream = stream;
         video.srcObject = mediaStream;
         video.style.display = "block";
-        try { await video.play(); } catch (e) { }
+        video.onloadedmetadata = () => syncViewfinderAspectFromVideo("vintageVideo", "vintageVfFrame");
+        video.onresize = () => syncViewfinderAspectFromVideo("vintageVideo", "vintageVfFrame");
+        await withTimeout(video.play(), 1200, undefined);
+        syncViewfinderAspectFromVideo("vintageVideo", "vintageVfFrame");
+        if (localSession !== cameraSessionSeq) return;
         fallback.style.display = "none";
         await detectFlashCapabilities();
+        if (localSession !== cameraSessionSeq) return;
         updateVintageFlashButtonUI();
-        const track = mediaStream.getVideoTracks()[0];
-        if (track) applyFixedHyperfocalFocus(track);
     } catch (err) {
-        video.style.display = "none";
-        fallback.style.display = "flex";
+        if (localSession === cameraSessionSeq) {
+            video.style.display = "none";
+            fallback.style.display = "flex";
+        }
     }
 }
 
 function enterVintageCameraMode() {
     vintageDeveloping = false;
+    vintageCapturing = false;
     vintagePendingCount = 0;
     setVintageWheelArmedState(false);
     document.getElementById("vintageFinishedOverlay").classList.remove("open");
@@ -719,6 +738,7 @@ function buildInitialVintageEdit(decade, applyRandom, showStamp = true) {
         enabled: true,
         decadeId: decade.id,
         showStamp,
+        rotation: 0,
         seed: Math.random(),
         lightLeak: rollVal(ex.leakProb),
         chemStain: rollVal(ex.chemProb),
@@ -731,10 +751,12 @@ function buildInitialVintageEdit(decade, applyRandom, showStamp = true) {
 }
 
 function ensureFrameVintageEdit(frame) {
-    if (frame.vintageEdit) return frame.vintageEdit;
-    const dec = getActiveVintageDecade(frame.decadeId || (currentVintageRoll && currentVintageRoll.decadeId));
-    const showStamp = frame.dateModeAtShot ? frame.dateModeAtShot !== "off" : !!frame.stamp;
-    frame.vintageEdit = buildInitialVintageEdit(dec, false, showStamp);
+    if (!frame.vintageEdit) {
+        const dec = getActiveVintageDecade(frame.decadeId || (currentVintageRoll && currentVintageRoll.decadeId));
+        const showStamp = frame.dateModeAtShot ? frame.dateModeAtShot !== "off" : !!frame.stamp;
+        frame.vintageEdit = buildInitialVintageEdit(dec, false, showStamp);
+    }
+    if (typeof frame.vintageEdit.rotation !== "number") frame.vintageEdit.rotation = 0;
     return frame.vintageEdit;
 }
 
@@ -743,13 +765,15 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
     const decade = getActiveVintageDecade(edit.decadeId || frame.decadeId);
     const outCanvas = document.createElement("canvas");
     const targetDim = maxDimOverride || Math.min(MAX_GL_TEX, Math.max(srcImg.naturalWidth || srcImg.width, srcImg.naturalHeight || srcImg.height));
+    const rot = edit.rotation || 0;
 
     if (!edit.enabled) {
+        const cleanDefects = createDefaultFrameDefects(edit.seed);
         const cleanStub = {
             exposureEV: 0,
             aperture: 4.0,
             defectSeed: edit.seed,
-            defects: createDefaultFrameDefects(edit.seed),
+            defects: cleanDefects,
             optics: { ca: 0, barrel: 0, softness: 0, fadeBlack: 0, flashFalloff: 0, orthoBW: false }
         };
         const neutralFilm = {
@@ -759,7 +783,28 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             halation: 0, halThreshold: 0.99, bloom: 0, grain: 0, grainSize: 1.0,
             matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1]
         };
-        renderFrameWithWebGL(srcImg, neutralFilm, cleanStub, 0, null, true, targetDim, 0);
+        const cleanPrintOpts = {
+            paperId: "kodak-endura",
+            time: 12.0,
+            grade: 2.5,
+            cyan: 0,
+            mag: 0,
+            yel: 0,
+            burn: 0,
+            grainScale: 1.0,
+            paperTexScale: 0,
+            enlargerApIdx: 3,
+            tonerType: 0,
+            tonerAmount: 0,
+            testStrip: false,
+            zoom: 1.0,
+            rotation: rot,
+            panX: 0,
+            panY: 0,
+            border: "none",
+            defects: cleanDefects
+        };
+        renderFrameWithWebGL(srcImg, neutralFilm, cleanStub, 0, cleanPrintOpts, true, targetDim, 0);
     } else {
         const defects = {
             seed: edit.seed,
@@ -801,7 +846,7 @@ async function renderVintageShotWithEdit(srcImg, frame, maxDimOverride = null) {
             tonerAmount: 0,
             testStrip: false,
             zoom: 1.0,
-            rotation: 0,
+            rotation: rot,
             panX: 0,
             panY: 0,
             border: "none",
@@ -854,7 +899,7 @@ async function executeVintageDevelopSequence() {
     sub.textContent = "Riavvolgimento e preparazione sviluppo...";
     overlay.classList.add("open");
 
-    await vintageSaveQueue.catch(() => { });
+    await Promise.race([vintageSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 2000))]);
     if (currentVintageRoll.frames.length === 0) {
         overlay.classList.remove("open");
         vintageDeveloping = false;
@@ -943,7 +988,7 @@ async function openVintageLabRoll() {
     if (!currentVintageRoll) return;
     const dec = getActiveVintageDecade(currentVintageRoll.decadeId);
     document.getElementById("vintageLabTitle").textContent = `${dec.name} (${dec.tag})`;
-    document.getElementById("vintageLabSubtitle").textContent = `${currentVintageRoll.frames.length} foto • Tocca per modificare o rimuovere gli effetti`;
+    document.getElementById("vintageLabSubtitle").textContent = `${currentVintageRoll.frames.length} foto • Tocca per ruotare o modificare effetti`;
 
     const grid = document.getElementById("vintageLabGrid");
     const empty = document.getElementById("vintageLabEmpty");
@@ -958,6 +1003,8 @@ async function openVintageLabRoll() {
             cell.className = "contact-frame" + (frame.starred ? " starred" : "");
 
             const img = document.createElement("img");
+            img.style.objectFit = "contain";
+            img.style.backgroundColor = "#0b0b0e";
             const srcObj = frame.thumbBlob || frame.developedBlob || frame.dataUrl;
             if (srcObj instanceof Blob) {
                 const u = URL.createObjectURL(srcObj);
@@ -1010,6 +1057,35 @@ async function openVintageLabRoll() {
     switchView("view-vintage-lab");
 }
 
+function ensureVintageRotationControls() {
+    const modal = document.getElementById("vintageDetailModal");
+    if (!modal) return;
+
+    const saveBtn = document.getElementById("vintageDetailSaveBtn");
+    if (saveBtn && !document.getElementById("vEditHeaderRotate90Btn")) {
+        const hdrBtn = document.createElement("button");
+        hdrBtn.type = "button";
+        hdrBtn.className = "btn btn-gold-outline";
+        hdrBtn.id = "vEditHeaderRotate90Btn";
+        hdrBtn.title = "Ruota 90°";
+        hdrBtn.style.padding = "7px 8px";
+        hdrBtn.textContent = "↻ 90°";
+        saveBtn.parentNode.insertBefore(hdrBtn, saveBtn);
+    }
+
+    const panel = modal.querySelector(".vintage-editor-panel");
+    const topRow = panel ? panel.querySelector(".vintage-editor-top") : null;
+    if (panel && topRow && !document.getElementById("vEditRotateCWBtn")) {
+        const rotRow = document.createElement("div");
+        rotRow.className = "geom-actions-row";
+        rotRow.innerHTML = `
+          <button type="button" class="btn btn-gold-outline" id="vEditRotateCCWBtn" style="padding:6px 8px; font-size:11px;">↺ Ruota -90°</button>
+          <button type="button" class="btn btn-gold-outline" id="vEditRotateCWBtn" style="padding:6px 8px; font-size:11px;">↻ Ruota +90°</button>
+        `;
+        topRow.insertAdjacentElement("afterend", rotRow);
+    }
+}
+
 function layoutVintageDetailCanvas(detailCanvas) {
     const stage = document.getElementById("vintageDetailStage");
     if (!stage || !detailCanvas || !detailCanvas.width || !detailCanvas.height) return;
@@ -1029,9 +1105,10 @@ function layoutVintageDetailCanvas(detailCanvas) {
 function syncVintageEditorUI(frame) {
     const edit = ensureFrameVintageEdit(frame);
     const dec = getActiveVintageDecade(edit.decadeId || frame.decadeId);
+    const rot = ((edit.rotation || 0) % 360 + 360) % 360;
 
     document.getElementById("vintageDetailTitle").textContent = `${dec.name} • #${String(frame.number).padStart(2, "0")}`;
-    document.getElementById("vintageDetailMeta").textContent = `${edit.enabled ? dec.tag : "ORIG. PULITA"}${frame.savedLocally ? " • ✓ Salvata" : ""}`;
+    document.getElementById("vintageDetailMeta").textContent = `${edit.enabled ? dec.tag : "ORIG. PULITA"}${rot ? ` • ${rot}°` : ""}${frame.savedLocally ? " • ✓ Salvata" : ""}`;
 
     const starBtn = document.getElementById("vintageDetailStarBtn");
     starBtn.textContent = frame.starred ? "★" : "☆";
@@ -1085,12 +1162,24 @@ async function refreshVintageDetailPreview(frame) {
     if (!activeVintageRawImg) return;
     const detailCanvas = document.getElementById("vintageDetailCanvas");
     if (vintageDetailShowOriginal) {
+        const edit = ensureFrameVintageEdit(frame);
+        const rot = ((edit.rotation || 0) % 360 + 360) % 360;
+        const isQ = rot === 90 || rot === 270;
         const w = activeVintageRawImg.naturalWidth || activeVintageRawImg.width;
         const h = activeVintageRawImg.naturalHeight || activeVintageRawImg.height;
         const scale = Math.min(1, 1400 / Math.max(w, h));
-        detailCanvas.width = Math.round(w * scale);
-        detailCanvas.height = Math.round(h * scale);
-        detailCanvas.getContext("2d").drawImage(activeVintageRawImg, 0, 0, detailCanvas.width, detailCanvas.height);
+        const dw = Math.round((isQ ? h : w) * scale);
+        const dh = Math.round((isQ ? w : h) * scale);
+        detailCanvas.width = dw;
+        detailCanvas.height = dh;
+        const dCtx = detailCanvas.getContext("2d");
+        dCtx.save();
+        dCtx.translate(dw / 2, dh / 2);
+        dCtx.rotate((rot * Math.PI) / 180);
+        const drawW = isQ ? dh : dw;
+        const drawH = isQ ? dw : dh;
+        dCtx.drawImage(activeVintageRawImg, -drawW / 2, -drawH / 2, drawW, drawH);
+        dCtx.restore();
         layoutVintageDetailCanvas(detailCanvas);
         return;
     }
@@ -1190,11 +1279,23 @@ async function exportVintageFrames(framesToExport, labelSlug) {
 
 function initVintageEventListeners() {
     renderVintageHomeGrid();
+    ensureVintageRotationControls();
 
     const vOn = (id, ev, fn) => {
         const el = document.getElementById(id);
         if (el) el.addEventListener(ev, fn);
     };
+
+    function rotateActiveVintageShot(deltaDeg) {
+        if (!currentVintageRoll) return;
+        const fr = currentVintageRoll.frames[activeVintageDetailIdx];
+        if (!fr) return;
+        const edit = ensureFrameVintageEdit(fr);
+        edit.rotation = (((edit.rotation || 0) + deltaDeg) % 360 + 360) % 360;
+        syncVintageEditorUI(fr);
+        refreshVintageDetailPreview(fr);
+        scheduleSaveVintageEditedFrame(fr);
+    }
 
     vOn("backHomeFromDisposableBtn", "click", () => {
         refreshHomeStatus();
@@ -1225,9 +1326,10 @@ function initVintageEventListeners() {
     });
 
     vOn("vintageExitBtn", "click", async () => {
-        if (vintageDeveloping || vintageCapturing) return;
-        await vintageSaveQueue.catch(() => { });
+        if (vintageDeveloping) return;
         stopCamera();
+        vintageCapturing = false;
+        await Promise.race([vintageSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 1000))]);
         refreshVintageArchiveList();
         refreshStorageSummary();
         if (typeof refreshHomeStatus === "function") refreshHomeStatus();
@@ -1239,7 +1341,7 @@ function initVintageEventListeners() {
         const count = getEffectiveVintageCount();
         if (count === 0) {
             if (confirm("Nessuna foto scattata. Estrarre il rullino Usa & Getta vuoto?")) {
-                await vintageSaveQueue.catch(() => { });
+                await Promise.race([vintageSaveQueue.catch(() => { }), new Promise(r => setTimeout(r, 1000))]);
                 await deleteVintageRollFromDB(currentVintageRoll.id);
                 currentVintageRoll = null;
                 stopCamera();
@@ -1281,7 +1383,7 @@ function initVintageEventListeners() {
     });
 
     vOn("vintageSwitchCamBtn", "click", () => {
-        if (vintageCapturing) return;
+        if (vintageCapturing || isCameraRestarting) return;
         facingMode = facingMode === "environment" ? "user" : "environment";
         startVintageCameraStream();
     });
@@ -1356,6 +1458,9 @@ function initVintageEventListeners() {
             }
             return;
         }
+        if (isCameraRestarting) {
+            await withTimeout(cameraRestartPromise, 1500, null);
+        }
         const video = document.getElementById("vintageVideo");
         if (!mediaStream || !video || video.readyState < 2 || video.videoWidth === 0) {
             alert("Fotocamera live non ancora pronta: attendi un istante o tocca '📷 Carica' qui a sinistra per caricare foto sul rullino Usa & Getta!");
@@ -1363,11 +1468,12 @@ function initVintageEventListeners() {
         }
 
         const useFlash = vintageFlashState === "ready";
+        const targetRatio = video.videoWidth > video.videoHeight ? (4 / 3) : (3 / 4);
         vintageCapturing = true;
         const curtain = document.getElementById("vintageCurtain");
 
         try {
-            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithSyncedFlash(video, 3 / 4, {
+            const { canvas: capCanvas, hardwareFlashFired } = await captureFrameWithSyncedFlash(video, targetRatio, {
                 useFlash,
                 maxLongSide: 2400,
                 curtainEl: curtain,
@@ -1375,6 +1481,7 @@ function initVintageEventListeners() {
                 restartStreamFn: startVintageCameraStream,
                 onShutterFire: () => playShutterSound(1 / 125, useFlash)
             });
+            if (!capCanvas) return;
             setVintageWheelArmedState(false);
             await vWaitPaint();
             enqueueVintageLatentFrame(capCanvas, useFlash, hardwareFlashFired);
@@ -1444,6 +1551,9 @@ function initVintageEventListeners() {
     });
 
     vOn("vintageDetailCloseBtn", "click", closeVintageDetailModal);
+    vOn("vEditHeaderRotate90Btn", "click", () => rotateActiveVintageShot(90));
+    vOn("vEditRotateCWBtn", "click", () => rotateActiveVintageShot(90));
+    vOn("vEditRotateCCWBtn", "click", () => rotateActiveVintageShot(-90));
 
     vOn("vintageDetailStarBtn", "click", async () => {
         if (!currentVintageRoll) return;
@@ -1485,9 +1595,12 @@ function initVintageEventListeners() {
 
     vOn("vEditRerollBtn", "click", () => {
         const fr = currentVintageRoll.frames[activeVintageDetailIdx];
-        const dec = getActiveVintageDecade(ensureFrameVintageEdit(fr).decadeId);
-        const keepStamp = ensureFrameVintageEdit(fr).showStamp;
+        const prevEdit = ensureFrameVintageEdit(fr);
+        const dec = getActiveVintageDecade(prevEdit.decadeId);
+        const keepStamp = prevEdit.showStamp;
+        const keepRot = prevEdit.rotation || 0;
         fr.vintageEdit = buildInitialVintageEdit(dec, true, keepStamp);
+        fr.vintageEdit.rotation = keepRot;
         syncVintageEditorUI(fr);
         refreshVintageDetailPreview(fr);
         scheduleSaveVintageEditedFrame(fr);
@@ -1495,9 +1608,12 @@ function initVintageEventListeners() {
 
     vOn("vEditResetBtn", "click", () => {
         const fr = currentVintageRoll.frames[activeVintageDetailIdx];
-        const dec = getActiveVintageDecade(ensureFrameVintageEdit(fr).decadeId);
-        const keepStamp = ensureFrameVintageEdit(fr).showStamp;
+        const prevEdit = ensureFrameVintageEdit(fr);
+        const dec = getActiveVintageDecade(prevEdit.decadeId);
+        const keepStamp = prevEdit.showStamp;
+        const keepRot = prevEdit.rotation || 0;
         fr.vintageEdit = buildInitialVintageEdit(dec, false, keepStamp);
+        fr.vintageEdit.rotation = keepRot;
         syncVintageEditorUI(fr);
         refreshVintageDetailPreview(fr);
         scheduleSaveVintageEditedFrame(fr);

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="color-scheme" content="dark" />
   <title>Analog PhotoLab v1.0 — Pellicole, Polaroid &amp; Usa &amp; Getta</title>
-  <link rel="stylesheet" href="style.css?v=1.0.9" />
+  <link rel="stylesheet" href="style.css?v=1.0.10" />
 </head>
 
 <body>
@@ -725,6 +725,12 @@
         <button class="btn" id="vintageDetailStarBtn" style="padding:7px 9px;">☆</button>
         <button class="btn btn-gold" id="vintageDetailSaveBtn" style="padding:7px 10px;">Salva</button>
       </div>
+      <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
+        <button class="btn" id="vintageDetailStarBtn" style="padding:7px 9px;">☆</button>
+        <button class="btn btn-gold-outline" id="vEditHeaderRotate90Btn" title="Ruota 90°" style="padding:7px 8px;">↻
+          90°</button>
+        <button class="btn btn-gold" id="vintageDetailSaveBtn" style="padding:7px 10px;">Salva</button>
+      </div>
     </header>
 
     <div class="print-stage" id="vintageDetailStage" style="background:#050506;">
@@ -741,6 +747,12 @@
         <button type="button" class="btn" id="vEditRerollBtn" style="padding:6px 9px; font-size:11px;">🎲
           Rimescola</button>
         <button type="button" class="btn" id="vEditResetBtn" style="padding:6px 9px; font-size:11px;">↺ Pulita</button>
+      </div>
+      <div class="geom-actions-row">
+        <button type="button" class="btn btn-gold-outline" id="vEditRotateCCWBtn"
+          style="padding:6px 8px; font-size:11px;">↺ Ruota -90°</button>
+        <button type="button" class="btn btn-gold-outline" id="vEditRotateCWBtn"
+          style="padding:6px 8px; font-size:11px;">↻ Ruota +90°</button>
       </div>
 
       <div class="vintage-decade-strip" id="vEditDecadeStrip"></div>
@@ -1886,9 +1898,9 @@
     }
   </script>
 
-  <script src="polaroid.js?v=1.0.9"></script>
-  <script src="vintage-presets.js?v=1.0.9"></script>
-  <script src="app.js?v=1.0.9"></script>
+  <script src="polaroid.js?v=1.0.10"></script>
+  <script src="vintage-presets.js?v=1.0.10"></script>
+  <script src="app.js?v=1.0.10"></script>
 
 </body>
 
