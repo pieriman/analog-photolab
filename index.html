@@ -723,10 +723,6 @@
       </div>
       <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
         <button class="btn" id="vintageDetailStarBtn" style="padding:7px 9px;">☆</button>
-        <button class="btn btn-gold" id="vintageDetailSaveBtn" style="padding:7px 10px;">Salva</button>
-      </div>
-      <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
-        <button class="btn" id="vintageDetailStarBtn" style="padding:7px 9px;">☆</button>
         <button class="btn btn-gold-outline" id="vEditHeaderRotate90Btn" title="Ruota 90°" style="padding:7px 8px;">↻
           90°</button>
         <button class="btn btn-gold" id="vintageDetailSaveBtn" style="padding:7px 10px;">Salva</button>
@@ -741,12 +737,13 @@
     <div class="vintage-editor-panel">
       <div class="vintage-editor-top">
         <button type="button" class="btn btn-gold-outline" id="vEditEffectsToggle"
-          style="padding:6px 10px; font-size:11px;">✨ Effetti Vintage: ON</button>
-        <button type="button" class="btn" id="vEditDateToggle" style="padding:6px 9px; font-size:11px;">📅 Data:
-          ON</button>
-        <button type="button" class="btn" id="vEditRerollBtn" style="padding:6px 9px; font-size:11px;">🎲
-          Rimescola</button>
-        <button type="button" class="btn" id="vEditResetBtn" style="padding:6px 9px; font-size:11px;">↺ Pulita</button>
+          style="padding:6px 8px; font-size:10.5px;">🎞️ Pellicola: ON</button>
+        <button type="button" class="btn btn-gold-outline" id="vEditDateToggle"
+          style="padding:6px 8px; font-size:10.5px;">📅 Data: ON</button>
+        <button type="button" class="btn" id="vEditRerollBtn" style="padding:6px 8px; font-size:10.5px;">🎲
+          Random</button>
+        <button type="button" class="btn" id="vEditResetBtn" style="padding:6px 8px; font-size:10.5px;">🧹 Togli
+          Difetti</button>
       </div>
       <div class="geom-actions-row">
         <button type="button" class="btn btn-gold-outline" id="vEditRotateCCWBtn"
@@ -760,10 +757,12 @@
       <div class="vintage-editor-sliders">
         <div class="slider-row"><label>Light Leaks</label><input type="range" id="vEditLeakSlider" min="0" max="1.0"
             step="0.05" value="0" /><span id="vEditLeakVal">0%</span></div>
+        <div class="slider-row"><label>Bloom / Alone</label><input type="range" id="vEditBloomSlider" min="0" max="1.0"
+            step="0.05" value="0.40" /><span id="vEditBloomVal">40%</span></div>
         <div class="slider-row"><label>Aberr. Crom.</label><input type="range" id="vEditCaSlider" min="0" max="1.0"
-            step="0.05" value="0.5" /><span id="vEditCaVal">50%</span></div>
+            step="0.05" value="0.45" /><span id="vEditCaVal">45%</span></div>
         <div class="slider-row"><label>Vignetta Lente</label><input type="range" id="vEditVigSlider" min="0" max="1.0"
-            step="0.05" value="0.35" /><span id="vEditVigVal">35%</span></div>
+            step="0.05" value="0.42" /><span id="vEditVigVal">42%</span></div>
         <div class="slider-row"><label>Macchie Chim.</label><input type="range" id="vEditChemSlider" min="0" max="1.0"
             step="0.05" value="0" /><span id="vEditChemVal">0%</span></div>
         <div class="slider-row"><label>Patina Arch.</label><input type="range" id="vEditAgedSlider" min="0" max="1.0"
@@ -774,7 +773,7 @@
             step="0.1" value="0" /><span id="vEditEvVal">0.0</span></div>
       </div>
       <div class="print-footer-hint">
-        <span>Tieni premuto sulla foto = scatto originale pulito • Le modifiche si salvano in automatico</span>
+        <span>Tieni premuto sulla foto = originale • Le modifiche si salvano in automatico</span>
       </div>
     </div>
   </div>
